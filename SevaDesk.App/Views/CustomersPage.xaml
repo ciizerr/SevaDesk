@@ -19,7 +19,7 @@
 
             <StackPanel Grid.Column="0" Spacing="4">
                 <TextBlock Text="Customers Directory" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
-                <TextBlock Text="Search customer history or register new visits" Style="{StaticResource BodySubheaderTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <TextBlock Text="Search customer history or register new visits" Style="{StaticResource BodyTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
@@ -67,7 +67,7 @@
 
                             <Button Grid.Column="2" VerticalAlignment="Center" Tag="{x:Bind Id}" Click="StartSession_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <FontIcon Glyph="&#xE768;" FontSize="12" Foreground="{ThemeResource AccentAAFillColorDefaultBrush}" />
+                                    <FontIcon Glyph="&#xE768;" FontSize="12" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                                     <TextBlock Text="Start Session" />
                                 </StackPanel>
                             </Button>

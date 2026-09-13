@@ -21,7 +21,7 @@
 
                 <StackPanel Grid.Column="0" Spacing="4">
                     <TextBlock Text="Dashboard" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
-                    <TextBlock Text="Active customer visits and desktop working folders" Style="{StaticResource BodySubheaderTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock Text="Active customer visits and desktop working folders" Style="{StaticResource BodyTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
@@ -48,7 +48,7 @@
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                     <StackPanel Spacing="6">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <FontIcon Glyph="&#xE77B;" Foreground="{ThemeResource AccentAAFillColorDefaultBrush}" />
+                            <FontIcon Glyph="&#xE77B;" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                             <TextBlock Text="Active Sessions" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
                         <TextBlock Text="{x:Bind ViewModel.ActiveSessionsCount, Mode=OneWay}"
