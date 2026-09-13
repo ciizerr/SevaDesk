@@ -1,0 +1,35 @@
+## Visual Studio / .NET build outputs
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+ARM/
+ARM64/
+bld/
+[Dd]ebugPublic/
+[Rr]eleasePublic/
+
+## Visual Studio cache & user files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+## WinUI / Windows App SDK / MSIX
+AppPackages/
+BundleArtifacts/
+Package.StoreAssociation.xml
+_pkginfo.txt
+
+## Local storage & DBs
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+/docs

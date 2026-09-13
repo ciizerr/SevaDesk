@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="SevaDesk_App.Views.NewCustomerDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="Start Customer Session"
+    PrimaryButtonText="Start Session"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary"
+    mc:Ignorable="d">
+
+    <StackPanel Spacing="16" Width="420">
+        <TextBox
+            x:Name="NameBox"
+            Header="Customer Name *"
+            PlaceholderText="e.g. Ramesh Kumar" />
+
+        <Grid ColumnDefinitions="*,*">
+            <TextBox
+                x:Name="MobileBox"
+                Grid.Column="0"
+                Header="Mobile Number"
+                Margin="0,0,8,0"
+                PlaceholderText="e.g. 9876543210" />
+
+            <TextBox
+                x:Name="VillageBox"
+                Grid.Column="1"
+                Header="Village / Locality"
+                Margin="8,0,0,0"
+                PlaceholderText="e.g. Rampur" />
+        </Grid>
+
+        <TextBox
+            x:Name="IdRefBox"
+            Header="Aadhaar / ID Ref (Optional)"
+            PlaceholderText="e.g. Last 4 digits: 1234" />
+
+        <TextBox
+            x:Name="NotesBox"
+            Header="Session Notes / Service (Optional)"
+            PlaceholderText="e.g. PAN application &amp; photo scan" />
+    </StackPanel>
+</ContentDialog>

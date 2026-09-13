@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "SevaDesk.App (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "SevaDesk.App (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

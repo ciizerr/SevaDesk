@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SevaDesk.Core", "SevaDesk.Core\SevaDesk.Core.csproj", "{DD18B7AB-A6C8-4257-9161-02A88564FF6C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SevaDesk.Infrastructure", "SevaDesk.Infrastructure\SevaDesk.Infrastructure.csproj", "{0924279F-F998-425C-8984-11CCEFE52DB8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SevaDesk.App", "SevaDesk.App\SevaDesk.App.csproj", "{DC05891A-8C4B-474A-A614-942EED09FF52}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DD18B7AB-A6C8-4257-9161-02A88564FF6C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD18B7AB-A6C8-4257-9161-02A88564FF6C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD18B7AB-A6C8-4257-9161-02A88564FF6C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD18B7AB-A6C8-4257-9161-02A88564FF6C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0924279F-F998-425C-8984-11CCEFE52DB8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0924279F-F998-425C-8984-11CCEFE52DB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0924279F-F998-425C-8984-11CCEFE52DB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0924279F-F998-425C-8984-11CCEFE52DB8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DC05891A-8C4B-474A-A614-942EED09FF52}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{DC05891A-8C4B-474A-A614-942EED09FF52}.Debug|Any CPU.Build.0 = Debug|x86
+		{DC05891A-8C4B-474A-A614-942EED09FF52}.Release|Any CPU.ActiveCfg = Release|x86
+		{DC05891A-8C4B-474A-A614-942EED09FF52}.Release|Any CPU.Build.0 = Release|x86
+	EndGlobalSection
+EndGlobal
