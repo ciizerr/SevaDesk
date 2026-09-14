@@ -30,7 +30,7 @@ public sealed partial class MainWindow : Window
         var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
         var dpi = GetDpiForWindow(hwnd);
         var scale = (dpi == 0 ? 96.0 : dpi) / 96.0;
-        AppWindow.Resize(new SizeInt32((int)(1240 * scale), (int)(820 * scale)));
+        AppWindow.Resize(new SizeInt32((int)(1260 * scale), (int)(840 * scale)));
 
         NavFrame.Navigate(typeof(DashboardPage));
     }
@@ -42,7 +42,10 @@ public sealed partial class MainWindow : Window
 
     private void TitleBar_BackRequested(TitleBar sender, object args)
     {
-        NavFrame.GoBack();
+        if (NavFrame.CanGoBack)
+        {
+            NavFrame.GoBack();
+        }
     }
 
     private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -53,10 +56,25 @@ public sealed partial class MainWindow : Window
         }
         else if (args.SelectedItem is NavigationViewItem item)
         {
-            switch (item.Tag)
+            switch (item.Tag?.ToString())
             {
                 case "dashboard":
                     NavFrame.Navigate(typeof(DashboardPage));
+                    break;
+                case "sessions":
+                    NavFrame.Navigate(typeof(SessionsPage));
+                    break;
+                case "documents":
+                    NavFrame.Navigate(typeof(DocumentsPage));
+                    break;
+                case "payments":
+                    NavFrame.Navigate(typeof(PaymentsPage));
+                    break;
+                case "applications":
+                    NavFrame.Navigate(typeof(ApplicationsPage));
+                    break;
+                case "resources":
+                    NavFrame.Navigate(typeof(ResourcesPage));
                     break;
                 case "customers":
                     NavFrame.Navigate(typeof(CustomersPage));

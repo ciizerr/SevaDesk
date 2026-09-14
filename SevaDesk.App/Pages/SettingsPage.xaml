@@ -4,16 +4,171 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:local="using:SevaDesk_App.Pages"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="using:SevaDesk_App.ViewModels"
     mc:Ignorable="d">
 
-    <Grid Padding="24,16,24,16" RowSpacing="24">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-        <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="Settings" />
-        <TextBlock Grid.Row="1" Text="This is the Settings page" />
-    </Grid>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="20" Padding="24" MaxWidth="900" HorizontalAlignment="Left">
+            <!-- Header -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="Settings" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
+                <TextBlock Text="Configure cyber café branding, UPI payment terminal, printers, and working folders"
+                           Style="{StaticResource BodyTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+
+            <!-- Status InfoBar -->
+            <InfoBar IsOpen="{x:Bind ViewModel.HasStatusMessage, Mode=OneWay}"
+                     Severity="Success" Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
+
+            <!-- Group 1: Cyber Café Profile & Payment UPI -->
+            <StackPanel Spacing="10">
+                <TextBlock Text="Cyber Café Profile &amp; Payments" Style="{StaticResource SubtitleTextBlockStyle}" FontSize="16" FontWeight="SemiBold" />
+
+                <!-- Card: Café Name -->
+                <Border CornerRadius="8" Padding="16,12"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="Cyber Café / CSC Center Name" FontWeight="SemiBold" FontSize="13" />
+                            <TextBlock Text="Displayed on customer bills, receipts, and UPI QR screens"
+                                       FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <TextBox Grid.Column="1" Width="280"
+                                 Text="{x:Bind ViewModel.ShopName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+                </Border>
+
+                <!-- Card: Operator Name -->
+                <Border CornerRadius="8" Padding="16,12"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="VLE / Operator Name" FontWeight="SemiBold" FontSize="13" />
+                            <TextBlock Text="Primary cashier &amp; system operator name"
+                                       FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <TextBox Grid.Column="1" Width="280"
+                                 Text="{x:Bind ViewModel.OperatorName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+                </Border>
+
+                <!-- Card: Shop UPI VPA -->
+                <Border CornerRadius="8" Padding="16,12"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="Shop UPI ID / VPA" FontWeight="SemiBold" FontSize="13" />
+                            <TextBlock Text="Destination VPA for dynamic QR code generation (e.g. yourshop@upi)"
+                                       FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <TextBox Grid.Column="1" Width="280" FontFamily="Consolas"
+                                 Text="{x:Bind ViewModel.ShopUpiVpa, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!-- Group 2: Working Folders & Ingestion -->
+            <StackPanel Spacing="10">
+                <TextBlock Text="Working Folders &amp; Automation" Style="{StaticResource SubtitleTextBlockStyle}" FontSize="16" FontWeight="SemiBold" />
+
+                <!-- Card: Working Directory -->
+                <Border CornerRadius="8" Padding="16,12"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="Desktop Working Root Directory" FontWeight="SemiBold" FontSize="13" />
+                            <TextBlock Text="{x:Bind ViewModel.WorkingRootPath, Mode=OneWay}"
+                                       FontFamily="Consolas" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <Button Grid.Column="1" Click="OpenFolder_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xED25;" FontSize="14" />
+                                <TextBlock Text="Open in Explorer" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Card: Auto-Triage Bluetooth -->
+                <Border CornerRadius="8" Padding="16,12"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="Auto-Detect Incoming Files" FontWeight="SemiBold" FontSize="13" />
+                            <TextBlock Text="Watch Bluetooth Exchange &amp; WhatsApp downloads to route to active customer"
+                                       FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.AutoOrganizeBluetooth, Mode=TwoWay}" />
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!-- Group 3: Printers & Pricing -->
+            <StackPanel Spacing="10">
+                <TextBlock Text="Printers &amp; Pricing Defaults" Style="{StaticResource SubtitleTextBlockStyle}" FontSize="16" FontWeight="SemiBold" />
+
+                <!-- Card: Default B&W Printer -->
+                <Border CornerRadius="8" Padding="16,12"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="Counter B&amp;W Laser Printer" FontWeight="SemiBold" FontSize="13" />
+                            <TextBlock Text="Default hardware output for single &amp; double side documents"
+                                       FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <TextBox Grid.Column="1" Width="280"
+                                 Text="{x:Bind ViewModel.DefaultBwPrinter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+                </Border>
+
+                <!-- Card: Default Color Printer -->
+                <Border CornerRadius="8" Padding="16,12"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="Photo &amp; Color Printer" FontWeight="SemiBold" FontSize="13" />
+                            <TextBlock Text="High resolution printer for photos, certificates, and PVC prints"
+                                       FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <TextBox Grid.Column="1" Width="280"
+                                 Text="{x:Bind ViewModel.DefaultColorPrinter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!-- Group 4: System & App Details -->
+            <StackPanel Spacing="10">
+                <TextBlock Text="System &amp; About" Style="{StaticResource SubtitleTextBlockStyle}" FontSize="16" FontWeight="SemiBold" />
+
+                <Border CornerRadius="8" Padding="16,12"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="SevaDesk for Windows 11" FontWeight="SemiBold" FontSize="13" />
+                            <TextBlock Text="{x:Bind ViewModel.AppVersion, Mode=OneWay}"
+                                       FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                            <Button Click="Reset_Click">
+                                <TextBlock Text="Restore Defaults" />
+                            </Button>
+                            <Button Style="{StaticResource AccentButtonStyle}" Click="Save_Click">
+                                <TextBlock Text="Save Changes" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
 </Page>
