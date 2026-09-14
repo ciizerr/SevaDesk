@@ -7,6 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:SevaDesk.Core.Models"
     xmlns:local="using:SevaDesk_App.Views"
+    xmlns:loc="using:SevaDesk_App.Services"
     xmlns:vm="using:SevaDesk_App.ViewModels"
     mc:Ignorable="d">
 
@@ -19,20 +20,23 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" Spacing="4">
-                <TextBlock Text="Templates &amp; Offline Resources" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
-                <TextBlock Text="Ready-to-print legal affidavits, blank government forms, and cyber café rate notices"
+                <TextBlock loc:Loc.Key="Resources.Title" Text="Templates &amp; Offline Resources" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
+                <TextBlock loc:Loc.Key="Resources.Subtitle"
+                           Text="Ready-to-print legal affidavits, blank government forms, and cyber café rate notices"
                            Style="{StaticResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                <AutoSuggestBox Width="260" PlaceholderText="Search templates, forms..." QueryIcon="Find"
+                <AutoSuggestBox Width="260"
+                                loc:Loc.PlaceholderKey="Resources.SearchPlaceholder"
+                                PlaceholderText="Search templates, forms..." QueryIcon="Find"
                                 Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
                 <Button Style="{StaticResource AccentButtonStyle}" Click="AddNewResource_Click">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <FontIcon Glyph="&#xE710;" FontSize="14" />
-                        <TextBlock Text="Add Template" />
+                        <TextBlock loc:Loc.Key="Resources.AddBtn" Text="Add Template" />
                     </StackPanel>
                 </Button>
             </StackPanel>
@@ -42,24 +46,24 @@
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
                 <Button Click="CategoryAll_Click">
-                    <TextBlock Text="All Resources" FontWeight="SemiBold" FontSize="12" />
+                    <TextBlock loc:Loc.Key="Resources.FilterAll" Text="All Resources" FontWeight="SemiBold" FontSize="12" />
                 </Button>
                 <Button Click="CategoryAffidavits_Click">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <FontIcon Glyph="&#xE8C1;" FontSize="12" Foreground="#8B5CF6" />
-                        <TextBlock Text="Affidavits" FontSize="12" />
+                        <TextBlock loc:Loc.Key="Resources.FilterAffidavits" Text="Affidavits" FontSize="12" />
                     </StackPanel>
                 </Button>
                 <Button Click="CategoryForms_Click">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <FontIcon Glyph="&#xE8A5;" FontSize="12" Foreground="#3B82F6" />
-                        <TextBlock Text="Blank Forms" FontSize="12" />
+                        <TextBlock loc:Loc.Key="Resources.FilterForms" Text="Blank Forms" FontSize="12" />
                     </StackPanel>
                 </Button>
                 <Button Click="CategoryGuidelines_Click">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <FontIcon Glyph="&#xE749;" FontSize="12" Foreground="#10B981" />
-                        <TextBlock Text="Guidelines" FontSize="12" />
+                        <TextBlock loc:Loc.Key="Resources.FilterGuidelines" Text="Guidelines" FontSize="12" />
                     </StackPanel>
                 </Button>
             </StackPanel>
@@ -110,7 +114,7 @@
                                 <Button Grid.Column="3" Click="QuickPrint_Click" Tag="{x:Bind}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <FontIcon Glyph="&#xE749;" FontSize="12" />
-                                        <TextBlock Text="Print" FontSize="11" />
+                                        <TextBlock loc:Loc.Key="Settings.Hardware.RatesHeader" Text="Print" FontSize="11" />
                                     </StackPanel>
                                 </Button>
                             </Grid>
@@ -127,8 +131,8 @@
                     <Border Width="64" Height="64" CornerRadius="12"
                             Background="{ThemeResource SubtleFillColorSecondaryBrush}" HorizontalAlignment="Left">
                         <FontIcon Glyph="{x:Bind ViewModel.SelectedResource.Glyph, Mode=OneWay}" FontSize="32"
-                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                     </Border>
 
                     <StackPanel Spacing="4">

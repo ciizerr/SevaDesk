@@ -7,6 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:SevaDesk.Core.Models"
     xmlns:local="using:SevaDesk_App.Views"
+    xmlns:loc="using:SevaDesk_App.Services"
     xmlns:vm="using:SevaDesk_App.ViewModels"
     mc:Ignorable="d">
 
@@ -20,8 +21,9 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Spacing="4">
-                    <TextBlock Text="Cashier &amp; Billing POS" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
-                    <TextBlock Text="1-click rate card charging, dynamic UPI QR billing, and daily cash counter ledger"
+                    <TextBlock loc:Loc.Key="Payments.Title" Text="Cashier &amp; Billing POS" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
+                    <TextBlock loc:Loc.Key="Payments.Subtitle"
+                               Text="1-click rate card charging, dynamic UPI QR billing, and daily cash counter ledger"
                                Style="{StaticResource BodyTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
@@ -34,7 +36,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <FontIcon Glyph="&#xE8C7;" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" FontSize="14" />
                             <StackPanel Spacing="0">
-                                <TextBlock Text="UPI Sales" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock loc:Loc.Key="Payments.UpiSales" Text="UPI Sales" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <TextBlock Text="{x:Bind ViewModel.FormattedTodayUpiTotal, Mode=OneWay}" FontWeight="Bold" FontSize="13" />
                             </StackPanel>
                         </StackPanel>
@@ -46,7 +48,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <FontIcon Glyph="&#xE717;" Foreground="#10B981" FontSize="14" />
                             <StackPanel Spacing="0">
-                                <TextBlock Text="Cash Sales" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock loc:Loc.Key="Payments.CashSales" Text="Cash Sales" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <TextBlock Text="{x:Bind ViewModel.FormattedTodayCashTotal, Mode=OneWay}" FontWeight="Bold" FontSize="13" />
                             </StackPanel>
                         </StackPanel>
@@ -56,7 +58,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <FontIcon Glyph="&#xE8D4;" Foreground="White" FontSize="14" />
                             <StackPanel Spacing="0">
-                                <TextBlock Text="Today's Total" FontSize="10" Foreground="#E0E7FF" />
+                                <TextBlock loc:Loc.Key="Payments.TodayTotal" Text="Today's Total" FontSize="10" Foreground="#E0E7FF" />
                                 <TextBlock Text="{x:Bind ViewModel.FormattedTodayTotalSales, Mode=OneWay}" Foreground="White" FontWeight="Bold" FontSize="13" />
                             </StackPanel>
                         </StackPanel>
@@ -66,7 +68,7 @@
 
             <!-- Status InfoBar -->
             <InfoBar IsOpen="{x:Bind ViewModel.HasStatusMessage, Mode=OneWay}"
-                     Severity="Success" Title="Payment"
+                     Severity="Success" loc:Loc.Key="Common.Status" Title="Payment"
                      Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
 
             <!-- Main Layout: Rate Card on Left, Bill & UPI on Right -->
@@ -80,7 +82,7 @@
                         <StackPanel Spacing="14">
                             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                 <FontIcon Glyph="&#xE8F1;" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" FontSize="16" />
-                                <TextBlock Text="Quick Charge Rate Card" FontWeight="SemiBold" FontSize="15" />
+                                <TextBlock loc:Loc.Key="Payments.RateCardTitle" Text="Quick Charge Rate Card" FontWeight="SemiBold" FontSize="15" />
                                 <TextBlock Text="(Tap any item to add to bill)" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
                             </StackPanel>
 
@@ -123,7 +125,7 @@
                             <Border Grid.Row="0" Padding="14,10" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <FontIcon Glyph="&#xE71D;" FontSize="14" />
-                                    <TextBlock Text="Today's Payment Ledger" FontWeight="SemiBold" />
+                                    <TextBlock loc:Loc.Key="Payments.BillCartTitle" Text="Today's Payment Ledger" FontWeight="SemiBold" />
                                 </StackPanel>
                             </Border>
 
@@ -174,8 +176,9 @@
                             <!-- Bill Header -->
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0" Spacing="2">
-                                    <TextBlock Text="Current Bill" FontWeight="Bold" FontSize="16" />
+                                    <TextBlock loc:Loc.Key="Payments.BillCartTitle" Text="Current Bill" FontWeight="Bold" FontSize="16" />
                                     <TextBox Text="{x:Bind ViewModel.CustomerName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             loc:Loc.PlaceholderKey="Customers.SearchPlaceholder"
                                              PlaceholderText="Customer name / walk-in..." Margin="0,6,0,0" />
                                 </StackPanel>
                                 <Button Grid.Column="1" VerticalAlignment="Top" Click="ClearBill_Click">
@@ -231,10 +234,8 @@
                             <Border CornerRadius="8" Padding="12" Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                                    <!-- Visual QR Pattern Placeholder with Native WinUI styling -->
                                     <Border Grid.Column="0" Width="90" Height="90" CornerRadius="6" Background="White" Padding="6">
                                         <Grid>
-                                            <!-- High-contrast QR simulated icon for crisp presentation -->
                                             <FontIcon Glyph="&#xED14;" FontSize="72" Foreground="#0F172A"
                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Grid>
@@ -256,13 +257,13 @@
                                 <Button Grid.Column="0" HorizontalAlignment="Stretch" Click="PayCash_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <FontIcon Glyph="&#xE717;" FontSize="14" Foreground="#10B981" />
-                                        <TextBlock Text="Mark Paid (Cash)" />
+                                        <TextBlock loc:Loc.Key="Payments.MarkCashPaidBtn" Text="Mark Paid (Cash)" />
                                     </StackPanel>
                                 </Button>
                                 <Button Grid.Column="1" HorizontalAlignment="Stretch" Style="{StaticResource AccentButtonStyle}" Click="PayUpi_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <FontIcon Glyph="&#xE8C7;" FontSize="14" />
-                                        <TextBlock Text="Mark Paid (UPI)" />
+                                        <TextBlock loc:Loc.Key="Payments.GenerateQrBtn" Text="Mark Paid (UPI)" />
                                     </StackPanel>
                                 </Button>
                             </Grid>

@@ -1,4 +1,4 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
@@ -24,6 +24,26 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+
+        UnhandledException += (s, e) =>
+        {
+            try
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.AppContext.BaseDirectory, "crash.txt"),
+                    $"UnhandledException: {e.Message}\nException: {e.Exception}\nStackTrace: {e.Exception?.StackTrace}");
+            }
+            catch { }
+        };
+
+        AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+        {
+            try
+            {
+                System.IO.File.WriteAllText(System.IO.Path.Combine(System.AppContext.BaseDirectory, "crash_appdomain.txt"),
+                    $"AppDomain: {e.ExceptionObject}");
+            }
+            catch { }
+        };
     }
 
     /// <summary>

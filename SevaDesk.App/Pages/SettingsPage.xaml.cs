@@ -11,22 +11,75 @@ public sealed partial class SettingsPage : Page
     public SettingsPage()
     {
         InitializeComponent();
+        Loaded += SettingsPage_Loaded;
     }
 
-    public static bool HasStatus(string status) => !string.IsNullOrWhiteSpace(status);
+    private void SettingsPage_Loaded(object sender, RoutedEventArgs e)
+    {
+        TabSelector.SelectedItem = TabAppearance;
+    }
+
+    public static bool Not(bool v) => !v;
+
+    private async void CheckLanguageUpdates_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.CheckLanguageUpdatesCommand.ExecuteAsync(null);
+    }
+
+    private void TabSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    {
+        if (PanelAppearance == null) return;
+
+        var selected = sender.SelectedItem;
+        PanelAppearance.Visibility = selected == TabAppearance ? Visibility.Visible : Visibility.Collapsed;
+        PanelProfile.Visibility = selected == TabProfile ? Visibility.Visible : Visibility.Collapsed;
+        PanelHardware.Visibility = selected == TabHardware ? Visibility.Visible : Visibility.Collapsed;
+        PanelStorage.Visibility = selected == TabStorage ? Visibility.Visible : Visibility.Collapsed;
+        PanelAbout.Visibility = selected == TabAbout ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.OpenWorkingFolderCommand.Execute(null);
     }
 
-    private void Save_Click(object sender, RoutedEventArgs e)
+    private void Backup_Click(object sender, RoutedEventArgs e)
     {
-        ViewModel.SaveSettingsCommand.Execute(null);
+        ViewModel.BackupDatabaseCommand.Execute(null);
+    }
+
+    private void OpenGitHub_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OpenGitHubCommand.Execute(null);
     }
 
     private void Reset_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.ResetDefaultsCommand.Execute(null);
+    }
+
+    private void ReportBug_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ReportBugCommand.Execute(null);
+    }
+
+    private void RequestFeature_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.RequestFeatureCommand.Execute(null);
+    }
+
+    private void Community_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OpenCommunityCommand.Execute(null);
+    }
+
+    private void BuyMeCoffee_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OpenBuyMeCoffeeCommand.Execute(null);
+    }
+
+    private void CopyUpi_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CopyUpiCommand.Execute(null);
     }
 }

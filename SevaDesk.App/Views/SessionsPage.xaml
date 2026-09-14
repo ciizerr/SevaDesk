@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:SevaDesk.Core.Models"
+    xmlns:loc="using:SevaDesk_App.Services"
     xmlns:vm="using:SevaDesk_App.ViewModels"
     mc:Ignorable="d">
 
@@ -19,21 +20,22 @@
 
             <StackPanel Grid.Column="0" Spacing="4">
                 <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                    <TextBlock Text="Counter Sessions" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
+                    <TextBlock loc:Loc.Key="Sessions.Title" Text="Counter Sessions" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
                     <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <TextBlock Text="{x:Bind ViewModel.ActiveCount, Mode=OneWay}" Foreground="White" FontWeight="Bold" FontSize="12" />
-                            <TextBlock Text="Active" Foreground="White" FontSize="12" />
+                            <TextBlock loc:Loc.Key="Sessions.ActiveBadge" Text="Active" Foreground="White" FontSize="12" />
                         </StackPanel>
                     </Border>
                     <Border Background="#F59E0B" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <TextBlock Text="{x:Bind ViewModel.PausedCount, Mode=OneWay}" Foreground="White" FontWeight="Bold" FontSize="12" />
-                            <TextBlock Text="Paused" Foreground="White" FontSize="12" />
+                            <TextBlock loc:Loc.Key="Sessions.PausedBadge" Text="Paused" Foreground="White" FontSize="12" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
-                <TextBlock Text="Simultaneously manage multiple citizens at the desk with isolated working folders"
+                <TextBlock loc:Loc.Key="Sessions.Subtitle"
+                           Text="Simultaneously manage multiple citizens at the desk with isolated working folders"
                            Style="{StaticResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
@@ -42,13 +44,13 @@
                 <Button Click="Refresh_Click">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <FontIcon Glyph="&#xE72C;" FontSize="14" />
-                        <TextBlock Text="Refresh" />
+                        <TextBlock loc:Loc.Key="Sessions.RefreshBtn" Text="Refresh" />
                     </StackPanel>
                 </Button>
                 <Button Style="{StaticResource AccentButtonStyle}" Click="NewSession_Click">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <FontIcon Glyph="&#xE710;" FontSize="14" />
-                        <TextBlock Text="Start New Session" />
+                        <TextBlock loc:Loc.Key="Sessions.StartNewBtn" Text="Start New Session" />
                     </StackPanel>
                 </Button>
             </StackPanel>
@@ -62,7 +64,7 @@
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                 <Grid RowDefinitions="Auto,*">
                     <Border Grid.Row="0" Padding="14,12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
-                        <TextBlock Text="Ongoing Visits" FontWeight="SemiBold" />
+                        <TextBlock loc:Loc.Key="Sessions.OngoingVisits" Text="Ongoing Visits" FontWeight="SemiBold" />
                     </Border>
 
                     <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.Sessions, Mode=OneWay}"
@@ -142,13 +144,13 @@
                                     <Button Click="ToggleStatus_Click">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <FontIcon Glyph="&#xE769;" FontSize="14" />
-                                            <TextBlock Text="Pause / Resume" />
+                                            <TextBlock loc:Loc.Key="Sessions.PauseResumeBtn" Text="Pause / Resume" />
                                         </StackPanel>
                                     </Button>
                                     <Button Style="{StaticResource AccentButtonStyle}" Click="CompleteSession_Click">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <FontIcon Glyph="&#xE73E;" FontSize="14" />
-                                            <TextBlock Text="Finish &amp; Bill" />
+                                            <TextBlock loc:Loc.Key="Sessions.FinishBillBtn" Text="Finish &amp; Bill" />
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>
@@ -159,7 +161,7 @@
                             <!-- Folder Location & Direct Explorer Launcher -->
                             <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0" Spacing="2">
-                                    <TextBlock Text="Session Folder on Desktop:" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    <TextBlock loc:Loc.Key="Sessions.FolderLocationLabel" Text="Session Folder on Desktop:" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                     <TextBlock Text="{x:Bind ViewModel.SelectedSession.FolderPath, Mode=OneWay}"
                                                FontFamily="Consolas" FontSize="12" FontWeight="SemiBold"
                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -167,7 +169,7 @@
                                 <Button Grid.Column="1" Click="OpenFolder_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <FontIcon Glyph="&#xED25;" FontSize="14" />
-                                        <TextBlock Text="Open in Explorer" />
+                                        <TextBlock loc:Loc.Key="Sessions.OpenFolderBtn" Text="Open in Explorer" />
                                     </StackPanel>
                                 </Button>
                             </Grid>
@@ -175,7 +177,7 @@
                     </Border>
 
                     <!-- 4 Subfolder Quick Access Tiles -->
-                    <TextBlock Text="Working Subfolders" Style="{StaticResource SubtitleTextBlockStyle}" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock loc:Loc.Key="Sessions.WorkingSubfolders" Text="Working Subfolders" Style="{StaticResource SubtitleTextBlockStyle}" FontSize="18" FontWeight="SemiBold" />
 
                     <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="12">
                         <!-- Tile 00: Unorganised -->
@@ -188,8 +190,8 @@
                                     <FontIcon Glyph="&#xE8B7;" Foreground="#F59E0B" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock Text="00_Unorganised" FontWeight="SemiBold" />
-                                    <TextBlock Text="Bluetooth &amp; WhatsApp raw files" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    <TextBlock loc:Loc.Key="Sessions.TileUnorganisedTitle" Text="00_Unorganised" FontWeight="SemiBold" />
+                                    <TextBlock loc:Loc.Key="Sessions.TileUnorganisedDesc" Text="Bluetooth &amp; WhatsApp raw files" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                     <Border CornerRadius="10" Background="#FEF3C7" Padding="8,2">
@@ -210,8 +212,8 @@
                                     <FontIcon Glyph="&#xE8A5;" Foreground="#3B82F6" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock Text="01_Shared Documents" FontWeight="SemiBold" />
-                                    <TextBlock Text="Permanent customer docs &amp; forms" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    <TextBlock loc:Loc.Key="Sessions.TileSharedDocsTitle" Text="01_Shared Documents" FontWeight="SemiBold" />
+                                    <TextBlock loc:Loc.Key="Sessions.TileSharedDocsDesc" Text="Permanent customer docs &amp; forms" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                     <Border CornerRadius="10" Background="#DBEAFE" Padding="8,2">
@@ -232,8 +234,8 @@
                                     <FontIcon Glyph="&#xE7C3;" Foreground="#8B5CF6" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock Text="02_Applications" FontWeight="SemiBold" />
-                                    <TextBlock Text="Portal uploads &amp; resized images" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    <TextBlock loc:Loc.Key="Sessions.TileApplicationsTitle" Text="02_Applications" FontWeight="SemiBold" />
+                                    <TextBlock loc:Loc.Key="Sessions.TileApplicationsDesc" Text="Portal uploads &amp; resized images" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                     <Border CornerRadius="10" Background="#EDE9FE" Padding="8,2">
@@ -254,8 +256,8 @@
                                     <FontIcon Glyph="&#xE749;" Foreground="#10B981" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock Text="03_Ready to Print" FontWeight="SemiBold" />
-                                    <TextBlock Text="Final receipts, forms, admit cards" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    <TextBlock loc:Loc.Key="Sessions.TileReadyPrintTitle" Text="03_Ready to Print" FontWeight="SemiBold" />
+                                    <TextBlock loc:Loc.Key="Sessions.TileReadyPrintDesc" Text="Final receipts, forms, admit cards" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                     <Border CornerRadius="10" Background="#D1FAE5" Padding="8,2">

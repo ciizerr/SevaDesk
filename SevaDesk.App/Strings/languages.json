@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "languages": [
+    {
+      "code": "en-US",
+      "name": "English (US)",
+      "nativeName": "English",
+      "file": "en-US.json"
+    },
+    {
+      "code": "hi-IN",
+      "name": "Hindi (India)",
+      "nativeName": "हिन्दी",
+      "file": "hi-IN.json"
+    }
+  ]
+}

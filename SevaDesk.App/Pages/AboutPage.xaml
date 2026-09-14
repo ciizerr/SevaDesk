@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:SevaDesk_App.Pages"
+    xmlns:loc="using:SevaDesk_App.Services"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
@@ -13,7 +14,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="About" />
-        <TextBlock Grid.Row="1" Text="This is the About page" />
+        <TextBlock Style="{StaticResource TitleTextBlockStyle}" loc:Loc.Key="AboutPage.Title" Text="About" />
+        <TextBlock Grid.Row="1" loc:Loc.Key="AboutPage.Description" Text="This is the About page" />
     </Grid>
 </Page>

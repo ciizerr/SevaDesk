@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:SevaDesk.Core.Models"
+    xmlns:loc="using:SevaDesk_App.Services"
     xmlns:vm="using:SevaDesk_App.ViewModels"
     mc:Ignorable="d">
 
@@ -18,13 +19,14 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" Spacing="4">
-                <TextBlock Text="Customers Directory" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
-                <TextBlock Text="Search customer history or register new visits" Style="{StaticResource BodyTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <TextBlock loc:Loc.Key="Customers.Title" Text="Customers Directory" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
+                <TextBlock loc:Loc.Key="Customers.Subtitle" Text="Search customer history or register new visits" Style="{StaticResource BodyTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                 <AutoSuggestBox
                     Width="280"
+                    loc:Loc.PlaceholderKey="Customers.SearchPlaceholder"
                     PlaceholderText="Search name, phone, or code..."
                     QueryIcon="Find"
                     Text="{x:Bind ViewModel.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -32,7 +34,7 @@
                 <Button Style="{StaticResource AccentButtonStyle}" Click="AddCustomer_Click">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <FontIcon Glyph="&#xE710;" FontSize="14" />
-                        <TextBlock Text="Add Customer" />
+                        <TextBlock loc:Loc.Key="Customers.AddBtn" Text="Add Customer" />
                     </StackPanel>
                 </Button>
             </StackPanel>
@@ -68,7 +70,7 @@
                             <Button Grid.Column="2" VerticalAlignment="Center" Tag="{x:Bind Id}" Click="StartSession_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <FontIcon Glyph="&#xE768;" FontSize="12" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                    <TextBlock Text="Start Session" />
+                                    <TextBlock loc:Loc.Key="Customers.StartSessionBtn" Text="Start Session" />
                                 </StackPanel>
                             </Button>
                         </Grid>
