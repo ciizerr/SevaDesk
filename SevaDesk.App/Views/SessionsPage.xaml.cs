@@ -74,4 +74,70 @@ public sealed partial class SessionsPage : Page
             ViewModel.OpenFolderCommand.Execute(ViewModel.SelectedSession.FolderPath);
         }
     }
+
+    private void OpenSubfolderTile_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string subfolder)
+        {
+            ViewModel.OpenSubfolderCommand.Execute(subfolder);
+        }
+    }
+
+    private void OpenAppFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string subfolder)
+        {
+            ViewModel.OpenSubfolderCommand.Execute(subfolder);
+        }
+    }
+
+    private async void AddAppFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedSession == null) return;
+
+        var txtName = new TextBox
+        {
+            PlaceholderText = "e.g. PMS, SSC_CGL, NSP, GDS",
+            Margin = new Thickness(0, 8, 0, 0)
+        };
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = this.XamlRoot,
+            Title = Services.AppServices.Localization.GetString("Sessions.CreateFolderDialogTitle"),
+            Content = new StackPanel
+            {
+                Spacing = 6,
+                Children =
+                {
+                    new TextBlock { Text = Services.AppServices.Localization.GetString("Sessions.CreateFolderDialogPrompt") },
+                    txtName
+                }
+            },
+            PrimaryButtonText = Services.AppServices.Localization.GetString("Common.Add"),
+            CloseButtonText = Services.AppServices.Localization.GetString("Common.Cancel"),
+            DefaultButton = ContentDialogButton.Primary
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(txtName.Text))
+        {
+            ViewModel.CreateApplicationFolderCommand.Execute(txtName.Text.Trim());
+        }
+    }
+
+    private async void RoutePendingFile_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.RoutePendingFileCommand.ExecuteAsync(null);
+    }
+
+    private void TriageClose_Click(InfoBar sender, object args)
+    {
+        ViewModel.DismissPendingFileCommand.Execute(null);
+    }
+
+    private void DismissPendingFile_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.DismissPendingFileCommand.Execute(null);
+    }
 }

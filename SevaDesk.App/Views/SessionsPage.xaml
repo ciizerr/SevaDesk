@@ -105,6 +105,24 @@
             <!-- Right: Active Session Desk Console -->
             <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="16">
+                    <!-- In-App Triage InfoBar for Incoming Files -->
+                    <InfoBar IsOpen="{x:Bind ViewModel.HasPendingIncomingFile, Mode=OneWay}"
+                             IsClosable="True"
+                             CloseButtonClick="TriageClose_Click"
+                             Severity="Informational"
+                             Title="Incoming File Detected"
+                             Message="{x:Bind ViewModel.PendingIncomingFile.FileName, Mode=OneWay}"
+                             Margin="0,0,0,4">
+                        <InfoBar.ActionButton>
+                            <Button Style="{StaticResource AccentButtonStyle}" Click="RoutePendingFile_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <FontIcon Glyph="&#xE8B7;" FontSize="12" />
+                                    <TextBlock loc:Loc.Key="Triage.MoveToCustomerBtn" Text="Move to Customer" />
+                                </StackPanel>
+                            </Button>
+                        </InfoBar.ActionButton>
+                    </InfoBar>
+
                     <!-- Customer Profile & Session Controller Card -->
                     <Border Padding="20" CornerRadius="8"
                             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -177,11 +195,12 @@
                     </Border>
 
                     <!-- 4 Subfolder Quick Access Tiles -->
+                    <!-- Subfolder Quick Access Tiles -->
                     <TextBlock loc:Loc.Key="Sessions.WorkingSubfolders" Text="Working Subfolders" Style="{StaticResource SubtitleTextBlockStyle}" FontSize="18" FontWeight="SemiBold" />
 
-                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="12">
-                        <!-- Tile 00: Unorganised -->
-                        <Border Grid.Row="0" Grid.Column="0" Padding="14" CornerRadius="8"
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <!-- Tile 00: Loose Files -->
+                        <Border Grid.Column="0" Padding="14" CornerRadius="8"
                                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                             <Grid ColumnDefinitions="Auto,*,Auto">
@@ -190,20 +209,23 @@
                                     <FontIcon Glyph="&#xE8B7;" Foreground="#F59E0B" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock loc:Loc.Key="Sessions.TileUnorganisedTitle" Text="00_Unorganised" FontWeight="SemiBold" />
-                                    <TextBlock loc:Loc.Key="Sessions.TileUnorganisedDesc" Text="Bluetooth &amp; WhatsApp raw files" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    <TextBlock loc:Loc.Key="Sessions.TileLooseFilesTitle" Text="Loose Files (Root)" FontWeight="SemiBold" />
+                                    <TextBlock loc:Loc.Key="Sessions.TileLooseFilesDesc" Text="Incoming scans, photos &amp; raw files" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                     <Border CornerRadius="10" Background="#FEF3C7" Padding="8,2">
                                         <TextBlock Text="{x:Bind ViewModel.SelectedSession.FolderStats.UnorganisedCount, Mode=OneWay}"
                                                    FontWeight="Bold" Foreground="#D97706" FontSize="12" />
                                     </Border>
+                                    <Button Background="Transparent" BorderBrush="Transparent" Padding="4" Tag="" Click="OpenSubfolderTile_Click" ToolTipService.ToolTip="Open Root Customer Folder">
+                                        <FontIcon Glyph="&#xED25;" FontSize="13" />
+                                    </Button>
                                 </StackPanel>
                             </Grid>
                         </Border>
 
                         <!-- Tile 01: Shared Documents -->
-                        <Border Grid.Row="0" Grid.Column="1" Padding="14" CornerRadius="8"
+                        <Border Grid.Column="1" Padding="14" CornerRadius="8"
                                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                             <Grid ColumnDefinitions="Auto,*,Auto">
@@ -212,62 +234,61 @@
                                     <FontIcon Glyph="&#xE8A5;" Foreground="#3B82F6" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock loc:Loc.Key="Sessions.TileSharedDocsTitle" Text="01_Shared Documents" FontWeight="SemiBold" />
-                                    <TextBlock loc:Loc.Key="Sessions.TileSharedDocsDesc" Text="Permanent customer docs &amp; forms" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    <TextBlock loc:Loc.Key="Sessions.TileSharedDocsTitle" Text="Shared Docs" FontWeight="SemiBold" />
+                                    <TextBlock loc:Loc.Key="Sessions.TileSharedDocsDesc" Text="Permanent Aadhaar, PAN, marksheets" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                     <Border CornerRadius="10" Background="#DBEAFE" Padding="8,2">
                                         <TextBlock Text="{x:Bind ViewModel.SelectedSession.FolderStats.SharedDocsCount, Mode=OneWay}"
                                                    FontWeight="Bold" Foreground="#1D4ED8" FontSize="12" />
                                     </Border>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <!-- Tile 02: Applications -->
-                        <Border Grid.Row="1" Grid.Column="0" Padding="14" CornerRadius="8"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="6"
-                                        Background="#F5F3FF" Margin="0,0,12,0">
-                                    <FontIcon Glyph="&#xE7C3;" Foreground="#8B5CF6" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock loc:Loc.Key="Sessions.TileApplicationsTitle" Text="02_Applications" FontWeight="SemiBold" />
-                                    <TextBlock loc:Loc.Key="Sessions.TileApplicationsDesc" Text="Portal uploads &amp; resized images" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <Border CornerRadius="10" Background="#EDE9FE" Padding="8,2">
-                                        <TextBlock Text="{x:Bind ViewModel.SelectedSession.FolderStats.ApplicationsCount, Mode=OneWay}"
-                                                   FontWeight="Bold" Foreground="#6D28D9" FontSize="12" />
-                                    </Border>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <!-- Tile 03: Ready to Print -->
-                        <Border Grid.Row="1" Grid.Column="1" Padding="14" CornerRadius="8"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="6"
-                                        Background="#ECFDF5" Margin="0,0,12,0">
-                                    <FontIcon Glyph="&#xE749;" Foreground="#10B981" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock loc:Loc.Key="Sessions.TileReadyPrintTitle" Text="03_Ready to Print" FontWeight="SemiBold" />
-                                    <TextBlock loc:Loc.Key="Sessions.TileReadyPrintDesc" Text="Final receipts, forms, admit cards" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <Border CornerRadius="10" Background="#D1FAE5" Padding="8,2">
-                                        <TextBlock Text="{x:Bind ViewModel.SelectedSession.FolderStats.ReadyToPrintCount, Mode=OneWay}"
-                                                   FontWeight="Bold" Foreground="#047857" FontSize="12" />
-                                    </Border>
+                                    <Button Background="Transparent" BorderBrush="Transparent" Padding="4" Tag="Shared Docs" Click="OpenSubfolderTile_Click" ToolTipService.ToolTip="Open Shared Docs">
+                                        <FontIcon Glyph="&#xED25;" FontSize="13" />
+                                    </Button>
                                 </StackPanel>
                             </Grid>
                         </Border>
                     </Grid>
+
+                    <!-- Application Subfolders Section -->
+                    <Border CornerRadius="8" Padding="16,14"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                        <StackPanel Spacing="10">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock loc:Loc.Key="Sessions.AppFoldersTitle" Text="Application Subfolders" FontWeight="SemiBold" FontSize="14" />
+                                    <TextBlock loc:Loc.Key="Sessions.AppFoldersDesc" Text="Dedicated folders for specific citizen schemes (PMS, SSC, NSP, GDS)"
+                                               FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Click="AddAppFolder_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE710;" FontSize="12" />
+                                        <TextBlock loc:Loc.Key="Sessions.AddAppFolderBtn" Text="Add Folder" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <!-- Dynamic Application Folders ItemsControl -->
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.ApplicationFolders, Mode=OneWay}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="8" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <Button Click="OpenAppFolder_Click" Tag="{x:Bind}" Padding="10,6">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <FontIcon Glyph="&#xED25;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                <TextBlock Text="{x:Bind}" FontWeight="SemiBold" FontSize="12" />
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </ScrollViewer>
         </Grid>

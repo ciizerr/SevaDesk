@@ -82,7 +82,9 @@ public partial class DashboardViewModel : ObservableObject
     {
         if (SelectedSession != null)
         {
-            var target = Path.Combine(SelectedSession.FolderPath, subfolder);
+            var target = string.IsNullOrWhiteSpace(subfolder)
+                ? SelectedSession.FolderPath
+                : Path.Combine(SelectedSession.FolderPath, subfolder);
             AppServices.FolderManager.OpenFolderInExplorer(target);
         }
     }

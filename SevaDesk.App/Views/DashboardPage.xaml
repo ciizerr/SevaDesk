@@ -171,76 +171,40 @@
                             </StackPanel>
                         </Grid>
 
-                        <!-- 4 Working Subfolders Grid -->
+                        <!-- Working Subfolders -->
                         <TextBlock loc:Loc.Key="Sessions.WorkingSubfolders" Text="Customer Working Subfolders on Desktop" FontWeight="SemiBold" Margin="0,4,0,0" />
-                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
-                            <!-- 00_Unorganised -->
-                            <Border Grid.Row="0" Grid.Column="0" Margin="0,0,8,8" Padding="14" CornerRadius="8"
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                            <!-- Loose Files -->
+                            <Border Grid.Column="0" Padding="14" CornerRadius="8"
                                     Background="{ThemeResource LayerFillColorDefaultBrush}"
                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <StackPanel Grid.Column="0" Spacing="4">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <FontIcon Glyph="&#xE8B7;" Foreground="#F59E0B" FontSize="15" />
-                                            <TextBlock loc:Loc.Key="Sessions.TileUnorganisedTitle" Text="00_Unorganised" FontWeight="Bold" />
+                                            <TextBlock loc:Loc.Key="Sessions.TileLooseFilesTitle" Text="Loose Files (Root)" FontWeight="Bold" />
                                         </StackPanel>
-                                        <TextBlock loc:Loc.Key="Sessions.TileUnorganisedDesc" Text="Fresh downloads &amp; raw scanner outputs" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        <TextBlock loc:Loc.Key="Sessions.TileLooseFilesDesc" Text="Fresh downloads &amp; raw scanner outputs" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                     </StackPanel>
-                                    <Button Grid.Column="1" VerticalAlignment="Center" Tag="00_Unorganised" Click="OpenSubfolder_Click">
+                                    <Button Grid.Column="1" VerticalAlignment="Center" Tag="" Click="OpenSubfolder_Click" ToolTipService.ToolTip="Open Root Customer Folder">
                                         <FontIcon Glyph="&#xE8DA;" FontSize="12" />
                                     </Button>
                                 </Grid>
                             </Border>
 
-                            <!-- 01_Shared Documents -->
-                            <Border Grid.Row="0" Grid.Column="1" Margin="8,0,0,8" Padding="14" CornerRadius="8"
+                            <!-- Shared Documents -->
+                            <Border Grid.Column="1" Padding="14" CornerRadius="8"
                                     Background="{ThemeResource LayerFillColorDefaultBrush}"
                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <StackPanel Grid.Column="0" Spacing="4">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <FontIcon Glyph="&#xE8A5;" Foreground="#06B6D4" FontSize="15" />
-                                            <TextBlock loc:Loc.Key="Sessions.TileSharedDocsTitle" Text="01_Shared Documents" FontWeight="Bold" />
+                                            <TextBlock loc:Loc.Key="Sessions.TileSharedDocsTitle" Text="Shared Docs" FontWeight="Bold" />
                                         </StackPanel>
                                         <TextBlock loc:Loc.Key="Sessions.TileSharedDocsDesc" Text="Aadhaar, Photo, Signature, Marks" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                     </StackPanel>
-                                    <Button Grid.Column="1" VerticalAlignment="Center" Tag="01_Shared Documents" Click="OpenSubfolder_Click">
-                                        <FontIcon Glyph="&#xE8DA;" FontSize="12" />
-                                    </Button>
-                                </Grid>
-                            </Border>
-
-                            <!-- 02_Applications -->
-                            <Border Grid.Row="1" Grid.Column="0" Margin="0,8,8,0" Padding="14" CornerRadius="8"
-                                    Background="{ThemeResource LayerFillColorDefaultBrush}"
-                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <StackPanel Grid.Column="0" Spacing="4">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <FontIcon Glyph="&#xE82D;" Foreground="#818CF8" FontSize="15" />
-                                            <TextBlock loc:Loc.Key="Sessions.TileApplicationsTitle" Text="02_Applications" FontWeight="Bold" />
-                                        </StackPanel>
-                                        <TextBlock loc:Loc.Key="Sessions.TileApplicationsDesc" Text="PAN, SSC, UPSC, Scholarship forms" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    </StackPanel>
-                                    <Button Grid.Column="1" VerticalAlignment="Center" Tag="02_Applications" Click="OpenSubfolder_Click">
-                                        <FontIcon Glyph="&#xE8DA;" FontSize="12" />
-                                    </Button>
-                                </Grid>
-                            </Border>
-
-                            <!-- 03_Ready to Print -->
-                            <Border Grid.Row="1" Grid.Column="1" Margin="8,8,0,0" Padding="14" CornerRadius="8"
-                                    Background="{ThemeResource LayerFillColorDefaultBrush}"
-                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <StackPanel Grid.Column="0" Spacing="4">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <FontIcon Glyph="&#xE749;" Foreground="#10B981" FontSize="15" />
-                                            <TextBlock loc:Loc.Key="Sessions.TileReadyPrintTitle" Text="03_Ready to Print" FontWeight="Bold" />
-                                        </StackPanel>
-                                        <TextBlock loc:Loc.Key="Sessions.TileReadyPrintDesc" Text="Receipts &amp; print-ready output documents" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    </StackPanel>
-                                    <Button Grid.Column="1" VerticalAlignment="Center" Tag="03_Ready to Print" Click="OpenSubfolder_Click">
+                                    <Button Grid.Column="1" VerticalAlignment="Center" Tag="Shared Docs" Click="OpenSubfolder_Click" ToolTipService.ToolTip="Open Shared Docs">
                                         <FontIcon Glyph="&#xE8DA;" FontSize="12" />
                                     </Button>
                                 </Grid>

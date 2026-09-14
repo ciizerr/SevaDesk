@@ -20,9 +20,96 @@ public partial class SessionsViewModel : ObservableObject
     [ObservableProperty]
     private int _pausedCount;
 
+    public ObservableCollection<string> ApplicationFolders { get; } = [];
+
+    [ObservableProperty]
+    private IncomingFileItem? _pendingIncomingFile;
+
+    [ObservableProperty]
+    private bool _hasPendingIncomingFile;
+
     public void Initialize()
     {
         LoadSessions();
+        AppServices.FileWatcher.FileDetected += FileWatcher_FileDetected;
+    }
+
+    private void FileWatcher_FileDetected(IncomingFileItem item)
+    {
+        if (SelectedSession != null)
+        {
+            MainWindow.Instance?.DispatcherQueue.TryEnqueue(() =>
+            {
+                PendingIncomingFile = item;
+                HasPendingIncomingFile = true;
+            });
+        }
+    }
+
+    partial void OnSelectedSessionChanged(ActiveSessionItem? value)
+    {
+        RefreshApplicationFolders();
+    }
+
+    public void RefreshApplicationFolders()
+    {
+        ApplicationFolders.Clear();
+        if (SelectedSession != null && Directory.Exists(SelectedSession.FolderPath))
+        {
+            foreach (var sub in AppServices.FolderManager.GetApplicationSubfolders(SelectedSession.FolderPath))
+            {
+                ApplicationFolders.Add(sub);
+            }
+            SelectedSession.FolderStats = AppServices.FolderManager.GetFolderStats(SelectedSession.FolderPath);
+            OnPropertyChanged(nameof(SelectedSession));
+        }
+    }
+
+    [RelayCommand]
+    public void CreateApplicationFolder(string folderName)
+    {
+        if (SelectedSession != null && !string.IsNullOrWhiteSpace(folderName))
+        {
+            AppServices.FolderManager.EnsureApplicationSubfolder(SelectedSession.FolderPath, folderName);
+            RefreshApplicationFolders();
+        }
+    }
+
+    [RelayCommand]
+    public void OpenSubfolder(string subfolderName)
+    {
+        if (SelectedSession == null) return;
+        var path = string.IsNullOrWhiteSpace(subfolderName)
+            ? SelectedSession.FolderPath
+            : Path.Combine(SelectedSession.FolderPath, subfolderName);
+        AppServices.FolderManager.OpenFolderInExplorer(path);
+    }
+
+    [RelayCommand]
+    public async Task RoutePendingFileAsync()
+    {
+        if (PendingIncomingFile != null && SelectedSession != null)
+        {
+            var success = await AppServices.FileWatcher.RouteFileToCustomerAsync(
+                PendingIncomingFile.FilePath,
+                SelectedSession.FolderPath,
+                deleteSource: false);
+
+            if (success)
+            {
+                RefreshApplicationFolders();
+            }
+
+            HasPendingIncomingFile = false;
+            PendingIncomingFile = null;
+        }
+    }
+
+    [RelayCommand]
+    public void DismissPendingFile()
+    {
+        HasPendingIncomingFile = false;
+        PendingIncomingFile = null;
     }
 
     [RelayCommand]

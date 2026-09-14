@@ -381,36 +381,96 @@
                     <TextBlock loc:Loc.Key="Settings.Storage.Header" Text="Working Folders &amp; Ingestion" Style="{StaticResource SubtitleTextBlockStyle}" FontSize="16" FontWeight="SemiBold" />
 
                     <!-- Card: Working Root Directory -->
-                    <Border CornerRadius="8" Padding="16,12"
+                    <Border CornerRadius="8" Padding="16,14"
                             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
-                                <TextBlock loc:Loc.Key="Settings.Storage.WorkingFolder" Text="Desktop Working Root Directory" FontWeight="SemiBold" FontSize="13" />
+                                <TextBlock loc:Loc.Key="Settings.Storage.WorkingFolder" Text="Desktop Working Root Directory" FontWeight="SemiBold" FontSize="14" />
                                 <TextBlock Text="{x:Bind ViewModel.WorkingRootPath, Mode=OneWay}"
                                            FontFamily="Consolas" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             </StackPanel>
-                            <Button Grid.Column="1" Click="OpenFolder_Click">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <FontIcon Glyph="&#xED25;" FontSize="14" />
-                                    <TextBlock loc:Loc.Key="Settings.Storage.OpenFolderBtn" Text="Open in Explorer" />
-                                </StackPanel>
-                            </Button>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                <Button Click="BrowseWorkingFolder_Click" Style="{StaticResource AccentButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE8B7;" FontSize="13" />
+                                        <TextBlock loc:Loc.Key="Settings.Storage.ChangeFolderBtn" Text="Change Folder..." />
+                                    </StackPanel>
+                                </Button>
+                                <Button Click="OpenFolder_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xED25;" FontSize="14" />
+                                        <TextBlock loc:Loc.Key="Settings.Storage.OpenFolderBtn" Text="Open in Explorer" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
                         </Grid>
                     </Border>
 
-                    <!-- Card: Auto-Triage Bluetooth -->
-                    <Border CornerRadius="8" Padding="16,12"
+                    <!-- Card: Watched Ingestion Folders -->
+                    <Border CornerRadius="8" Padding="16,14"
                             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
-                                <TextBlock loc:Loc.Key="Settings.Storage.BluetoothTriage" Text="Auto-Detect Incoming Files" FontWeight="SemiBold" FontSize="13" />
-                                <TextBlock loc:Loc.Key="Settings.Storage.BluetoothTriageDesc" Text="Watch Bluetooth Exchange &amp; WhatsApp downloads to route to active customer"
-                                           FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <StackPanel Spacing="12">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock loc:Loc.Key="Settings.Storage.WatchFoldersTitle" Text="Auto-Detect Incoming Files" FontWeight="SemiBold" FontSize="14" />
+                                    <TextBlock loc:Loc.Key="Settings.Storage.WatchFoldersDesc" Text="Watch system and scanner folders to automatically route files to the active customer"
+                                               FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Click="AddCustomWatchFolder_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE710;" FontSize="12" />
+                                        <TextBlock loc:Loc.Key="Settings.Storage.AddWatchFolderBtn" Text="Add Custom Folder" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <!-- Standard Folders Checkboxes -->
+                            <StackPanel Orientation="Horizontal" Spacing="24" Margin="0,4,0,0">
+                                <CheckBox IsChecked="{x:Bind ViewModel.WatchDownloads, Mode=TwoWay}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE896;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                        <TextBlock loc:Loc.Key="Settings.Storage.WatchDownloads" Text="Downloads" />
+                                    </StackPanel>
+                                </CheckBox>
+                                <CheckBox IsChecked="{x:Bind ViewModel.WatchDesktop, Mode=TwoWay}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE7F4;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                        <TextBlock loc:Loc.Key="Settings.Storage.WatchDesktop" Text="Desktop" />
+                                    </StackPanel>
+                                </CheckBox>
+                                <CheckBox IsChecked="{x:Bind ViewModel.WatchDocuments, Mode=TwoWay}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE8A5;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                        <TextBlock loc:Loc.Key="Settings.Storage.WatchDocuments" Text="Documents" />
+                                    </StackPanel>
+                                </CheckBox>
                             </StackPanel>
-                            <ToggleSwitch Grid.Column="1" IsOn="{x:Bind ViewModel.AutoOrganizeBluetooth, Mode=TwoWay}" />
-                        </Grid>
+
+                            <!-- Custom Watched Folders ItemsControl -->
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.CustomWatchFolders, Mode=OneWay}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <Border CornerRadius="6" Padding="10,6" Margin="0,4,0,0"
+                                                Background="{ThemeResource LayerFillColorAltBrush}"
+                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                    <FontIcon Glyph="&#xED25;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                    <TextBlock Text="{x:Bind}" FontSize="12" FontFamily="Consolas" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <Button Grid.Column="1" Background="Transparent" BorderBrush="Transparent" Padding="6,2"
+                                                        Click="RemoveCustomWatchFolder_Click" Tag="{x:Bind}"
+                                                        ToolTipService.ToolTip="Remove this watched folder">
+                                                    <FontIcon Glyph="&#xE74D;" FontSize="11" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
                     </Border>
 
                     <!-- Card: Auto-Archive Sessions -->

@@ -2,11 +2,13 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Win32;
 using SevaDesk_App.Services;
 using Windows.ApplicationModel.DataTransfer;
+using WinRT.Interop;
 
 namespace SevaDesk_App.ViewModels;
 
@@ -95,7 +97,15 @@ public partial class SettingsViewModel : ObservableObject
     private string _workingRootPath = string.Empty;
 
     [ObservableProperty]
-    private bool _autoOrganizeBluetooth = true;
+    private bool _watchDownloads = true;
+
+    [ObservableProperty]
+    private bool _watchDesktop = true;
+
+    [ObservableProperty]
+    private bool _watchDocuments = true;
+
+    public ObservableCollection<string> CustomWatchFolders => AppServices.FileWatcher.CustomFolders;
 
     [ObservableProperty]
     private int _autoArchiveDaysIndex = 2; // 0: 7 days, 1: 15 days, 2: 30 days, 3: 60 days, 4: Never
@@ -150,6 +160,9 @@ public partial class SettingsViewModel : ObservableObject
     public SettingsViewModel()
     {
         WorkingRootPath = AppServices.FolderManager.BaseDirectory;
+        WatchDownloads = AppServices.FileWatcher.WatchDownloads;
+        WatchDesktop = AppServices.FileWatcher.WatchDesktop;
+        WatchDocuments = AppServices.FileWatcher.WatchDocuments;
         
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         DatabasePath = Path.Combine(appData, "SevaDesk", "sevadesk.db");
@@ -243,6 +256,30 @@ public partial class SettingsViewModel : ObservableObject
     {
         CloseActionBehavior = value;
         AutoSave("Close behavior updated.");
+    }
+
+    partial void OnWatchDownloadsChanged(bool value)
+    {
+        AppServices.FileWatcher.WatchDownloads = value;
+        AppServices.FileWatcher.SaveSettings();
+        AppServices.FileWatcher.RestartWatchers();
+        AutoSave("Watched folders updated.");
+    }
+
+    partial void OnWatchDesktopChanged(bool value)
+    {
+        AppServices.FileWatcher.WatchDesktop = value;
+        AppServices.FileWatcher.SaveSettings();
+        AppServices.FileWatcher.RestartWatchers();
+        AutoSave("Watched folders updated.");
+    }
+
+    partial void OnWatchDocumentsChanged(bool value)
+    {
+        AppServices.FileWatcher.WatchDocuments = value;
+        AppServices.FileWatcher.SaveSettings();
+        AppServices.FileWatcher.RestartWatchers();
+        AutoSave("Watched folders updated.");
     }
 
     partial void OnSelectedLanguageChanged(LanguageItem? value)
@@ -370,6 +407,81 @@ public partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
+    public async Task BrowseWorkingFolderAsync()
+    {
+        try
+        {
+            var picker = new Windows.Storage.Pickers.FolderPicker();
+            if (MainWindow.Instance != null)
+            {
+                var hwnd = Win32Interop.GetWindowFromWindowId(MainWindow.Instance.AppWindow.Id);
+                InitializeWithWindow.Initialize(picker, hwnd);
+            }
+
+            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.Desktop;
+            picker.FileTypeFilter.Add("*");
+
+            var folder = await picker.PickSingleFolderAsync();
+            if (folder != null && !string.IsNullOrWhiteSpace(folder.Path))
+            {
+                WorkingRootPath = folder.Path;
+                AppServices.FolderManager.SetBaseDirectory(folder.Path);
+                AppServices.Database.SetSetting("working_root_path", folder.Path);
+                AppServices.FileWatcher.RestartWatchers();
+                AutoSave("Working folder changed successfully.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowStatus($"Error changing folder: {ex.Message}", InfoBarSeverity.Error, 5000);
+        }
+    }
+
+    [RelayCommand]
+    public async Task AddCustomWatchFolderAsync()
+    {
+        try
+        {
+            var picker = new Windows.Storage.Pickers.FolderPicker();
+            if (MainWindow.Instance != null)
+            {
+                var hwnd = Win32Interop.GetWindowFromWindowId(MainWindow.Instance.AppWindow.Id);
+                InitializeWithWindow.Initialize(picker, hwnd);
+            }
+
+            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder;
+            picker.FileTypeFilter.Add("*");
+
+            var folder = await picker.PickSingleFolderAsync();
+            if (folder != null && !string.IsNullOrWhiteSpace(folder.Path))
+            {
+                if (!CustomWatchFolders.Contains(folder.Path))
+                {
+                    CustomWatchFolders.Add(folder.Path);
+                    AppServices.FileWatcher.SaveSettings();
+                    AppServices.FileWatcher.RestartWatchers();
+                    AutoSave($"Added watched folder: {folder.Name}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowStatus($"Error adding folder: {ex.Message}", InfoBarSeverity.Error, 5000);
+        }
+    }
+
+    [RelayCommand]
+    public void RemoveCustomWatchFolder(string path)
+    {
+        if (CustomWatchFolders.Remove(path))
+        {
+            AppServices.FileWatcher.SaveSettings();
+            AppServices.FileWatcher.RestartWatchers();
+            AutoSave("Custom watched folder removed.");
+        }
+    }
+
+    [RelayCommand]
     public void BackupDatabase()
     {
         try
@@ -424,7 +536,9 @@ public partial class SettingsViewModel : ObservableObject
         LaminationRate = 20;
         ScanRate = 10;
 
-        AutoOrganizeBluetooth = true;
+        WatchDownloads = true;
+        WatchDesktop = true;
+        WatchDocuments = true;
         AutoArchiveDaysIndex = 2;
 
         StatusMessage = "Defaults restored successfully.";

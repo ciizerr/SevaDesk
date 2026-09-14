@@ -43,6 +43,24 @@ public sealed partial class SettingsPage : Page
         ViewModel.OpenWorkingFolderCommand.Execute(null);
     }
 
+    private async void BrowseWorkingFolder_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.BrowseWorkingFolderCommand.ExecuteAsync(null);
+    }
+
+    private async void AddCustomWatchFolder_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.AddCustomWatchFolderCommand.ExecuteAsync(null);
+    }
+
+    private void RemoveCustomWatchFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string path)
+        {
+            ViewModel.RemoveCustomWatchFolder(path);
+        }
+    }
+
     private void Backup_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.BackupDatabaseCommand.Execute(null);

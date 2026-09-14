@@ -100,4 +100,33 @@ public class DatabaseInitializer
 
         connection.Execute(sql);
     }
+
+    public string? GetSetting(string key, string? defaultValue = null)
+    {
+        try
+        {
+            using var connection = CreateConnection();
+            connection.Open();
+            var val = connection.QuerySingleOrDefault<string>("SELECT value FROM settings WHERE key = @Key", new { Key = key });
+            return val ?? defaultValue;
+        }
+        catch
+        {
+            return defaultValue;
+        }
+    }
+
+    public void SetSetting(string key, string value)
+    {
+        try
+        {
+            using var connection = CreateConnection();
+            connection.Open();
+            connection.Execute(@"
+                INSERT INTO settings (key, value) VALUES (@Key, @Value)
+                ON CONFLICT(key) DO UPDATE SET value = @Value",
+                new { Key = key, Value = value });
+        }
+        catch { }
+    }
 }
