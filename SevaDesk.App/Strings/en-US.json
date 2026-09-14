@@ -217,5 +217,29 @@
   "AboutPage.Description": "SevaDesk is a specialized desktop workspace platform built for Indian CSC operators and cyber café centers.",
 
   "HomePage.Title": "Home",
-  "HomePage.Description": "Welcome to SevaDesk Cyber Café Management Platform."
+  "HomePage.Description": "Welcome to SevaDesk Cyber Café Management Platform.",
+
+  "Widget.Title": "Live Active Sessions",
+  "Widget.ActiveBadge": "Active",
+  "Widget.NoActiveSessions": "No active sessions currently running",
+  "Widget.OpenApp": "Open Full App",
+  "Widget.QuickStart": "Quick Start Session",
+  "Widget.QuickStartPlaceholder": "Customer Name (e.g. Amit Kumar)...",
+  "Widget.StartBtn": "Start",
+  "Widget.QuickUpi": "Quick UPI QR",
+  "Widget.CopyUpi": "Copy UPI ID",
+  "Widget.RunningBill": "Bill",
+  "Widget.EndSession": "End",
+
+  "Dialog.CloseTitle": "Close SevaDesk?",
+  "Dialog.ClosePrompt": "Would you like to keep SevaDesk active in the system tray so customer sessions stay running in the background, or exit completely?",
+  "Dialog.MinimizeToTray": "Minimize to Tray",
+  "Dialog.ExitApp": "Exit Completely",
+  "Dialog.RememberChoice": "Remember my choice",
+
+  "Settings.General.CloseBehavior": "Window Close Action",
+  "Settings.General.CloseBehaviorDesc": "Choose whether clicking 'X' minimizes to the system tray or exits the app",
+  "Settings.General.ClosePrompt": "Always Ask",
+  "Settings.General.CloseMinimize": "Minimize to Tray",
+  "Settings.General.CloseExit": "Exit Application"
 }

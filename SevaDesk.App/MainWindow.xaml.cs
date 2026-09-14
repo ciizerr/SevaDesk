@@ -45,6 +45,10 @@ public sealed partial class MainWindow : Window
             _uiSettings.ColorValuesChanged += UiSettings_ColorValuesChanged;
             NavFrame.Navigated += NavFrame_Navigated;
 
+            // Initialize Taskbar Widget & Tray Companion
+            TaskbarWidgetService.Instance.Initialize(this);
+            AppWindow.Closing += AppWindow_Closing;
+
             // Window Sizing according to WinUI 3 rubric
             var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
             var dpi = GetDpiForWindow(hwnd);
@@ -230,6 +234,87 @@ public sealed partial class MainWindow : Window
             RootGrid.Background = isDark
                 ? new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 32, 32, 32))
                 : new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 243, 243, 243));
+        }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    public void RestoreWindow()
+    {
+        AppWindow.Show();
+        var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
+        SetForegroundWindow(hwnd);
+    }
+
+    private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
+    {
+        var behavior = ViewModels.SettingsViewModel.CloseActionBehavior;
+        if (behavior == 1) // Minimize to Tray
+        {
+            args.Cancel = true;
+            AppWindow.Hide();
+            TaskbarWidgetService.Instance.ShowNotification("SevaDesk Running in Background", "Customer sessions remain active in the system tray. Click the tray icon to restore.");
+            return;
+        }
+
+        if (behavior == 2) // Exit completely
+        {
+            TaskbarWidgetService.Instance.Dispose();
+            return;
+        }
+
+        // Behavior == 0: Always Prompt
+        args.Cancel = true;
+        await ShowCloseConfirmationDialogAsync();
+    }
+
+    private async Task ShowCloseConfirmationDialogAsync()
+    {
+        var chkRemember = new CheckBox
+        {
+            Content = AppServices.Localization.GetString("Dialog.RememberChoice"),
+            Margin = new Thickness(0, 12, 0, 0)
+        };
+
+        var panel = new StackPanel { Spacing = 8 };
+        panel.Children.Add(new TextBlock
+        {
+            Text = AppServices.Localization.GetString("Dialog.ClosePrompt"),
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 13
+        });
+        panel.Children.Add(chkRemember);
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Content.XamlRoot,
+            Title = AppServices.Localization.GetString("Dialog.CloseTitle"),
+            Content = panel,
+            PrimaryButtonText = AppServices.Localization.GetString("Dialog.MinimizeToTray"),
+            SecondaryButtonText = AppServices.Localization.GetString("Dialog.ExitApp"),
+            CloseButtonText = AppServices.Localization.GetString("Common.Cancel"),
+            DefaultButton = ContentDialogButton.Primary
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            if (chkRemember.IsChecked == true)
+            {
+                ViewModels.SettingsViewModel.CloseActionBehavior = 1;
+            }
+            AppWindow.Hide();
+            TaskbarWidgetService.Instance.ShowNotification("SevaDesk Running in Background", "Customer sessions remain active in the system tray. Click the tray icon to restore.");
+        }
+        else if (result == ContentDialogResult.Secondary)
+        {
+            if (chkRemember.IsChecked == true)
+            {
+                ViewModels.SettingsViewModel.CloseActionBehavior = 2;
+            }
+            TaskbarWidgetService.Instance.Dispose();
+            Application.Current.Exit();
         }
     }
 }

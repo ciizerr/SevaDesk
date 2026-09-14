@@ -80,6 +80,25 @@
                         </Grid>
                     </Border>
 
+                    <!-- Card: Window Close Action -->
+                    <Border CornerRadius="8" Padding="16,14"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                                <TextBlock loc:Loc.Key="Settings.General.CloseBehavior" Text="Window Close Action" FontWeight="SemiBold" FontSize="14" />
+                                <TextBlock loc:Loc.Key="Settings.General.CloseBehaviorDesc" Text="Choose whether clicking 'X' minimizes to the system tray or exits the app"
+                                           FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <ComboBox Grid.Column="1" Width="180"
+                                      SelectedIndex="{x:Bind ViewModel.SelectedCloseBehaviorIndex, Mode=TwoWay}">
+                                <ComboBoxItem loc:Loc.Key="Settings.General.ClosePrompt" Content="Always Ask" />
+                                <ComboBoxItem loc:Loc.Key="Settings.General.CloseMinimize" Content="Minimize to Tray" />
+                                <ComboBoxItem loc:Loc.Key="Settings.General.CloseExit" Content="Exit Application" />
+                            </ComboBox>
+                        </Grid>
+                    </Border>
+
                     <TextBlock loc:Loc.Key="Settings.Appearance.LanguageGroup" Text="Language &amp; Regional Preferences" Style="{StaticResource SubtitleTextBlockStyle}" FontSize="16" FontWeight="SemiBold" Margin="0,8,0,0" />
 
                     <!-- Card: Language / भाषा -->

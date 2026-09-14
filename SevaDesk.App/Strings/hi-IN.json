@@ -217,5 +217,29 @@
   "AboutPage.Description": "सेवाडेस्क भारतीय सीएससी ऑपरेटरों और साइबर कैफ़े केंद्रों के लिए डिज़ाइन किया गया एक आधुनिक वर्कस्पेस सॉफ़्टवेयर है।",
 
   "HomePage.Title": "होम",
-  "HomePage.Description": "सेवाडेस्क साइबर कैफ़े प्रबंधन प्लेटफ़ॉर्म में आपका स्वागत है।"
+  "HomePage.Description": "सेवाडेस्क साइबर कैफ़े प्रबंधन प्लेटफ़ॉर्म में आपका स्वागत है।",
+
+  "Widget.Title": "सक्रिय सत्र",
+  "Widget.ActiveBadge": "सक्रिय",
+  "Widget.NoActiveSessions": "वर्तमान में कोई सक्रिय सत्र नहीं चल रहा है",
+  "Widget.OpenApp": "मुख्य ऐप खोलें",
+  "Widget.QuickStart": "त्वरित सत्र शुरू करें",
+  "Widget.QuickStartPlaceholder": "ग्राहक का नाम (उदा. अमित कुमार)...",
+  "Widget.StartBtn": "शुरू करें",
+  "Widget.QuickUpi": "त्वरित UPI QR",
+  "Widget.CopyUpi": "UPI कॉपी करें",
+  "Widget.RunningBill": "बिल",
+  "Widget.EndSession": "समाप्त",
+
+  "Dialog.CloseTitle": "सेवाडेस्क बंद करें?",
+  "Dialog.ClosePrompt": "क्या आप सक्रिय सत्रों को चालू रखने के लिए सेवाडेस्क को सिस्टम ट्रे में छोटा करना चाहते हैं, या पूरी तरह बाहर निकलना चाहते हैं?",
+  "Dialog.MinimizeToTray": "ट्रे में छोटा करें",
+  "Dialog.ExitApp": "पूरी तरह बंद करें",
+  "Dialog.RememberChoice": "मेरी पसंद याद रखें",
+
+  "Settings.General.CloseBehavior": "विंडो बंद करने पर क्रिया",
+  "Settings.General.CloseBehaviorDesc": "चुनें कि 'X' पर क्लिक करने से ऐप सिस्टम ट्रे में जाएगा या पूरी तरह बंद होगा",
+  "Settings.General.ClosePrompt": "हमेशा पूछें",
+  "Settings.General.CloseMinimize": "ट्रे में छोटा करें",
+  "Settings.General.CloseExit": "ऐप बंद करें"
 }

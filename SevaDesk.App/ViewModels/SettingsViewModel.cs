@@ -21,6 +21,12 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _enableMicaBackdrop = true;
 
+    // Window close behavior: 0 = Always Prompt, 1 = Minimize to Tray, 2 = Exit App
+    public static int CloseActionBehavior { get; set; } = 0;
+
+    [ObservableProperty]
+    private int _selectedCloseBehaviorIndex;
+
     public ObservableCollection<LanguageItem> AvailableLanguages => AppServices.Localization.AvailableLanguages;
 
     [ObservableProperty]
@@ -162,6 +168,8 @@ public partial class SettingsViewModel : ObservableObject
             };
         }
 
+        _selectedCloseBehaviorIndex = CloseActionBehavior;
+
         // Initialize active language selection
         _selectedLanguage = AvailableLanguages.FirstOrDefault(l => string.Equals(l.Code, AppServices.Localization.CurrentLanguageCode, StringComparison.OrdinalIgnoreCase))
                            ?? AvailableLanguages.FirstOrDefault();
@@ -229,6 +237,12 @@ public partial class SettingsViewModel : ObservableObject
     {
         MainWindow.Instance?.SetMicaBackdrop(value);
         AutoSave("Backdrop updated.");
+    }
+
+    partial void OnSelectedCloseBehaviorIndexChanged(int value)
+    {
+        CloseActionBehavior = value;
+        AutoSave("Close behavior updated.");
     }
 
     partial void OnSelectedLanguageChanged(LanguageItem? value)
@@ -392,6 +406,8 @@ public partial class SettingsViewModel : ObservableObject
     {
         SelectedThemeIndex = 0;
         EnableMicaBackdrop = true;
+        CloseActionBehavior = 0;
+        SelectedCloseBehaviorIndex = 0;
 
         ShopName = "SevaDesk Digital Cyber Café";
         OperatorName = "Ramesh Patel (VLE / Operator)";
