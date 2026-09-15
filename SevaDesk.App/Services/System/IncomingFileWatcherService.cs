@@ -87,14 +87,23 @@ public sealed class IncomingFileWatcherService : IDisposable
 
         if (WatchDesktop)
         {
-            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-            if (Directory.Exists(desktop)) directoriesToWatch.Add(desktop);
+            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var defaultDesktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            var localDesktop = Path.Combine(userProfile, "Desktop");
+            var oneDriveDesktop = Path.Combine(userProfile, "OneDrive", "Desktop");
+
+            if (Directory.Exists(defaultDesktop)) directoriesToWatch.Add(defaultDesktop);
+            if (Directory.Exists(localDesktop)) directoriesToWatch.Add(localDesktop);
+            if (Directory.Exists(oneDriveDesktop)) directoriesToWatch.Add(oneDriveDesktop);
         }
 
         if (WatchDocuments)
         {
             var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             if (Directory.Exists(docs)) directoriesToWatch.Add(docs);
+            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var oneDriveDocs = Path.Combine(userProfile, "OneDrive", "Documents");
+            if (Directory.Exists(oneDriveDocs)) directoriesToWatch.Add(oneDriveDocs);
         }
 
         foreach (var custom in CustomFolders)
@@ -142,15 +151,28 @@ public sealed class IncomingFileWatcherService : IDisposable
     {
         try
         {
-            // Ignore temporary, download parts, and system files
+            // Ignore temporary, download parts, shortcuts, and system files
             var ext = Path.GetExtension(filePath).ToLowerInvariant();
-            if (ext is ".crdownload" or ".tmp" or ".part" or ".download" or ".ini") return;
+            if (ext is ".crdownload" or ".tmp" or ".part" or ".download" or ".ini" or ".lnk") return;
 
             var fileName = Path.GetFileName(filePath);
-            if (fileName.StartsWith("~") || fileName.StartsWith(".")) return;
+            if (fileName.StartsWith("~") || fileName.StartsWith(".") || fileName.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)) return;
 
-            // Ignore files already inside working base directory
-            if (filePath.StartsWith(workingBase, StringComparison.OrdinalIgnoreCase)) return;
+            // Only ignore if the file is inside a customer directory (i.e. child directory of workingBase)
+            // Loose files directly on Desktop/workingBase must NOT be ignored!
+            var parentDir = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(parentDir) && !string.IsNullOrEmpty(workingBase))
+            {
+                var normParent = parentDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var normBase = workingBase.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+                if (normParent.StartsWith(normBase, StringComparison.OrdinalIgnoreCase) &&
+                    !normParent.Equals(normBase, StringComparison.OrdinalIgnoreCase))
+                {
+                    // File is inside a customer folder (e.g. workingBase\CustomerName_0001\...)
+                    return;
+                }
+            }
 
             lock (_lock)
             {
@@ -158,19 +180,36 @@ public sealed class IncomingFileWatcherService : IDisposable
                 _recentlyHandled.Add(filePath);
             }
 
-            // Fire after brief delay so file handle closes
+            // Fire after brief delay so file write lock closes
             _ = Task.Run(async () =>
             {
-                await Task.Delay(800);
-                if (!File.Exists(filePath)) return;
-
                 long fileSize = 0;
-                try
+                bool fileReady = false;
+
+                // Wait up to 2.4s for download write locks to release
+                for (int attempt = 0; attempt < 6; attempt++)
                 {
-                    var fi = new FileInfo(filePath);
-                    fileSize = fi.Length;
+                    await Task.Delay(400);
+                    if (!File.Exists(filePath)) return;
+
+                    try
+                    {
+                        using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                        fileSize = fs.Length;
+                        fileReady = true;
+                        break;
+                    }
+                    catch (IOException)
+                    {
+                        // File still locked by browser / WhatsApp writer
+                    }
+                    catch
+                    {
+                        break;
+                    }
                 }
-                catch { }
+
+                if (!fileReady && !File.Exists(filePath)) return;
 
                 var item = new IncomingFileItem(filePath, fileName, sourceFolder, fileSize, DateTime.Now);
                 FileDetected?.Invoke(item);
@@ -186,11 +225,15 @@ public sealed class IncomingFileWatcherService : IDisposable
         catch { }
     }
 
-    public async Task<bool> RouteFileToCustomerAsync(string sourceFilePath, string targetCustomerFolderPath, bool deleteSource = false)
+    public async Task<bool> RouteFileToCustomerAsync(string sourceFilePath, string targetCustomerFolderPath, bool deleteSource = true)
     {
         try
         {
-            if (!File.Exists(sourceFilePath) || !Directory.Exists(targetCustomerFolderPath)) return false;
+            if (!File.Exists(sourceFilePath)) return false;
+            if (!Directory.Exists(targetCustomerFolderPath))
+            {
+                Directory.CreateDirectory(targetCustomerFolderPath);
+            }
 
             var fileName = Path.GetFileName(sourceFilePath);
             var destPath = Path.Combine(targetCustomerFolderPath, fileName);
@@ -213,7 +256,7 @@ public sealed class IncomingFileWatcherService : IDisposable
                 }
                 else
                 {
-                    File.Copy(sourceFilePath, destPath);
+                    File.Copy(sourceFilePath, destPath, overwrite: false);
                 }
             });
 

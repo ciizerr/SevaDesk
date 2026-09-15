@@ -11,8 +11,8 @@
     xmlns:vm="using:SevaDesk_App.ViewModels.Pages"
     mc:Ignorable="d">
 
-    <Grid RowDefinitions="Auto,Auto,*" Padding="24" RowSpacing="16">
-        <!-- Header -->
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="24" RowSpacing="14">
+        <!-- 0. Header -->
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -20,7 +20,7 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" Spacing="4">
-                <TextBlock loc:Loc.Key="Applications.Title" Text="Citizen Applications Tracker" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
+                <TextBlock loc:Loc.Key="Applications.Title" Text="Application Manager &amp; Scheme Catalog" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
                 <TextBlock loc:Loc.Key="Applications.Subtitle"
                            Text="Manage government schemes, recruitment exam registrations, and document requirements"
                            Style="{StaticResource BodyTextBlockStyle}"
@@ -34,16 +34,225 @@
                         <TextBlock loc:Loc.Key="Applications.RefreshBtn" Text="Refresh" />
                     </StackPanel>
                 </Button>
+                <Button Style="{StaticResource AccentButtonStyle}" Click="HeaderAction_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE710;" FontSize="14" />
+                        <TextBlock Text="{x:Bind local:ApplicationsPage.GetHeaderButtonText(ViewModel.SelectedTabIndex), Mode=OneWay}" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
         </Grid>
 
-        <!-- Status InfoBar -->
-        <InfoBar Grid.Row="1" IsOpen="{x:Bind ViewModel.HasStatusMessage, Mode=OneWay}"
-                 Severity="Informational" loc:Loc.Key="Common.Status" Title="Application Update"
-                 Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
+        <!-- 1. Segmented View Switcher (SelectorBar) -->
+        <Border Grid.Row="1" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" Padding="0,0,0,6">
+            <SelectorBar x:Name="AppTabSelector" SelectionChanged="AppTabSelector_SelectionChanged">
+                <SelectorBarItem x:Name="TabCatalog" loc:Loc.Key="Applications.TabCatalog" Text="Scheme &amp; Form Catalog" />
+                <SelectorBarItem x:Name="TabSubmissions" loc:Loc.Key="Applications.TabSubmissions" Text="Citizen Submissions Ledger" />
+            </SelectorBar>
+        </Border>
 
-        <!-- 2 Column Layout: Applications List on Left, Inspector & Checklist on Right -->
-        <Grid Grid.Row="2" ColumnDefinitions="440,*" ColumnSpacing="16">
+        <!-- 2. Status InfoBar -->
+        <InfoBar Grid.Row="2" IsOpen="{x:Bind ViewModel.HasStatusMessage, Mode=OneWay}"
+                 Severity="Informational" loc:Loc.Key="Common.Status" Title="Application Update"
+                 Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" Margin="0,0,0,2" />
+
+        <!-- 3A. TAB 0: SCHEME & FORM CATALOG -->
+        <Grid Grid.Row="3" ColumnDefinitions="440,*" ColumnSpacing="16"
+              Visibility="{x:Bind local:ApplicationsPage.VisibleIf(ViewModel.IsCatalogTab), Mode=OneWay}">
+            <!-- Left: Catalog List -->
+            <Border Grid.Column="0" CornerRadius="8"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <Grid RowDefinitions="Auto,Auto,*">
+                    <!-- Top Search & Category Filter -->
+                    <Grid Grid.Row="0" Padding="14,12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock loc:Loc.Key="Applications.TabCatalog" Text="Scheme Catalog" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Style="{StaticResource AccentButtonStyle}" Click="NewTemplate_Click" Padding="8,4">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <FontIcon Glyph="&#xE710;" FontSize="11" />
+                                    <TextBlock loc:Loc.Key="Common.Add" Text="New Form" FontSize="11" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </Grid>
+
+                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Padding="12,8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" ColumnSpacing="8">
+                        <TextBox x:Name="TxtTemplateSearch"
+                                 Grid.Column="0"
+                                 PlaceholderText="Search schemes..."
+                                 TextChanged="TemplateSearch_TextChanged" />
+
+                        <ComboBox x:Name="CmbCategoryFilter"
+                                  Grid.Column="1"
+                                  SelectedIndex="0"
+                                  SelectionChanged="CategoryFilter_SelectionChanged">
+                            <ComboBoxItem Content="All" />
+                            <ComboBoxItem Content="Jobs &amp; Exams" />
+                            <ComboBoxItem Content="Identity &amp; Tax" />
+                            <ComboBoxItem Content="Scholarships" />
+                            <ComboBoxItem Content="Citizen Schemes" />
+                            <ComboBoxItem Content="Citizen Services" />
+                        </ComboBox>
+                    </Grid>
+
+                    <ListView Grid.Row="2"
+                              ItemsSource="{x:Bind ViewModel.Templates, Mode=OneWay}"
+                              SelectedItem="{x:Bind ViewModel.SelectedTemplate, Mode=TwoWay}"
+                              SelectionMode="Single">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:ApplicationTemplate">
+                                <Grid ColumnDefinitions="Auto,*,Auto" Padding="10,12" VerticalAlignment="Center"
+                                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                                    <Border Grid.Column="0" Width="36" Height="36" CornerRadius="6"
+                                            Background="{ThemeResource SubtleFillColorSecondaryBrush}" Margin="0,0,12,0">
+                                        <FontIcon Glyph="&#xE7C3;" FontSize="16" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                        <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Border CornerRadius="4" Padding="5,1" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                                <TextBlock Text="{x:Bind Category}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            </Border>
+                                            <TextBlock Text="{x:Bind PortalUrl}" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                       TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="2">
+                                        <TextBlock Text="{x:Bind FormattedTotalFee}" FontSize="12" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                        <TextBlock Text="Total Fee" FontSize="9" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Right" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+            </Border>
+
+            <!-- Right: Template Editor & Inspector -->
+            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                <Grid>
+                    <!-- Empty State -->
+                    <Border Visibility="{x:Bind local:ApplicationsPage.CollapsedIf(ViewModel.HasSelectedTemplate), Mode=OneWay}"
+                            Padding="32" CornerRadius="8" Margin="0,40,0,0"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                            HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
+                            <Border Width="64" Height="64" CornerRadius="32"
+                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                    HorizontalAlignment="Center">
+                                <FontIcon Glyph="&#xE7C3;" FontSize="28" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Spacing="6" HorizontalAlignment="Center">
+                                <TextBlock Text="No Form Template Selected" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" />
+                                <TextBlock Text="Select a scheme template from the left or click 'New Form' to add a reusable application definition."
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="13" TextAlignment="Center" MaxWidth="360" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <Button Style="{StaticResource AccentButtonStyle}" Click="NewTemplate_Click" HorizontalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE710;" FontSize="14" />
+                                    <TextBlock loc:Loc.Key="Applications.NewTemplateBtn" Text="New Form Template" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Template Editor -->
+                    <StackPanel Spacing="16" Visibility="{x:Bind local:ApplicationsPage.VisibleIf(ViewModel.HasSelectedTemplate), Mode=OneWay}">
+                        <Border Padding="20" CornerRadius="8"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                            <StackPanel Spacing="14">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="Form Template Details" Style="{StaticResource SubtitleTextBlockStyle}" FontWeight="Bold" FontSize="18" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                        <Button Click="DeleteTemplate_Click">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <FontIcon Glyph="&#xE74D;" FontSize="12" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                                                <TextBlock Text="Delete" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Style="{StaticResource AccentButtonStyle}" Click="SaveTemplate_Click">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <FontIcon Glyph="&#xE74E;" FontSize="12" />
+                                                <TextBlock loc:Loc.Key="Common.Save" Text="Save Template" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+
+                                <TextBox loc:Loc.HeaderKey="Applications.TemplateTitle"
+                                         Header="Scheme / Exam Title *"
+                                         Text="{x:Bind ViewModel.SelectedTemplate.Title, Mode=TwoWay}"
+                                         PlaceholderText="e.g. SSC CGL 2026, PAN Card Form 49A" />
+
+                                <Grid ColumnDefinitions="*,*">
+                                    <TextBox Grid.Column="0"
+                                             Header="Category"
+                                             Text="{x:Bind ViewModel.SelectedTemplate.Category, Mode=TwoWay}"
+                                             PlaceholderText="e.g. Jobs &amp; Exams, Scholarships, Identity &amp; Tax"
+                                             Margin="0,0,8,0" />
+
+                                    <Grid Grid.Column="1" ColumnDefinitions="*,Auto" Margin="8,0,0,0">
+                                        <TextBox Grid.Column="0"
+                                                 loc:Loc.HeaderKey="Applications.PortalUrl"
+                                                 Header="Official Portal URL"
+                                                 Text="{x:Bind ViewModel.SelectedTemplate.PortalUrl, Mode=TwoWay}"
+                                                 PlaceholderText="https://..."
+                                                 Margin="0,0,6,0" />
+                                        <Button Grid.Column="1" VerticalAlignment="Bottom" Click="TestPortal_Click" ToolTipService.ToolTip="Test / Open Portal in Browser">
+                                            <FontIcon Glyph="&#xE8A7;" FontSize="13" />
+                                        </Button>
+                                    </Grid>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="*,*,*">
+                                    <NumberBox Grid.Column="0"
+                                               loc:Loc.HeaderKey="Applications.DefaultServiceFee"
+                                               Header="Default Service Fee (₹)"
+                                               Value="{x:Bind ViewModel.SelectedTemplate.DefaultServiceFeeDouble, Mode=TwoWay}"
+                                               SpinButtonPlacementMode="Compact"
+                                               Margin="0,0,6,0" />
+
+                                    <NumberBox Grid.Column="1"
+                                               loc:Loc.HeaderKey="Applications.DefaultGovtFee"
+                                               Header="Default Govt Fee (₹)"
+                                               Value="{x:Bind ViewModel.SelectedTemplate.DefaultGovtFeeDouble, Mode=TwoWay}"
+                                               SpinButtonPlacementMode="Compact"
+                                               Margin="6,0,6,0" />
+
+                                    <StackPanel Grid.Column="2" Margin="6,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="Total Default Charge" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        <TextBlock Text="{x:Bind ViewModel.SelectedTemplate.FormattedTotalFee, Mode=OneWay}"
+                                                   FontSize="20" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBox Header="Required Documents Checklist (Comma-separated)"
+                                         Text="{x:Bind ViewModel.SelectedTemplate.RequiredDocs, Mode=TwoWay}"
+                                         PlaceholderText="Photo, Signature, Aadhaar, Marksheet..." />
+
+                                <TextBox Header="Operator Guidelines &amp; Notes (Optional)"
+                                         Text="{x:Bind ViewModel.SelectedTemplate.Notes, Mode=TwoWay}"
+                                         PlaceholderText="Important requirements, photo dimensions, or cutoff dates"
+                                         TextWrapping="Wrap" AcceptsReturn="True" Height="70" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- 3B. TAB 1: CITIZEN SUBMISSIONS LEDGER -->
+        <Grid Grid.Row="3" ColumnDefinitions="440,*" ColumnSpacing="16"
+              Visibility="{x:Bind local:ApplicationsPage.VisibleIf(ViewModel.IsSubmissionsTab), Mode=OneWay}">
             <!-- Left: Applications List -->
             <Border Grid.Column="0" CornerRadius="8"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -91,108 +300,132 @@
 
             <!-- Right: Application Details & Required Documents Checklist -->
             <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
-                <StackPanel Spacing="16">
-                    <!-- Selected Application Card -->
-                    <Border Padding="20" CornerRadius="8"
+                <Grid>
+                    <!-- Empty State when no application is selected -->
+                    <Border Visibility="{x:Bind local:ApplicationsPage.CollapsedIf(ViewModel.HasSelectedApplication), Mode=OneWay}"
+                            Padding="32" CornerRadius="8" Margin="0,40,0,0"
                             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                        <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="16">
-                            <!-- Top: Title, Portal, and Launch Button -->
-                            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-                                <StackPanel Grid.Column="0" Spacing="4">
-                                    <TextBlock Text="{x:Bind ViewModel.SelectedApplication.Title, Mode=OneWay}"
-                                               Style="{StaticResource SubtitleTextBlockStyle}" FontWeight="Bold" FontSize="18" />
-                                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                                        <TextBlock Text="{x:Bind ViewModel.SelectedApplication.CustomerName, Mode=OneWay}"
-                                                   FontWeight="SemiBold" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                        <TextBlock Text="•" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                        <Border CornerRadius="4" Padding="6,1" Background="{ThemeResource SystemFillColorNeutralBackgroundBrush}">
-                                            <TextBlock Text="{x:Bind ViewModel.SelectedApplication.ApplicationNumber, Mode=OneWay}"
-                                                       FontFamily="Consolas" FontSize="11" FontWeight="Bold" />
-                                        </Border>
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <Button Grid.Column="1" Style="{StaticResource AccentButtonStyle}" Click="LaunchPortal_Click">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xE8A7;" FontSize="14" />
-                                        <TextBlock loc:Loc.Key="Common.Open" Text="Open Portal" />
-                                    </StackPanel>
-                                </Button>
-                            </Grid>
-
-                            <Border Grid.Row="1" Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
-
-                            <!-- Fee Breakdown & Status Workflow -->
-                            <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
-                                <StackPanel Grid.Column="0" Spacing="6">
-                                    <TextBlock Text="Fee Breakdown:" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                    <StackPanel Orientation="Horizontal" Spacing="16">
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <TextBlock Text="Service Fee:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                            <TextBlock Text="{x:Bind ViewModel.SelectedApplication.FormattedServiceCharge, Mode=OneWay}" FontWeight="Bold" FontSize="12" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <TextBlock Text="Govt Fee:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                            <TextBlock Text="{x:Bind ViewModel.SelectedApplication.FormattedGovtFee, Mode=OneWay}" FontWeight="Bold" FontSize="12" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <TextBlock Text="Total:" FontSize="12" FontWeight="Bold" />
-                                            <TextBlock Text="{x:Bind ViewModel.SelectedApplication.FormattedTotal, Mode=OneWay}"
-                                                       FontWeight="Bold" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                        </StackPanel>
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <!-- Status transition buttons -->
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                                    <Button Click="SetDraft_Click">
-                                        <TextBlock Text="Draft" FontSize="11" />
-                                    </Button>
-                                    <Button Click="SetDocsReady_Click">
-                                        <TextBlock Text="Docs Ready" FontSize="11" />
-                                    </Button>
-                                    <Button Click="SetSubmitted_Click">
-                                        <TextBlock Text="Submitted" FontSize="11" />
-                                    </Button>
-                                    <Button Style="{StaticResource AccentButtonStyle}" Click="SetCompleted_Click">
-                                        <TextBlock loc:Loc.Key="Common.Finish" Text="Complete" FontSize="11" />
-                                    </Button>
-                                </StackPanel>
-                            </Grid>
-                        </Grid>
-                    </Border>
-
-                    <!-- Required Document Checklist Card -->
-                    <Border CornerRadius="8"
-                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                        <Grid RowDefinitions="Auto,*">
-                            <Border Grid.Row="0" Padding="14,10" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon Glyph="&#xE73E;" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" FontSize="14" />
-                                    <TextBlock loc:Loc.Key="Applications.ChecklistTitle" Text="Application Document Checklist" FontWeight="SemiBold" />
-                                </StackPanel>
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                            HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
+                            <Border Width="64" Height="64" CornerRadius="32"
+                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                    HorizontalAlignment="Center">
+                                <FontIcon Glyph="&#xE7C3;" FontSize="28" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
-
-                            <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.SelectedChecklist, Mode=OneWay}" SelectionMode="None">
-                                <ListView.ItemTemplate>
-                                    <DataTemplate x:DataType="models:ApplicationChecklistItem">
-                                        <Grid ColumnDefinitions="Auto,*,Auto" Padding="14,10" VerticalAlignment="Center"
-                                              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
-                                            <CheckBox Grid.Column="0" IsChecked="{x:Bind IsCompleted, Mode=TwoWay}" Margin="0,0,8,0" />
-                                            <TextBlock Grid.Column="1" Text="{x:Bind Title}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" />
-                                            <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="4" Padding="6,2"
-                                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}">
-                                                <TextBlock Text="{x:Bind Category}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                            </Border>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListView.ItemTemplate>
-                            </ListView>
-                        </Grid>
+                            <StackPanel Spacing="6" HorizontalAlignment="Center">
+                                <TextBlock Text="No Citizen Application Selected" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" />
+                                <TextBlock Text="Select an ongoing application from the list or serve a citizen in Counter Sessions."
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="13" TextAlignment="Center" MaxWidth="360" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </StackPanel>
                     </Border>
-                </StackPanel>
+
+                    <!-- Active Application Details & Checklist -->
+                    <StackPanel Spacing="16" Visibility="{x:Bind local:ApplicationsPage.VisibleIf(ViewModel.HasSelectedApplication), Mode=OneWay}">
+                        <!-- Selected Application Card -->
+                        <Border Padding="20" CornerRadius="8"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                            <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="16">
+                                <!-- Top: Title, Portal, and Launch Button -->
+                                <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="4">
+                                        <TextBlock Text="{x:Bind ViewModel.SelectedApplication.Title, Mode=OneWay}"
+                                                   Style="{StaticResource SubtitleTextBlockStyle}" FontWeight="Bold" FontSize="18" />
+                                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                            <TextBlock Text="{x:Bind ViewModel.SelectedApplication.CustomerName, Mode=OneWay}"
+                                                       FontWeight="SemiBold" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            <TextBlock Text="•" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                            <Border CornerRadius="4" Padding="6,1" Background="{ThemeResource SystemFillColorNeutralBackgroundBrush}">
+                                                <TextBlock Text="{x:Bind ViewModel.SelectedApplication.ApplicationNumber, Mode=OneWay}"
+                                                           FontFamily="Consolas" FontSize="11" FontWeight="Bold" />
+                                            </Border>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <Button Grid.Column="1" Style="{StaticResource AccentButtonStyle}" Click="LaunchPortal_Click">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon Glyph="&#xE8A7;" FontSize="14" />
+                                            <TextBlock loc:Loc.Key="Common.Open" Text="Open Portal" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+
+                                <Border Grid.Row="1" Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+
+                                <!-- Fee Breakdown & Status Workflow -->
+                                <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="6">
+                                        <TextBlock Text="Fee Breakdown:" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                        <StackPanel Orientation="Horizontal" Spacing="16">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="Service Fee:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                <TextBlock Text="{x:Bind ViewModel.SelectedApplication.FormattedServiceCharge, Mode=OneWay}" FontWeight="Bold" FontSize="12" />
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="Govt Fee:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                <TextBlock Text="{x:Bind ViewModel.SelectedApplication.FormattedGovtFee, Mode=OneWay}" FontWeight="Bold" FontSize="12" />
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="Total:" FontSize="12" FontWeight="Bold" />
+                                                <TextBlock Text="{x:Bind ViewModel.SelectedApplication.FormattedTotal, Mode=OneWay}"
+                                                           FontWeight="Bold" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- Status transition buttons -->
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                        <Button Click="SetDraft_Click">
+                                            <TextBlock Text="Draft" FontSize="11" />
+                                        </Button>
+                                        <Button Click="SetDocsReady_Click">
+                                            <TextBlock Text="Docs Ready" FontSize="11" />
+                                        </Button>
+                                        <Button Click="SetSubmitted_Click">
+                                            <TextBlock Text="Submitted" FontSize="11" />
+                                        </Button>
+                                        <Button Style="{StaticResource AccentButtonStyle}" Click="SetCompleted_Click">
+                                            <TextBlock loc:Loc.Key="Common.Finish" Text="Complete" FontSize="11" />
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <!-- Required Document Checklist Card -->
+                        <Border CornerRadius="8"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                            <Grid RowDefinitions="Auto,*">
+                                <Border Grid.Row="0" Padding="14,10" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE73E;" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" FontSize="14" />
+                                        <TextBlock loc:Loc.Key="Applications.ChecklistTitle" Text="Application Document Checklist" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Border>
+
+                                <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.SelectedChecklist, Mode=OneWay}" SelectionMode="None">
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate x:DataType="models:ApplicationChecklistItem">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" Padding="14,10" VerticalAlignment="Center"
+                                                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                                                <CheckBox Grid.Column="0" IsChecked="{x:Bind IsCompleted, Mode=TwoWay}" Margin="0,0,8,0" />
+                                                <TextBlock Grid.Column="1" Text="{x:Bind Title}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" />
+                                                <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="4" Padding="6,2"
+                                                        Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                                    <TextBlock Text="{x:Bind Category}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                </Border>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Grid>
             </ScrollViewer>
         </Grid>
     </Grid>

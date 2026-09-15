@@ -7,7 +7,9 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:SevaDesk.Core.Models"
     xmlns:loc="using:SevaDesk_App.Services"
+    xmlns:controls="using:SevaDesk_App.Views.Controls"
     xmlns:vm="using:SevaDesk_App.ViewModels.Pages"
+    xmlns:local="using:SevaDesk_App.Views.Pages"
     mc:Ignorable="d">
 
     <Grid RowDefinitions="Auto,*" Padding="24" RowSpacing="16">
@@ -77,11 +79,11 @@
                                                    Initials="{x:Bind Customer.Initials}" Margin="0,0,10,0" />
 
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <TextBlock Text="{x:Bind Customer.Name}" FontWeight="SemiBold" FontSize="14" />
-                                            <Border CornerRadius="4" Padding="5,1"
+                                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                            <TextBlock Text="{x:Bind Customer.Name}" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" />
+                                            <Border CornerRadius="4" Padding="5,1" VerticalAlignment="Center"
                                                     Background="{ThemeResource SystemFillColorNeutralBackgroundBrush}">
-                                                <TextBlock Text="{x:Bind Customer.Code}" FontFamily="Consolas" FontSize="10" />
+                                                <TextBlock Text="{x:Bind Customer.Code}" FontFamily="Consolas" FontSize="10" VerticalAlignment="Center" />
                                             </Border>
                                         </StackPanel>
                                         <TextBlock Text="{x:Bind Session.Notes}" FontSize="12"
@@ -92,7 +94,7 @@
                                     <!-- Status indicator badge -->
                                     <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="4" Padding="6,2"
                                             Background="{ThemeResource SubtleFillColorSecondaryBrush}">
-                                        <TextBlock Text="{x:Bind Session.Status}" FontSize="11" FontWeight="SemiBold"
+                                        <TextBlock Text="{x:Bind Status, Mode=OneWay}" FontSize="11" FontWeight="SemiBold"
                                                    Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                                     </Border>
                                 </Grid>
@@ -104,192 +106,322 @@
 
             <!-- Right: Active Session Desk Console -->
             <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
-                <StackPanel Spacing="16">
-                    <!-- In-App Triage InfoBar for Incoming Files -->
-                    <InfoBar IsOpen="{x:Bind ViewModel.HasPendingIncomingFile, Mode=OneWay}"
-                             IsClosable="True"
-                             CloseButtonClick="TriageClose_Click"
-                             Severity="Informational"
-                             Title="Incoming File Detected"
-                             Message="{x:Bind ViewModel.PendingIncomingFile.FileName, Mode=OneWay}"
-                             Margin="0,0,0,4">
-                        <InfoBar.ActionButton>
-                            <Button Style="{StaticResource AccentButtonStyle}" Click="RoutePendingFile_Click">
-                                <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <FontIcon Glyph="&#xE8B7;" FontSize="12" />
-                                    <TextBlock loc:Loc.Key="Triage.MoveToCustomerBtn" Text="Move to Customer" />
+                <Grid>
+                    <!-- Empty State when no session is selected -->
+                    <Border Visibility="{x:Bind local:SessionsPage.CollapsedIf(ViewModel.HasSelectedSession), Mode=OneWay}"
+                            Padding="32" CornerRadius="8" Margin="0,40,0,0"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                            HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
+                            <Border Width="64" Height="64" CornerRadius="32"
+                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                    HorizontalAlignment="Center">
+                                <FontIcon Glyph="&#xE77B;" FontSize="28" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Spacing="6" HorizontalAlignment="Center">
+                                <TextBlock Text="No Customer Session Selected" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" />
+                                <TextBlock Text="Select an ongoing session from the left or click 'Start New Session' to serve a visitor."
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="13" TextAlignment="Center" MaxWidth="360" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <Button Style="{StaticResource AccentButtonStyle}" Click="NewSession_Click" HorizontalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE710;" FontSize="14" />
+                                    <TextBlock loc:Loc.Key="Sessions.StartNewBtn" Text="Start New Session" />
                                 </StackPanel>
                             </Button>
-                        </InfoBar.ActionButton>
-                    </InfoBar>
+                        </StackPanel>
+                    </Border>
 
-                    <!-- Customer Profile & Session Controller Card -->
-                    <Border Padding="20" CornerRadius="8"
-                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                        <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="16">
-                            <Grid Grid.Row="0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-
-                                <PersonPicture Grid.Column="0" Width="52" Height="52"
-                                               Initials="{x:Bind ViewModel.SelectedSession.Customer.Initials, Mode=OneWay}"
-                                               Margin="0,0,16,0" />
-
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
-                                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                                        <TextBlock Text="{x:Bind ViewModel.SelectedSession.Customer.Name, Mode=OneWay}"
-                                                   Style="{StaticResource SubtitleTextBlockStyle}" FontWeight="Bold" />
-                                        <Border CornerRadius="4" Padding="6,2" Background="{ThemeResource AccentFillColorDefaultBrush}">
-                                            <TextBlock Text="{x:Bind ViewModel.SelectedSession.Customer.Code, Mode=OneWay}"
-                                                       FontFamily="Consolas" FontSize="12" Foreground="White" FontWeight="Bold" />
-                                        </Border>
+                    <!-- Active Console when session selected -->
+                    <StackPanel Spacing="16" Visibility="{x:Bind local:SessionsPage.VisibleIf(ViewModel.HasSelectedSession), Mode=OneWay}">
+                        <!-- In-App Triage InfoBar for Incoming Files -->
+                        <InfoBar IsOpen="{x:Bind ViewModel.HasPendingIncomingFile, Mode=OneWay}"
+                                 IsClosable="True"
+                                 CloseButtonClick="TriageClose_Click"
+                                 Severity="Informational"
+                                 Title="Incoming File Detected"
+                                 Message="{x:Bind ViewModel.PendingIncomingFile.FileName, Mode=OneWay}"
+                                 Margin="0,0,0,4">
+                            <InfoBar.ActionButton>
+                                <Button Style="{StaticResource AccentButtonStyle}" Click="RoutePendingFile_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <FontIcon Glyph="&#xE8B7;" FontSize="12" />
+                                        <TextBlock loc:Loc.Key="Triage.MoveToCustomerBtn" Text="Move to Customer" />
                                     </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Spacing="12">
-                                        <TextBlock Text="{x:Bind ViewModel.SelectedSession.Customer.Mobile, Mode=OneWay}"
-                                                   FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                        <TextBlock Text="•" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                        <TextBlock Text="{x:Bind ViewModel.SelectedSession.Customer.Village, Mode=OneWay}"
-                                                   FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </Button>
+                            </InfoBar.ActionButton>
+                        </InfoBar>
+
+                        <!-- 1. Customer Profile & Session Controller Card -->
+                        <Border Padding="20" CornerRadius="8"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                            <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="16">
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <PersonPicture Grid.Column="0" Width="52" Height="52"
+                                                   Initials="{x:Bind ViewModel.SelectedSession.Customer.Initials, Mode=OneWay}"
+                                                   Margin="0,0,16,0" />
+
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                            <TextBlock Text="{x:Bind ViewModel.SelectedSession.Customer.Name, Mode=OneWay}"
+                                                       Style="{StaticResource SubtitleTextBlockStyle}" FontWeight="Bold"
+                                                       VerticalAlignment="Center" />
+                                            <Border CornerRadius="4" Padding="6,2" VerticalAlignment="Center"
+                                                    Background="{ThemeResource AccentFillColorDefaultBrush}">
+                                                <TextBlock Text="{x:Bind ViewModel.SelectedSession.Customer.Code, Mode=OneWay}"
+                                                           FontFamily="Consolas" FontSize="11" Foreground="White" FontWeight="Bold"
+                                                           VerticalAlignment="Center" />
+                                            </Border>
+                                            <Border CornerRadius="4" Padding="6,2" VerticalAlignment="Center"
+                                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                                <TextBlock Text="{x:Bind ViewModel.SelectedSession.Status, Mode=OneWay}"
+                                                           FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                                           VerticalAlignment="Center" />
+                                            </Border>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                            <TextBlock Text="{x:Bind ViewModel.SelectedSession.CustomerContactSummary, Mode=OneWay}"
+                                                       FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                       VerticalAlignment="Center" />
+                                            <TextBlock Text="•" Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                       VerticalAlignment="Center" />
+                                            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                <FontIcon Glyph="&#xE916;" FontSize="12" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                                          VerticalAlignment="Center" />
+                                                <TextBlock Text="{x:Bind ViewModel.SelectedSession.ElapsedDisplay, Mode=OneWay}"
+                                                           FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                                           VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </StackPanel>
                                     </StackPanel>
-                                </StackPanel>
 
-                                <!-- Action Buttons: Pause/Resume & Finish -->
-                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <Button Click="ToggleStatus_Click">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <FontIcon Glyph="&#xE769;" FontSize="14" />
-                                            <TextBlock loc:Loc.Key="Sessions.PauseResumeBtn" Text="Pause / Resume" />
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Style="{StaticResource AccentButtonStyle}" Click="CompleteSession_Click">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <FontIcon Glyph="&#xE73E;" FontSize="14" />
-                                            <TextBlock loc:Loc.Key="Sessions.FinishBillBtn" Text="Finish &amp; Bill" />
-                                        </StackPanel>
-                                    </Button>
-                                </StackPanel>
-                            </Grid>
+                                    <!-- Action Buttons: Dynamic Pause/Resume & Finish -->
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <Button Click="ToggleStatus_Click"
+                                                ToolTipService.ToolTip="{x:Bind ViewModel.SelectedSession.ToggleActionText, Mode=OneWay}">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <FontIcon Glyph="{x:Bind ViewModel.SelectedSession.ToggleActionGlyph, Mode=OneWay}" FontSize="14" />
+                                                <TextBlock Text="{x:Bind ViewModel.SelectedSession.ToggleActionText, Mode=OneWay}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Style="{StaticResource AccentButtonStyle}" Click="CompleteSession_Click">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <FontIcon Glyph="&#xE73E;" FontSize="14" />
+                                                <TextBlock loc:Loc.Key="Sessions.FinishBillBtn" Text="Finish &amp; Bill" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
 
-                            <Border Grid.Row="1" Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+                                <Border Grid.Row="1" Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
 
-                            <!-- Folder Location & Direct Explorer Launcher -->
-                            <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
-                                <StackPanel Grid.Column="0" Spacing="2">
+                                <!-- Folder Location -->
+                                <StackPanel Grid.Row="2" Spacing="2">
                                     <TextBlock loc:Loc.Key="Sessions.FolderLocationLabel" Text="Session Folder on Desktop:" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                     <TextBlock Text="{x:Bind ViewModel.SelectedSession.FolderPath, Mode=OneWay}"
                                                FontFamily="Consolas" FontSize="12" FontWeight="SemiBold"
                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 </StackPanel>
-                                <Button Grid.Column="1" Click="OpenFolder_Click">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xED25;" FontSize="14" />
-                                        <TextBlock loc:Loc.Key="Sessions.OpenFolderBtn" Text="Open in Explorer" />
-                                    </StackPanel>
-                                </Button>
                             </Grid>
-                        </Grid>
-                    </Border>
+                        </Border>
 
-                    <!-- 4 Subfolder Quick Access Tiles -->
-                    <!-- Subfolder Quick Access Tiles -->
-                    <TextBlock loc:Loc.Key="Sessions.WorkingSubfolders" Text="Working Subfolders" Style="{StaticResource SubtitleTextBlockStyle}" FontSize="18" FontWeight="SemiBold" />
-
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                        <!-- Tile 00: Loose Files -->
-                        <Border Grid.Column="0" Padding="14" CornerRadius="8"
+                        <!-- 2. Active Citizen Application Card -->
+                        <!-- State B: No application linked to current session -->
+                        <Border Visibility="{x:Bind local:SessionsPage.CollapsedIf(ViewModel.HasActiveApplication), Mode=OneWay}"
+                                Padding="16" CornerRadius="8"
                                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                             <Grid ColumnDefinitions="Auto,*,Auto">
                                 <Border Grid.Column="0" Width="36" Height="36" CornerRadius="6"
-                                        Background="#FFFBEB" Margin="0,0,12,0">
-                                    <FontIcon Glyph="&#xE8B7;" Foreground="#F59E0B" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        Background="{ThemeResource SubtleFillColorSecondaryBrush}" Margin="0,0,12,0">
+                                    <FontIcon Glyph="&#xE7C3;" FontSize="16" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock loc:Loc.Key="Sessions.TileLooseFilesTitle" Text="Loose Files (Root)" FontWeight="SemiBold" />
-                                    <TextBlock loc:Loc.Key="Sessions.TileLooseFilesDesc" Text="Incoming scans, photos &amp; raw files" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    <TextBlock loc:Loc.Key="Sessions.NoApplicationLinked" Text="No Citizen Application linked to this visit" FontWeight="SemiBold" FontSize="13" />
+                                    <TextBlock loc:Loc.Key="Sessions.NoApplicationLinkedDesc" Text="Link or register a government scheme, exam form, or certificate request for this customer."
+                                               FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 </StackPanel>
-                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <Border CornerRadius="10" Background="#FEF3C7" Padding="8,2">
-                                        <TextBlock Text="{x:Bind ViewModel.SelectedSession.FolderStats.UnorganisedCount, Mode=OneWay}"
-                                                   FontWeight="Bold" Foreground="#D97706" FontSize="12" />
-                                    </Border>
-                                    <Button Background="Transparent" BorderBrush="Transparent" Padding="4" Tag="" Click="OpenSubfolderTile_Click" ToolTipService.ToolTip="Open Root Customer Folder">
-                                        <FontIcon Glyph="&#xED25;" FontSize="13" />
-                                    </Button>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <!-- Tile 01: Shared Documents -->
-                        <Border Grid.Column="1" Padding="14" CornerRadius="8"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="6"
-                                        Background="#EFF6FF" Margin="0,0,12,0">
-                                    <FontIcon Glyph="&#xE8A5;" Foreground="#3B82F6" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock loc:Loc.Key="Sessions.TileSharedDocsTitle" Text="Shared Docs" FontWeight="SemiBold" />
-                                    <TextBlock loc:Loc.Key="Sessions.TileSharedDocsDesc" Text="Permanent Aadhaar, PAN, marksheets" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <Border CornerRadius="10" Background="#DBEAFE" Padding="8,2">
-                                        <TextBlock Text="{x:Bind ViewModel.SelectedSession.FolderStats.SharedDocsCount, Mode=OneWay}"
-                                                   FontWeight="Bold" Foreground="#1D4ED8" FontSize="12" />
-                                    </Border>
-                                    <Button Background="Transparent" BorderBrush="Transparent" Padding="4" Tag="Shared Docs" Click="OpenSubfolderTile_Click" ToolTipService.ToolTip="Open Shared Docs">
-                                        <FontIcon Glyph="&#xED25;" FontSize="13" />
-                                    </Button>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </Grid>
-
-                    <!-- Application Subfolders Section -->
-                    <Border CornerRadius="8" Padding="16,14"
-                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                        <StackPanel Spacing="10">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock loc:Loc.Key="Sessions.AppFoldersTitle" Text="Application Subfolders" FontWeight="SemiBold" FontSize="14" />
-                                    <TextBlock loc:Loc.Key="Sessions.AppFoldersDesc" Text="Dedicated folders for specific citizen schemes (PMS, SSC, NSP, GDS)"
-                                               FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                </StackPanel>
-                                <Button Grid.Column="1" Click="AddAppFolder_Click">
+                                <Button Grid.Column="2" Style="{StaticResource AccentButtonStyle}" Click="LinkApplication_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <FontIcon Glyph="&#xE710;" FontSize="12" />
-                                        <TextBlock loc:Loc.Key="Sessions.AddAppFolderBtn" Text="Add Folder" />
+                                        <TextBlock loc:Loc.Key="Sessions.LinkApplicationBtn" Text="Link Application" />
                                     </StackPanel>
                                 </Button>
                             </Grid>
+                        </Border>                        <!-- State A: Active application linked card -->
+                        <Border Visibility="{x:Bind local:SessionsPage.VisibleIf(ViewModel.HasActiveApplication), Mode=OneWay}"
+                                Padding="18" CornerRadius="8"
+                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                            <StackPanel Spacing="12">
+                                <!-- Top Row: Title, Portal, App #, Status Badge, and Header Actions -->
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                            <FontIcon Glyph="&#xE7C3;" FontSize="16" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Center" />
+                                            <TextBlock Text="{x:Bind ViewModel.ActiveApplication.Title, Mode=OneWay}"
+                                                       Style="{StaticResource SubtitleTextBlockStyle}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" />
+                                            <Border CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                                <TextBlock Text="{x:Bind ViewModel.ActiveApplication.Status, Mode=OneWay}"
+                                                           FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Center" />
+                                            </Border>
+                                            <Border CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Background="{ThemeResource SubtleFillColorTertiaryBrush}"
+                                                    Visibility="{x:Bind local:SessionsPage.VisibleIf(ViewModel.IsApplicationCardCollapsed), Mode=OneWay}">
+                                                <TextBlock Text="{x:Bind ViewModel.ActiveApplication.FormattedTotal, Mode=OneWay}"
+                                                           FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Center" />
+                                            </Border>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                            <TextBlock Text="{x:Bind ViewModel.ActiveApplication.PortalName, Mode=OneWay}"
+                                                       FontSize="12" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            <TextBlock Text="•" Foreground="{ThemeResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" />
+                                            <Border CornerRadius="4" Padding="5,1" VerticalAlignment="Center" Background="{ThemeResource SystemFillColorNeutralBackgroundBrush}">
+                                                <TextBlock Text="{x:Bind ViewModel.ActiveApplication.ApplicationNumber, Mode=OneWay}"
+                                                           FontFamily="Consolas" FontSize="11" VerticalAlignment="Center" />
+                                            </Border>
+                                        </StackPanel>
+                                    </StackPanel>
 
-                            <!-- Dynamic Application Folders ItemsControl -->
-                            <ItemsControl ItemsSource="{x:Bind ViewModel.ApplicationFolders, Mode=OneWay}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" Spacing="8" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="x:String">
-                                        <Button Click="OpenAppFolder_Click" Tag="{x:Bind}" Padding="10,6">
+                                    <!-- Action Buttons: Add More, Open Portal, and Expand/Collapse Toggle -->
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <Button Click="LinkApplication_Click" ToolTipService.ToolTip="Link another application for this customer">
                                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                                <FontIcon Glyph="&#xED25;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                                <TextBlock Text="{x:Bind}" FontWeight="SemiBold" FontSize="12" />
+                                                <FontIcon Glyph="&#xE710;" FontSize="12" />
+                                                <TextBlock Text="Add Application" FontSize="12" />
                                             </StackPanel>
                                         </Button>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
+                                        <Button Click="LaunchPortal_Click">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <FontIcon Glyph="&#xE8A7;" FontSize="13" />
+                                                <TextBlock loc:Loc.Key="Sessions.PortalBtn" Text="Open Portal" FontSize="12" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Click="ToggleAppCollapse_Click" Padding="6" Background="Transparent" BorderBrush="Transparent"
+                                                ToolTipService.ToolTip="{x:Bind local:SessionsPage.CollapseToolTip(ViewModel.IsApplicationCardCollapsed), Mode=OneWay}">
+                                            <FontIcon Glyph="{x:Bind local:SessionsPage.CollapseGlyph(ViewModel.IsApplicationCardCollapsed), Mode=OneWay}" FontSize="12" />
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Multi-Application Switcher Chips (when customer has 2+ active applications) -->
+                                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                                              Visibility="{x:Bind local:SessionsPage.VisibleIf(ViewModel.HasMultipleApplications), Mode=OneWay}">
+                                    <ItemsControl ItemsSource="{x:Bind ViewModel.CustomerApplications, Mode=OneWay}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" Spacing="6" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="models:ApplicationItem">
+                                                <Button Padding="8,4" Click="AppChip_Click" Tag="{x:Bind}">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <FontIcon Glyph="&#xE7C3;" FontSize="11" />
+                                                        <TextBlock Text="{x:Bind Title}" FontSize="11" FontWeight="SemiBold" />
+                                                        <Border CornerRadius="3" Padding="4,1" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                                            <TextBlock Text="{x:Bind Status}" FontSize="9" />
+                                                        </Border>
+                                                    </StackPanel>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+
+                                <!-- Collapsible Detail Body: Fee Breakdown & Document Checklist -->
+                                <StackPanel Spacing="12" Visibility="{x:Bind local:SessionsPage.CollapsedIf(ViewModel.IsApplicationCardCollapsed), Mode=OneWay}">
+                                    <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+
+                                    <!-- Middle Row: Fee Breakdown & Status Workflow Buttons -->
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="4">
+                                            <TextBlock loc:Loc.Key="Sessions.FeeBreakdown" Text="Fee Breakdown:" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <TextBlock loc:Loc.Key="Sessions.ServiceFeeLabel" Text="Service Fee:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                    <TextBlock Text="{x:Bind ViewModel.ActiveApplication.FormattedServiceCharge, Mode=OneWay}" FontWeight="Bold" FontSize="12" />
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <TextBlock loc:Loc.Key="Sessions.GovtFeeLabel" Text="Govt Fee:" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                    <TextBlock Text="{x:Bind ViewModel.ActiveApplication.FormattedGovtFee, Mode=OneWay}" FontWeight="Bold" FontSize="12" />
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <TextBlock loc:Loc.Key="Sessions.TotalFeeLabel" Text="Total:" FontSize="12" FontWeight="Bold" />
+                                                    <TextBlock Text="{x:Bind ViewModel.ActiveApplication.FormattedTotal, Mode=OneWay}"
+                                                               FontWeight="Bold" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                            <Button Click="SetDraft_Click" Padding="8,4">
+                                                <TextBlock loc:Loc.Key="Sessions.DraftStatus" Text="Draft" FontSize="11" />
+                                            </Button>
+                                            <Button Click="SetDocsReady_Click" Padding="8,4">
+                                                <TextBlock loc:Loc.Key="Sessions.DocsUploadedStatus" Text="Docs Ready" FontSize="11" />
+                                            </Button>
+                                            <Button Click="SetSubmitted_Click" Padding="8,4">
+                                                <TextBlock loc:Loc.Key="Sessions.SubmittedStatus" Text="Submitted" FontSize="11" />
+                                            </Button>
+                                            <Button Style="{StaticResource AccentButtonStyle}" Click="SetCompleted_Click" Padding="8,4">
+                                                <TextBlock loc:Loc.Key="Sessions.CompletedStatus" Text="Complete" FontSize="11" />
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Bottom Row: Interactive Document Checklist -->
+                                    <Border CornerRadius="6"
+                                            Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                        <Grid RowDefinitions="Auto,*">
+                                            <Border Grid.Row="0" Padding="12,8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                        <FontIcon Glyph="&#xE73E;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                        <TextBlock loc:Loc.Key="Sessions.ChecklistTitle" Text="Application Document Checklist" FontWeight="SemiBold" FontSize="12" />
+                                                    </StackPanel>
+                                                    <Button Grid.Column="1" Background="Transparent" BorderBrush="Transparent" Padding="4" Click="LinkApplication_Click" ToolTipService.ToolTip="Edit / Change Application">
+                                                        <FontIcon Glyph="&#xE70F;" FontSize="12" />
+                                                    </Button>
+                                                </Grid>
+                                            </Border>
+
+                                            <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.ActiveChecklist, Mode=OneWay}" SelectionMode="None">
+                                                <ListView.ItemTemplate>
+                                                    <DataTemplate x:DataType="models:ApplicationChecklistItem">
+                                                        <Grid ColumnDefinitions="Auto,*,Auto" Padding="10,6" VerticalAlignment="Center"
+                                                              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                                                            <CheckBox Grid.Column="0" IsChecked="{x:Bind IsCompleted, Mode=TwoWay}" Margin="0,0,8,0" />
+                                                            <TextBlock Grid.Column="1" Text="{x:Bind Title}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" />
+                                                            <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="4" Padding="6,2"
+                                                                    Background="{ThemeResource SubtleFillColorTertiaryBrush}">
+                                                                <TextBlock Text="{x:Bind Category}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                            </Border>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ListView.ItemTemplate>
+                                            </ListView>
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 3. Interactive Working Subfolders Component -->
+                        <controls:WorkingFolderBrowserControl x:Name="WorkingFolderBrowser" Margin="0,8,0,0" />
+                    </StackPanel>
+                </Grid>
             </ScrollViewer>
         </Grid>
     </Grid>

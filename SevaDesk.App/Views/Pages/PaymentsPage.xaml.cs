@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Navigation;
 using SevaDesk_App.ViewModels.Pages;
 using SevaDesk.Core.Models;
 
@@ -14,9 +15,20 @@ public sealed partial class PaymentsPage : Page
         InitializeComponent();
     }
 
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        if (e.Parameter is BillingHandoverRequest handover)
+        {
+            ViewModel.ApplyBillingHandover(handover);
+        }
+    }
+
     public static string FormatRupee(decimal amount) => $"₹{amount:N0}";
     public static string FormatAmount(decimal amount) => $"₹{amount:N0}";
     public static bool HasStatus(string status) => !string.IsNullOrWhiteSpace(status);
+    public static Visibility VisibleIf(bool condition) => condition ? Visibility.Visible : Visibility.Collapsed;
+    public static Visibility CollapsedIf(bool condition) => condition ? Visibility.Collapsed : Visibility.Visible;
 
     private void RateCard_ItemClick(object sender, ItemClickEventArgs e)
     {
@@ -55,13 +67,13 @@ public sealed partial class PaymentsPage : Page
         }
     }
 
-    private void PayCash_Click(object sender, RoutedEventArgs e)
+    private async void PayCash_Click(object sender, RoutedEventArgs e)
     {
-        ViewModel.CompletePaymentCommand.Execute("Cash");
+        await ViewModel.CompletePaymentAsync("Cash");
     }
 
-    private void PayUpi_Click(object sender, RoutedEventArgs e)
+    private async void PayUpi_Click(object sender, RoutedEventArgs e)
     {
-        ViewModel.CompletePaymentCommand.Execute("UPI");
+        await ViewModel.CompletePaymentAsync("UPI");
     }
 }

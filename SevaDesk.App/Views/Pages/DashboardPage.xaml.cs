@@ -12,15 +12,41 @@ public sealed partial class DashboardPage : Page
 {
     public DashboardViewModel ViewModel { get; } = new();
 
+    private readonly DispatcherTimer _elapsedTimer = new() { Interval = System.TimeSpan.FromSeconds(1) };
+
     public DashboardPage()
     {
         InitializeComponent();
-        Loaded += async (s, e) => await ViewModel.InitializeAsync();
+        _elapsedTimer.Tick += (s, e) =>
+        {
+            ViewModel.SelectedSession?.UpdateElapsed();
+        };
+
+        ViewModel.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(ViewModel.SelectedSession))
+            {
+                ViewModel.SelectedSession?.UpdateElapsed();
+                WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty);
+            }
+        };
+        Loaded += async (s, e) =>
+        {
+            await ViewModel.InitializeAsync();
+            ViewModel.SelectedSession?.UpdateElapsed();
+            WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty);
+            _elapsedTimer.Start();
+        };
+        Unloaded += (s, e) =>
+        {
+            _elapsedTimer.Stop();
+        };
     }
 
     private async void Refresh_Click(object sender, RoutedEventArgs e)
     {
         await ViewModel.LoadActiveSessionsAsync();
+        WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty);
     }
 
     private async void NewCustomerSession_Click(object sender, RoutedEventArgs e)
@@ -89,13 +115,6 @@ public sealed partial class DashboardPage : Page
         ViewModel.OpenSelectedFolder();
     }
 
-    private void OpenSubfolder_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button btn && btn.Tag is string sub)
-        {
-            ViewModel.OpenSubfolder(sub);
-        }
-    }
 
     private async void FinishSession_Click(object sender, RoutedEventArgs e)
     {

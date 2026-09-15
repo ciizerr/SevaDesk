@@ -42,13 +42,15 @@ public class SessionRepository : ISessionRepository
             var folderPath = _folderManager.GetCustomerFolderPath(customer.Name, customer.Code);
             var stats = _folderManager.GetFolderStats(folderPath);
 
-            items.Add(new ActiveSessionItem
+            var item = new ActiveSessionItem
             {
                 Session = session,
                 Customer = customer,
                 FolderPath = folderPath,
                 FolderStats = stats
-            });
+            };
+            item.UpdateElapsed();
+            items.Add(item);
         }
 
         return items;
@@ -121,23 +123,63 @@ public class SessionRepository : ISessionRepository
     {
         using var connection = _db.CreateConnection();
         await connection.OpenAsync();
-        await connection.ExecuteAsync("UPDATE sessions SET status = 'Paused' WHERE id = @Id", new { Id = sessionId });
+
+        var existing = await connection.QuerySingleOrDefaultAsync<Session>(
+            "SELECT id, started_at as StartedAt, duration_seconds as DurationSeconds, status FROM sessions WHERE id = @Id", new { Id = sessionId });
+
+        if (existing != null && existing.Status == "Active")
+        {
+            var started = existing.StartedAt.Kind == DateTimeKind.Unspecified
+                ? DateTime.SpecifyKind(existing.StartedAt, DateTimeKind.Utc)
+                : existing.StartedAt;
+            var activeSec = Math.Max(0, (int)(DateTime.UtcNow - started).TotalSeconds);
+            var totalDuration = existing.DurationSeconds + activeSec;
+
+            await connection.ExecuteAsync(
+                "UPDATE sessions SET status = 'Paused', duration_seconds = @Duration WHERE id = @Id",
+                new { Id = sessionId, Duration = totalDuration });
+        }
+        else
+        {
+            await connection.ExecuteAsync("UPDATE sessions SET status = 'Paused' WHERE id = @Id", new { Id = sessionId });
+        }
     }
 
     public async Task ResumeSessionAsync(string sessionId)
     {
         using var connection = _db.CreateConnection();
         await connection.OpenAsync();
-        await connection.ExecuteAsync("UPDATE sessions SET status = 'Active' WHERE id = @Id", new { Id = sessionId });
+        var now = DateTime.UtcNow.ToString("o");
+        await connection.ExecuteAsync(
+            "UPDATE sessions SET status = 'Active', started_at = @StartedAt WHERE id = @Id",
+            new { Id = sessionId, StartedAt = now });
     }
 
     public async Task CompleteSessionAsync(string sessionId)
     {
         using var connection = _db.CreateConnection();
         await connection.OpenAsync();
+
+        var existing = await connection.QuerySingleOrDefaultAsync<Session>(
+            "SELECT id, started_at as StartedAt, duration_seconds as DurationSeconds, status FROM sessions WHERE id = @Id", new { Id = sessionId });
+
+        var endedAt = DateTime.UtcNow;
+        int durationSec = 0;
+        if (existing != null)
+        {
+            durationSec = existing.DurationSeconds;
+            if (existing.Status == "Active")
+            {
+                var started = existing.StartedAt.Kind == DateTimeKind.Unspecified
+                    ? DateTime.SpecifyKind(existing.StartedAt, DateTimeKind.Utc)
+                    : existing.StartedAt;
+                durationSec += Math.Max(0, (int)(endedAt - started).TotalSeconds);
+            }
+        }
+
         await connection.ExecuteAsync(
-            "UPDATE sessions SET status = 'Completed', ended_at = @EndedAt WHERE id = @Id",
-            new { Id = sessionId, EndedAt = DateTime.UtcNow.ToString("o") }
+            "UPDATE sessions SET status = 'Completed', ended_at = @EndedAt, duration_seconds = @Duration WHERE id = @Id",
+            new { Id = sessionId, EndedAt = endedAt.ToString("o"), Duration = durationSec }
         );
     }
 }

@@ -188,8 +188,20 @@
 
                             <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
 
+                            <!-- Empty Cart Placeholder -->
+                            <Border Visibility="{x:Bind local:PaymentsPage.CollapsedIf(ViewModel.HasCartItems), Mode=OneWay}"
+                                    Padding="16" Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="6">
+                                <StackPanel HorizontalAlignment="Center" Spacing="6">
+                                    <FontIcon Glyph="&#xE719;" FontSize="20" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" />
+                                    <TextBlock Text="Bill is empty" FontWeight="SemiBold" FontSize="12" HorizontalAlignment="Center" />
+                                    <TextBlock Text="Tap any service from the Quick Charge Rate Card to add items."
+                                               FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+
                             <!-- Cart Items List -->
-                            <ListView ItemsSource="{x:Bind ViewModel.CartItems, Mode=OneWay}" SelectionMode="None" MaxHeight="220">
+                            <ListView Visibility="{x:Bind local:PaymentsPage.VisibleIf(ViewModel.HasCartItems), Mode=OneWay}"
+                                      ItemsSource="{x:Bind ViewModel.CartItems, Mode=OneWay}" SelectionMode="None" MaxHeight="220">
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="models:CartItem">
                                         <Grid ColumnDefinitions="*,Auto,Auto,Auto" Padding="0,6" VerticalAlignment="Center">

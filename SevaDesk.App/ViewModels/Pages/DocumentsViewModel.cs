@@ -18,7 +18,18 @@ public partial class DocumentsViewModel : ObservableObject
     private ObservableCollection<CompressionPreset> _compressionPresets = [];
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelectedDocument))]
     private DocumentItem? _selectedDocument;
+
+    public bool HasSelectedDocument => SelectedDocument != null;
+
+    partial void OnSelectedDocumentChanged(DocumentItem? value)
+    {
+        RefreshCustomerSubfolders();
+    }
+
+    [ObservableProperty]
+    private ObservableCollection<SubfolderItem> _customerSubfolders = [];
 
     [ObservableProperty]
     private int _unorganisedCount;
@@ -32,7 +43,16 @@ public partial class DocumentsViewModel : ObservableObject
     public DocumentsViewModel()
     {
         InitializePresets();
-        LoadDocuments();
+        _ = LoadDocumentsAsync();
+        AppServices.FileWatcher.FileDetected += OnIncomingFileDetected;
+    }
+
+    private void OnIncomingFileDetected(IncomingFileItem item)
+    {
+        MainWindow.Instance?.DispatcherQueue.TryEnqueue(async () =>
+        {
+            await LoadDocumentsAsync();
+        });
     }
 
     private void InitializePresets()
@@ -73,103 +93,310 @@ public partial class DocumentsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public void LoadDocuments()
+    public async Task LoadDocumentsAsync()
     {
         PendingDocuments.Clear();
         ProcessedDocuments.Clear();
 
-        // Sample pending documents arriving at the counter
-        PendingDocuments.Add(new DocumentItem
-        {
-            Name = "WhatsApp Image 2026-09-14 at 11.23.jpeg",
-            CustomerName = "Ravi Kumar (CUST-0001)",
-            Category = "00_Unorganised",
-            FileSize = "2.4 MB",
-            Extension = ".jpg",
-            Status = "Needs Compression",
-            Glyph = "\uEB9F",
-            CreatedAt = DateTime.Now.AddMinutes(-15)
-        });
+        var activeSessions = (await AppServices.Sessions.GetActiveSessionsAsync()).ToList();
+        var scannedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        PendingDocuments.Add(new DocumentItem
+        // 1. Scan folders for active sessions
+        foreach (var s in activeSessions)
         {
-            Name = "Scanned_Aadhaar_Front_Back.pdf",
-            CustomerName = "Ravi Kumar (CUST-0001)",
-            Category = "00_Unorganised",
-            FileSize = "1.8 MB",
-            Extension = ".pdf",
-            Status = "Ready to Tag",
-            Glyph = "\uE8A5",
-            CreatedAt = DateTime.Now.AddMinutes(-12)
-        });
+            if (Directory.Exists(s.FolderPath))
+            {
+                scannedPaths.Add(s.FolderPath);
+                ScanCustomerFolder(s.FolderPath, $"{s.Customer.Name} ({s.Customer.Code})");
+            }
+        }
 
-        PendingDocuments.Add(new DocumentItem
+        // 2. Also scan any other customer folders in BaseDirectory
+        var baseDir = AppServices.FolderManager.BaseDirectory;
+        if (Directory.Exists(baseDir))
         {
-            Name = "IMG_20260914_120411_Signature.png",
-            CustomerName = "Amit Sharma (CUST-0003)",
-            Category = "00_Unorganised",
-            FileSize = "850 KB",
-            Extension = ".png",
-            Status = "Needs Resize (10-20KB)",
-            Glyph = "\uEDC6",
-            CreatedAt = DateTime.Now.AddMinutes(-8)
-        });
-
-        PendingDocuments.Add(new DocumentItem
-        {
-            Name = "Caste_Certificate_Patwari.pdf",
-            CustomerName = "Sita Devi (CUST-0002)",
-            Category = "00_Unorganised",
-            FileSize = "420 KB",
-            Extension = ".pdf",
-            Status = "Needs Compression (<300KB)",
-            Glyph = "\uE8A5",
-            CreatedAt = DateTime.Now.AddMinutes(-5)
-        });
-
-        // Sample processed documents
-        ProcessedDocuments.Add(new DocumentItem
-        {
-            Name = "Ravi_Kumar_Passport_Photo_45kb.jpg",
-            CustomerName = "Ravi Kumar (CUST-0001)",
-            Category = "02_Applications",
-            FileSize = "42 KB",
-            Extension = ".jpg",
-            Status = "Compressed",
-            Glyph = "\uE73E",
-            CreatedAt = DateTime.Now.AddMinutes(-30)
-        });
-
-        ProcessedDocuments.Add(new DocumentItem
-        {
-            Name = "AdmitCard_SSC_CGL_Tier1.pdf",
-            CustomerName = "Amit Sharma (CUST-0003)",
-            Category = "03_Ready to Print",
-            FileSize = "180 KB",
-            Extension = ".pdf",
-            Status = "Queued for Print",
-            Glyph = "\uE749",
-            CreatedAt = DateTime.Now.AddMinutes(-20)
-        });
+            var customerDirs = Directory.GetDirectories(baseDir);
+            foreach (var dir in customerDirs)
+            {
+                if (!scannedPaths.Contains(dir))
+                {
+                    var dirName = Path.GetFileName(dir);
+                    ScanCustomerFolder(dir, dirName);
+                }
+            }
+        }
 
         UnorganisedCount = PendingDocuments.Count;
         SelectedDocument = PendingDocuments.FirstOrDefault();
     }
 
-    [RelayCommand]
-    public void MoveDocument(string targetCategory)
+    private void ScanCustomerFolder(string customerFolderPath, string customerDisplayName)
     {
+        try
+        {
+            var dirInfo = new DirectoryInfo(customerFolderPath);
+
+            // A. Loose files directly in customer root (Unorganised / pending triage)
+            foreach (var file in dirInfo.GetFiles())
+            {
+                var ext = file.Extension.ToLowerInvariant();
+                var glyph = ext switch
+                {
+                    ".pdf" => "\uE8A5",
+                    ".jpg" or ".jpeg" or ".png" or ".webp" or ".bmp" => "\uEB9F",
+                    ".doc" or ".docx" or ".txt" => "\uE8C1",
+                    _ => "\uE8A5"
+                };
+
+                string sizeStr = file.Length > 1024 * 1024
+                    ? $"{file.Length / (1024.0 * 1024.0):F1} MB"
+                    : $"{Math.Max(1, file.Length / 1024)} KB";
+
+                PendingDocuments.Add(new DocumentItem
+                {
+                    Id = file.FullName,
+                    Name = file.Name,
+                    CustomerName = customerDisplayName,
+                    Category = "Loose Files",
+                    FileSize = sizeStr,
+                    Extension = ext,
+                    Status = "Needs Triage",
+                    Glyph = glyph,
+                    FilePath = file.FullName,
+                    CustomerFolderPath = customerFolderPath,
+                    CreatedAt = file.CreationTime
+                });
+            }
+
+            // B. Subfolders
+            foreach (var subDir in dirInfo.GetDirectories())
+            {
+                if (string.Equals(subDir.Name, "00_Unorganised", StringComparison.OrdinalIgnoreCase))
+                {
+                    foreach (var file in subDir.GetFiles())
+                    {
+                        var ext = file.Extension.ToLowerInvariant();
+                        var glyph = ext switch
+                        {
+                            ".pdf" => "\uE8A5",
+                            ".jpg" or ".jpeg" or ".png" or ".webp" or ".bmp" => "\uEB9F",
+                            ".doc" or ".docx" or ".txt" => "\uE8C1",
+                            _ => "\uE8A5"
+                        };
+
+                        string sizeStr = file.Length > 1024 * 1024
+                            ? $"{file.Length / (1024.0 * 1024.0):F1} MB"
+                            : $"{Math.Max(1, file.Length / 1024)} KB";
+
+                        PendingDocuments.Add(new DocumentItem
+                        {
+                            Id = file.FullName,
+                            Name = file.Name,
+                            CustomerName = customerDisplayName,
+                            Category = "Unorganised",
+                            FileSize = sizeStr,
+                            Extension = ext,
+                            Status = "Needs Triage",
+                            Glyph = glyph,
+                            FilePath = file.FullName,
+                            CustomerFolderPath = customerFolderPath,
+                            CreatedAt = file.CreationTime
+                        });
+                    }
+                    continue;
+                }
+
+                foreach (var file in subDir.GetFiles())
+                {
+                    var ext = file.Extension.ToLowerInvariant();
+                    var glyph = ext switch
+                    {
+                        ".pdf" => "\uE8A5",
+                        ".jpg" or ".jpeg" or ".png" or ".webp" or ".bmp" => "\uEB9F",
+                        ".doc" or ".docx" => "\uE8C1",
+                        _ => "\uE8A5"
+                    };
+
+                    string sizeStr = file.Length > 1024 * 1024
+                        ? $"{file.Length / (1024.0 * 1024.0):F1} MB"
+                        : $"{Math.Max(1, file.Length / 1024)} KB";
+
+                    ProcessedDocuments.Add(new DocumentItem
+                    {
+                        Id = file.FullName,
+                        Name = file.Name,
+                        CustomerName = customerDisplayName,
+                        Category = subDir.Name,
+                        FileSize = sizeStr,
+                        Extension = ext,
+                        Status = "Organized",
+                        Glyph = glyph,
+                        FilePath = file.FullName,
+                        CustomerFolderPath = customerFolderPath,
+                        CreatedAt = file.CreationTime
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DocumentsViewModel] Scan error in {customerFolderPath}: {ex.Message}");
+        }
+    }
+
+    public string? GetCustomerRootFolder(DocumentItem? doc)
+    {
+        if (doc == null) return null;
+
+        if (!string.IsNullOrWhiteSpace(doc.CustomerFolderPath) && Directory.Exists(doc.CustomerFolderPath))
+        {
+            return doc.CustomerFolderPath;
+        }
+
+        if (!string.IsNullOrWhiteSpace(doc.FilePath))
+        {
+            var dir = Path.GetDirectoryName(doc.FilePath);
+            if (!string.IsNullOrWhiteSpace(dir))
+            {
+                var baseDir = AppServices.FolderManager.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var current = dir;
+                while (!string.IsNullOrEmpty(current))
+                {
+                    var parent = Path.GetDirectoryName(current)?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    if (string.Equals(parent, baseDir, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return current;
+                    }
+                    current = Path.GetDirectoryName(current);
+                }
+                return dir;
+            }
+        }
+
+        return null;
+    }
+
+    public void RefreshCustomerSubfolders()
+    {
+        CustomerSubfolders.Clear();
         if (SelectedDocument == null) return;
 
-        var doc = SelectedDocument;
-        PendingDocuments.Remove(doc);
-        doc.Category = targetCategory;
-        doc.Status = $"Moved to {targetCategory}";
-        ProcessedDocuments.Insert(0, doc);
+        var customerRoot = GetCustomerRootFolder(SelectedDocument);
+        if (string.IsNullOrWhiteSpace(customerRoot) || !Directory.Exists(customerRoot)) return;
 
-        UnorganisedCount = PendingDocuments.Count;
-        SelectedDocument = PendingDocuments.FirstOrDefault();
-        StatusMessage = $"'{doc.Name}' moved to {targetCategory}.";
+        // 1. Standard Shared Docs subfolder (always primary for core docs)
+        var sharedPath = Path.Combine(customerRoot, "Shared Docs");
+        int sharedCount = 0;
+        if (Directory.Exists(sharedPath))
+        {
+            try { sharedCount = Directory.GetFiles(sharedPath, "*", SearchOption.TopDirectoryOnly).Length; } catch { }
+        }
+        CustomerSubfolders.Add(new SubfolderItem
+        {
+            DisplayName = "Shared Docs",
+            RelativePath = "Shared Docs",
+            FullPath = sharedPath,
+            Glyph = "\uE8A5",
+            AccentColor = "#0284C7",
+            Description = "Shared Docs",
+            FileCount = sharedCount
+        });
+
+        // 2. All actual customer subfolders on disk
+        try
+        {
+            var dirs = Directory.GetDirectories(customerRoot);
+            foreach (var dir in dirs.OrderBy(d => Path.GetFileName(d)))
+            {
+                var dirName = Path.GetFileName(dir);
+                if (string.Equals(dirName, "Shared Docs", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(dirName, "00_Unorganised", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                int count = 0;
+                try { count = Directory.GetFiles(dir, "*", SearchOption.TopDirectoryOnly).Length; } catch { }
+
+                CustomerSubfolders.Add(new SubfolderItem
+                {
+                    DisplayName = dirName.Replace('_', ' '),
+                    RelativePath = dirName,
+                    FullPath = dir,
+                    Glyph = "\uED25",
+                    AccentColor = "#8B5CF6",
+                    Description = dirName,
+                    FileCount = count
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DocumentsViewModel] Error reading subfolders: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    public async Task MoveDocumentToSubfolderAsync(string subfolderRelativePath)
+    {
+        if (SelectedDocument == null || string.IsNullOrWhiteSpace(SelectedDocument.FilePath)) return;
+
+        var sourcePath = SelectedDocument.FilePath;
+        if (!File.Exists(sourcePath))
+        {
+            StatusMessage = $"File '{SelectedDocument.Name}' no longer exists on disk.";
+            await LoadDocumentsAsync();
+            return;
+        }
+
+        try
+        {
+            var customerRoot = GetCustomerRootFolder(SelectedDocument);
+            if (string.IsNullOrEmpty(customerRoot))
+            {
+                StatusMessage = "Cannot determine customer working folder.";
+                return;
+            }
+
+            var destDir = Path.Combine(customerRoot, subfolderRelativePath);
+            if (!Directory.Exists(destDir))
+            {
+                Directory.CreateDirectory(destDir);
+            }
+
+            var destPath = Path.Combine(destDir, SelectedDocument.Name);
+            if (File.Exists(destPath))
+            {
+                var baseName = Path.GetFileNameWithoutExtension(SelectedDocument.Name);
+                var ext = Path.GetExtension(SelectedDocument.Name);
+                destPath = Path.Combine(destDir, $"{baseName}_{DateTime.Now:HHmmss}{ext}");
+            }
+
+            File.Move(sourcePath, destPath);
+            var movedDocName = SelectedDocument.Name;
+            StatusMessage = $"'{movedDocName}' moved to '{subfolderRelativePath}'.";
+
+            await LoadDocumentsAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Failed to move file: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    public async Task MoveDocumentAsync(string targetCategory)
+    {
+        await MoveDocumentToSubfolderAsync(targetCategory);
+    }
+
+    [RelayCommand]
+    public void OpenFile()
+    {
+        if (SelectedDocument != null && !string.IsNullOrWhiteSpace(SelectedDocument.FilePath) && File.Exists(SelectedDocument.FilePath))
+        {
+            AppServices.FolderManager.OpenFileWithDefaultApp(SelectedDocument.FilePath);
+        }
     }
 
     [RelayCommand]
@@ -177,13 +404,23 @@ public partial class DocumentsViewModel : ObservableObject
     {
         if (SelectedDocument == null) return;
 
-        StatusMessage = $"Applying '{preset.Name}' to {SelectedDocument.Name} (Target: {preset.TargetSize})...";
-        SelectedDocument.Status = $"Compressed to {preset.TargetSize}";
+        StatusMessage = $"Preset '{preset.Name}' applied to {SelectedDocument.Name} (Target: {preset.TargetSize}).";
+        SelectedDocument.Status = $"Target: {preset.TargetSize}";
     }
 
     [RelayCommand]
     public void OpenInExplorer()
     {
+        if (SelectedDocument != null && !string.IsNullOrWhiteSpace(SelectedDocument.FilePath) && File.Exists(SelectedDocument.FilePath))
+        {
+            var dir = Path.GetDirectoryName(SelectedDocument.FilePath);
+            if (!string.IsNullOrWhiteSpace(dir))
+            {
+                AppServices.FolderManager.OpenFolderInExplorer(dir);
+                return;
+            }
+        }
+
         var basePath = AppServices.FolderManager.BaseDirectory;
         AppServices.FolderManager.OpenFolderInExplorer(basePath);
     }

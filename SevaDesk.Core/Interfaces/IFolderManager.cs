@@ -12,4 +12,8 @@ public interface IFolderManager
     IEnumerable<string> GetApplicationSubfolders(string customerFolderPath);
     FolderStats GetFolderStats(string folderPath);
     void OpenFolderInExplorer(string folderPath);
+    IEnumerable<FolderFileItem> GetFolderFiles(string folderPath);
+    bool RenameFile(string oldFullPath, string newFileName, out string newFullPath, out string errorMessage);
+    bool DeleteFile(string filePath, out string errorMessage);
+    void OpenFileWithDefaultApp(string filePath);
 }

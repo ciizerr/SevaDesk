@@ -8,6 +8,10 @@ using Microsoft.UI.Xaml.Navigation;
 using SevaDesk_App.Services;
 using SevaDesk_App.ViewModels.Pages;
 using SevaDesk_App.Views.Pages;
+using SevaDesk.Core.Models;
+using System.IO;
+
+using SevaDesk_App.Views.Flyouts;
 
 namespace SevaDesk_App;
 
@@ -15,6 +19,12 @@ public sealed partial class MainWindow : Window
 {
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
 
     public static MainWindow? Instance { get; private set; }
 
@@ -48,6 +58,9 @@ public sealed partial class MainWindow : Window
             // Initialize Taskbar Widget & Tray Companion
             TaskbarWidgetService.Instance.Initialize(this);
             AppWindow.Closing += AppWindow_Closing;
+
+            // Initialize Global File Watcher Listener
+            InitializeFileWatcherListener();
 
             // Window Sizing according to WinUI 3 rubric
             var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
@@ -247,6 +260,11 @@ public sealed partial class MainWindow : Window
         SetForegroundWindow(hwnd);
     }
 
+    public void NavigateTo(Type pageType, object? parameter = null)
+    {
+        NavFrame.Navigate(pageType, parameter);
+    }
+
     private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
         var behavior = SettingsViewModel.CloseActionBehavior;
@@ -317,4 +335,168 @@ public sealed partial class MainWindow : Window
             Application.Current.Exit();
         }
     }
+
+    #region Global Incoming File Triage
+
+    private IncomingFileItem? _currentIncomingFile;
+
+    private void InitializeFileWatcherListener()
+    {
+        AppServices.FileWatcher.FileDetected += FileWatcher_FileDetected;
+    }
+
+    private void FileWatcher_FileDetected(IncomingFileItem item)
+    {
+        DispatcherQueue.TryEnqueue(async () =>
+        {
+            var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
+            bool isMinimized = IsIconic(hwnd);
+            bool isBackground = GetForegroundWindow() != hwnd;
+
+            if ((isMinimized || isBackground) && SettingsViewModel.IsOverlayWidgetEnabledSetting)
+            {
+                IncomingFileOverlayWidget.Instance.ShowForFile(item);
+            }
+            else
+            {
+                _currentIncomingFile = item;
+                await UpdateTriageBarAsync();
+            }
+        });
+    }
+
+    public void NavigateTo(Type pageType)
+    {
+        NavFrame.Navigate(pageType);
+    }
+
+    public void NotifyIncomingFileRouted()
+    {
+        GlobalTriageBar.IsOpen = false;
+        if (NavFrame.Content is SessionsPage sessionsPage)
+        {
+            sessionsPage.ViewModel.RefreshApplicationFolders();
+        }
+        else if (NavFrame.Content is DocumentsPage docsPage)
+        {
+            _ = docsPage.ViewModel.LoadDocumentsAsync();
+        }
+    }
+
+    private async Task UpdateTriageBarAsync()
+    {
+        if (_currentIncomingFile == null)
+        {
+            GlobalTriageBar.IsOpen = false;
+            return;
+        }
+
+        GlobalTriageBar.Severity = InfoBarSeverity.Informational;
+        GlobalTriageBar.Title = AppServices.Localization.GetString("Triage.DetectedTitle") ?? "Incoming File Detected";
+
+        string sizeStr = _currentIncomingFile.FileSize > 1024 * 1024
+            ? $"{_currentIncomingFile.FileSize / (1024.0 * 1024.0):F1} MB"
+            : $"{Math.Max(1, _currentIncomingFile.FileSize / 1024)} KB";
+
+        var sourceName = Path.GetFileName(_currentIncomingFile.SourceFolder);
+        GlobalTriageBar.Message = $"{_currentIncomingFile.FileName} ({sourceName} • {sizeStr})";
+
+        var activeSessions = (await AppServices.Sessions.GetActiveSessionsAsync()).ToList();
+
+        if (activeSessions.Count == 1)
+        {
+            var singleSession = activeSessions[0];
+            BtnTriageAction.Flyout = null;
+            TxtTriageAction.Text = string.Format(AppServices.Localization.GetString("Triage.MoveToSingle") ?? "Move to {0}", singleSession.Customer.Name);
+            BtnTriageAction.Tag = singleSession;
+            BtnTriageAction.Visibility = Visibility.Visible;
+        }
+        else if (activeSessions.Count > 1)
+        {
+            TxtTriageAction.Text = AppServices.Localization.GetString("Triage.SelectCustomer") ?? "Move to Customer...";
+            BtnTriageAction.Tag = null;
+            BtnTriageAction.Visibility = Visibility.Visible;
+
+            var flyout = new MenuFlyout();
+            foreach (var session in activeSessions)
+            {
+                var s = session;
+                var menuItem = new MenuFlyoutItem
+                {
+                    Text = $"{s.Customer.Name} ({s.Customer.Code})",
+                    Icon = new FontIcon { Glyph = "\uE77B" }
+                };
+                menuItem.Click += async (sender, args) =>
+                {
+                    await RouteIncomingFileToSessionAsync(s);
+                };
+                flyout.Items.Add(menuItem);
+            }
+            BtnTriageAction.Flyout = flyout;
+        }
+        else
+        {
+            // No active customer sessions
+            BtnTriageAction.Flyout = null;
+            TxtTriageAction.Text = AppServices.Localization.GetString("Triage.NoSession") ?? "Open Document Hub";
+            BtnTriageAction.Tag = "documents";
+            BtnTriageAction.Visibility = Visibility.Visible;
+        }
+
+        GlobalTriageBar.IsOpen = true;
+    }
+
+    private async void TriageAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (BtnTriageAction.Tag is ActiveSessionItem session)
+        {
+            await RouteIncomingFileToSessionAsync(session);
+        }
+        else if (BtnTriageAction.Tag is string tag && tag == "documents")
+        {
+            GlobalTriageBar.IsOpen = false;
+            NavFrame.Navigate(typeof(DocumentsPage));
+        }
+    }
+
+    private async Task RouteIncomingFileToSessionAsync(ActiveSessionItem session)
+    {
+        if (_currentIncomingFile == null) return;
+        var file = _currentIncomingFile;
+
+        var success = await AppServices.FileWatcher.RouteFileToCustomerAsync(file.FilePath, session.FolderPath, deleteSource: true);
+        if (success)
+        {
+            GlobalTriageBar.Severity = InfoBarSeverity.Success;
+            GlobalTriageBar.Title = AppServices.Localization.GetString("Common.Success") ?? "Success";
+            GlobalTriageBar.Message = string.Format(AppServices.Localization.GetString("Triage.SuccessMoved") ?? "Moved '{0}' to {1}'s folder.", file.FileName, session.Customer.Name);
+            BtnTriageAction.Visibility = Visibility.Collapsed;
+
+            // Notify active page if it is SessionsPage or DocumentsPage
+            if (NavFrame.Content is SessionsPage sessionsPage)
+            {
+                sessionsPage.ViewModel.RefreshApplicationFolders();
+            }
+            else if (NavFrame.Content is DocumentsPage docsPage)
+            {
+                _ = docsPage.ViewModel.LoadDocumentsAsync();
+            }
+
+            _currentIncomingFile = null;
+
+            // Auto-hide after 3.5 seconds
+            await Task.Delay(3500);
+            if (_currentIncomingFile == null)
+            {
+                GlobalTriageBar.IsOpen = false;
+            }
+        }
+    }
+
+    private void GlobalTriageBar_CloseButtonClick(InfoBar sender, object args)
+    {
+        _currentIncomingFile = null;
+    }
+
+    #endregion
 }

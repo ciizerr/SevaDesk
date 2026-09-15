@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SevaDesk.Core.Models;
+using SevaDesk_App.Services;
 
 namespace SevaDesk_App.ViewModels.Pages;
 
@@ -11,7 +12,10 @@ public partial class PaymentsViewModel : ObservableObject
     private ObservableCollection<ServiceRateItem> _rateCard = [];
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCartItems))]
     private ObservableCollection<CartItem> _cartItems = [];
+
+    public bool HasCartItems => CartItems.Count > 0;
 
     [ObservableProperty]
     private ObservableCollection<TransactionItem> _recentTransactions = [];
@@ -55,12 +59,15 @@ public partial class PaymentsViewModel : ObservableObject
 
     public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusMessage);
 
-    private int _invoiceCounter = 1042;
-
     public PaymentsViewModel()
     {
         InitializeRateCard();
-        LoadSampleTransactions();
+        var savedUpi = AppServices.Database.GetSetting("shop_upi_id");
+        if (!string.IsNullOrWhiteSpace(savedUpi))
+        {
+            ShopUpiId = savedUpi;
+        }
+        _ = LoadPaymentsDataAsync();
         UpdateCartTotals();
     }
 
@@ -77,36 +84,28 @@ public partial class PaymentsViewModel : ObservableObject
         RateCard.Add(new ServiceRateItem { ServiceName = "Urgent Typing / Affidavit", Rate = 80, Unit = "page", Category = "Services", Glyph = "\uE8C1" });
     }
 
-    private void LoadSampleTransactions()
+    public async Task LoadPaymentsDataAsync()
     {
         RecentTransactions.Clear();
-        RecentTransactions.Add(new TransactionItem
+        var payments = await AppServices.Payments.GetRecentPaymentsAsync(50);
+        foreach (var p in payments)
         {
-            InvoiceNo = "INV-1040",
-            CustomerName = "Ravi Kumar",
-            Amount = 150,
-            PaymentMode = "UPI",
-            Status = "Paid",
-            Time = DateTime.Now.AddMinutes(-40)
-        });
-        RecentTransactions.Add(new TransactionItem
-        {
-            InvoiceNo = "INV-1041",
-            CustomerName = "Sita Devi",
-            Amount = 65,
-            PaymentMode = "Cash",
-            Status = "Paid",
-            Time = DateTime.Now.AddMinutes(-18)
-        });
+            RecentTransactions.Add(new TransactionItem
+            {
+                Id = p.Id,
+                InvoiceNo = p.InvoiceNo,
+                CustomerName = p.CustomerName,
+                Amount = p.Amount,
+                PaymentMode = p.PaymentMethod,
+                Status = "Paid",
+                Time = p.PaymentDate.ToLocalTime()
+            });
+        }
 
-        RecalculateDayTotals();
-    }
-
-    private void RecalculateDayTotals()
-    {
-        TodayTotalSales = RecentTransactions.Sum(t => t.Amount);
-        TodayCashTotal = RecentTransactions.Where(t => t.PaymentMode == "Cash").Sum(t => t.Amount);
-        TodayUpiTotal = RecentTransactions.Where(t => t.PaymentMode == "UPI").Sum(t => t.Amount);
+        var summary = await AppServices.Payments.GetTodaySalesSummaryAsync();
+        TodayTotalSales = summary.TotalSales;
+        TodayCashTotal = summary.CashTotal;
+        TodayUpiTotal = summary.UpiTotal;
     }
 
     [RelayCommand]
@@ -173,24 +172,44 @@ public partial class PaymentsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public void CompletePayment(string paymentMode)
+    public async Task CompletePaymentAsync(string paymentMode)
     {
         if (CartItems.Count == 0) return;
 
-        _invoiceCounter++;
-        var invoiceNo = $"INV-{_invoiceCounter}";
-        var newTx = new TransactionItem
+        var invoiceNo = await AppServices.Payments.GenerateNextInvoiceNoAsync();
+        var custName = string.IsNullOrWhiteSpace(CustomerName) ? "Walk-in Customer" : CustomerName.Trim();
+        var itemsSummary = string.Join(", ", CartItems.Select(c => $"{c.ServiceName} x{c.Quantity}"));
+
+        var payment = new Payment
         {
             InvoiceNo = invoiceNo,
-            CustomerName = string.IsNullOrWhiteSpace(CustomerName) ? "Walk-in Customer" : CustomerName,
+            CustomerName = custName,
             Amount = GrandTotal,
+            PaymentMethod = paymentMode,
+            PaymentDate = DateTime.UtcNow,
+            ItemsSummary = itemsSummary
+        };
+
+        await AppServices.Payments.RecordPaymentAsync(payment);
+
+        var newTx = new TransactionItem
+        {
+            Id = payment.Id,
+            InvoiceNo = invoiceNo,
+            CustomerName = custName,
+            Amount = payment.Amount,
             PaymentMode = paymentMode,
             Status = "Paid",
             Time = DateTime.Now
         };
 
         RecentTransactions.Insert(0, newTx);
-        RecalculateDayTotals();
+
+        var summary = await AppServices.Payments.GetTodaySalesSummaryAsync();
+        TodayTotalSales = summary.TotalSales;
+        TodayCashTotal = summary.CashTotal;
+        TodayUpiTotal = summary.UpiTotal;
+
         StatusMessage = $"Payment of ₹{GrandTotal} recorded via {paymentMode} ({invoiceNo})!";
 
         CartItems.Clear();
@@ -201,7 +220,27 @@ public partial class PaymentsViewModel : ObservableObject
     private void UpdateCartTotals()
     {
         GrandTotal = CartItems.Sum(c => c.Total);
+        OnPropertyChanged(nameof(HasCartItems));
         var encName = Uri.EscapeDataString("SevaDesk Cyber Cafe");
         UpiDeepLink = $"upi://pay?pa={ShopUpiId}&pn={encName}&am={GrandTotal}&cu=INR";
+    }
+
+    public void ApplyBillingHandover(BillingHandoverRequest handover)
+    {
+        if (handover == null) return;
+
+        if (!string.IsNullOrWhiteSpace(handover.CustomerName))
+        {
+            CustomerName = handover.CustomerName;
+        }
+
+        CartItems.Clear();
+        foreach (var item in handover.Items)
+        {
+            CartItems.Add(item);
+        }
+
+        UpdateCartTotals();
+        StatusMessage = $"Pre-loaded fees from session for {CustomerName}. Total: ₹{GrandTotal:N0}";
     }
 }

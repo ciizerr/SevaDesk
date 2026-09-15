@@ -12,15 +12,60 @@ public sealed partial class SessionsPage : Page
 {
     public SessionsViewModel ViewModel { get; } = new();
 
+    private readonly DispatcherTimer _elapsedTimer = new() { Interval = System.TimeSpan.FromSeconds(1) };
+
     public SessionsPage()
     {
         InitializeComponent();
+        _elapsedTimer.Tick += (s, e) =>
+        {
+            ViewModel.SelectedSession?.UpdateElapsed();
+        };
+
+        ViewModel.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(ViewModel.SelectedSession))
+            {
+                ViewModel.SelectedSession?.UpdateElapsed();
+                WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty);
+            }
+        };
+        Loaded += (s, e) =>
+        {
+            ViewModel.SelectedSession?.UpdateElapsed();
+            WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty);
+            _elapsedTimer.Start();
+        };
+        Unloaded += (s, e) =>
+        {
+            _elapsedTimer.Stop();
+        };
         ViewModel.Initialize();
     }
 
-    private void Refresh_Click(object sender, RoutedEventArgs e)
+    public static Visibility VisibleIf(bool condition) => condition ? Visibility.Visible : Visibility.Collapsed;
+    public static Visibility CollapsedIf(bool condition) => condition ? Visibility.Collapsed : Visibility.Visible;
+    public static string CollapseGlyph(bool isCollapsed) => isCollapsed ? "\uE70D" : "\uE70E";
+    public static string CollapseToolTip(bool isCollapsed) => isCollapsed ? "Expand Details" : "Collapse Details";
+
+    private void ToggleAppCollapse_Click(object sender, RoutedEventArgs e)
     {
-        ViewModel.LoadSessions();
+        ViewModel.ToggleApplicationCardCollapse();
+    }
+
+    private void AppChip_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.Tag is ApplicationItem app)
+        {
+            ViewModel.SelectApplication(app);
+        }
+    }
+
+    private async void Refresh_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.LoadSessionsAsync();
+        ViewModel.SelectedSession?.UpdateElapsed();
+        WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty);
     }
 
     private async void NewSession_Click(object sender, RoutedEventArgs e)
@@ -91,11 +136,11 @@ public sealed partial class SessionsPage : Page
         }
     }
 
-    private void ToggleStatus_Click(object sender, RoutedEventArgs e)
+    private async void ToggleStatus_Click(object sender, RoutedEventArgs e)
     {
         if (ViewModel.SelectedSession != null)
         {
-            ViewModel.ToggleSessionStatusCommand.Execute(ViewModel.SelectedSession);
+            await ViewModel.ToggleSessionStatusAsync(ViewModel.SelectedSession);
         }
     }
 
@@ -103,7 +148,8 @@ public sealed partial class SessionsPage : Page
     {
         if (ViewModel.SelectedSession != null)
         {
-            var customer = ViewModel.SelectedSession.Customer;
+            var currentSession = ViewModel.SelectedSession;
+            var customer = currentSession.Customer;
             if (customer != null && (string.IsNullOrWhiteSpace(customer.Mobile) || string.IsNullOrWhiteSpace(customer.IdReference)))
             {
                 var dialog = new CompleteSessionDialog(customer)
@@ -124,10 +170,88 @@ public sealed partial class SessionsPage : Page
                 }
             }
 
-            await AppServices.Sessions.CompleteSessionAsync(ViewModel.SelectedSession.Session.Id);
-            ViewModel.CompleteSessionCommand.Execute(ViewModel.SelectedSession);
+            // Prepare handover request if an active citizen application exists
+            BillingHandoverRequest? handover = null;
+            if (ViewModel.ActiveApplication != null)
+            {
+                var app = ViewModel.ActiveApplication;
+                handover = new BillingHandoverRequest
+                {
+                    CustomerName = customer?.Name ?? "Customer",
+                    CustomerId = customer?.Id,
+                    SessionId = currentSession.Session.Id,
+                    Items = []
+                };
+
+                if (app.ServiceCharge > 0)
+                {
+                    handover.Items.Add(new CartItem
+                    {
+                        ServiceName = $"{app.Title} (Service Fee)",
+                        Rate = app.ServiceCharge,
+                        Quantity = 1
+                    });
+                }
+
+                if (app.GovtFee > 0)
+                {
+                    handover.Items.Add(new CartItem
+                    {
+                        ServiceName = $"{app.Title} (Govt Fee)",
+                        Rate = app.GovtFee,
+                        Quantity = 1
+                    });
+                }
+
+                if (handover.Items.Count == 0)
+                {
+                    handover.Items.Add(new CartItem
+                    {
+                        ServiceName = $"{app.Title} Form Fill",
+                        Rate = 100,
+                        Quantity = 1
+                    });
+                }
+            }
+
+            await ViewModel.CompleteSessionAsync(currentSession);
+
+            if (handover != null && MainWindow.Instance != null)
+            {
+                MainWindow.Instance.NavigateTo(typeof(PaymentsPage), handover);
+            }
         }
     }
+
+    private async void LinkApplication_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedSession?.Customer == null) return;
+        var customer = ViewModel.SelectedSession.Customer;
+        var dialog = new LinkApplicationDialog(customer.Name, customer.Id)
+        {
+            XamlRoot = this.XamlRoot
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary || dialog.IsConfirmed)
+        {
+            var app = dialog.BuildApplication();
+            await ViewModel.LinkApplicationCommand.ExecuteAsync(app);
+        }
+    }
+
+    private async void LaunchPortal_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.ActiveApplication != null)
+        {
+            await ViewModel.OpenPortalUrlCommand.ExecuteAsync(ViewModel.ActiveApplication.PortalName);
+        }
+    }
+
+    private async void SetDraft_Click(object sender, RoutedEventArgs e) => await ViewModel.UpdateApplicationStatusCommand.ExecuteAsync("Draft");
+    private async void SetDocsReady_Click(object sender, RoutedEventArgs e) => await ViewModel.UpdateApplicationStatusCommand.ExecuteAsync("Docs Uploaded");
+    private async void SetSubmitted_Click(object sender, RoutedEventArgs e) => await ViewModel.UpdateApplicationStatusCommand.ExecuteAsync("Submitted");
+    private async void SetCompleted_Click(object sender, RoutedEventArgs e) => await ViewModel.UpdateApplicationStatusCommand.ExecuteAsync("Completed");
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
     {

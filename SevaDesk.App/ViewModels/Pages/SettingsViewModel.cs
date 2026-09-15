@@ -114,6 +114,35 @@ public partial class SettingsViewModel : ObservableObject
     private string _databasePath = string.Empty;
 
     // ==========================================
+    // Overlay Widget Settings
+    // ==========================================
+    public static bool IsOverlayWidgetEnabledSetting
+    {
+        get
+        {
+            var val = AppServices.Database.GetSetting("overlay_widget_enabled", "true");
+            return bool.TryParse(val, out var b) ? b : true;
+        }
+        set => AppServices.Database.SetSetting("overlay_widget_enabled", value.ToString().ToLowerInvariant());
+    }
+
+    public static int OverlayPositionSetting
+    {
+        get
+        {
+            var val = AppServices.Database.GetSetting("overlay_position", "0");
+            return int.TryParse(val, out var idx) ? idx : 0;
+        }
+        set => AppServices.Database.SetSetting("overlay_position", value.ToString());
+    }
+
+    [ObservableProperty]
+    private bool _isOverlayWidgetEnabled = true;
+
+    [ObservableProperty]
+    private int _overlayPositionIndex = 0; // 0: Bottom-Right, 1: Top-Right, 2: Bottom-Left, 3: Top-Left
+
+    // ==========================================
     // Tab 5: About & System (Minimal)
     // ==========================================
     [ObservableProperty]
@@ -182,6 +211,10 @@ public partial class SettingsViewModel : ObservableObject
         }
 
         _selectedCloseBehaviorIndex = CloseActionBehavior;
+
+        // Initialize Overlay Widget Settings
+        _isOverlayWidgetEnabled = IsOverlayWidgetEnabledSetting;
+        _overlayPositionIndex = OverlayPositionSetting;
 
         // Initialize active language selection
         _selectedLanguage = AvailableLanguages.FirstOrDefault(l => string.Equals(l.Code, AppServices.Localization.CurrentLanguageCode, StringComparison.OrdinalIgnoreCase))
@@ -280,6 +313,18 @@ public partial class SettingsViewModel : ObservableObject
         AppServices.FileWatcher.SaveSettings();
         AppServices.FileWatcher.RestartWatchers();
         AutoSave("Watched folders updated.");
+    }
+
+    partial void OnIsOverlayWidgetEnabledChanged(bool value)
+    {
+        IsOverlayWidgetEnabledSetting = value;
+        AutoSave("Overlay widget setting updated.");
+    }
+
+    partial void OnOverlayPositionIndexChanged(int value)
+    {
+        OverlayPositionSetting = value;
+        AutoSave("Overlay position updated.");
     }
 
     partial void OnSelectedLanguageChanged(LanguageItem? value)

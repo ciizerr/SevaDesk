@@ -8,6 +8,7 @@
     xmlns:models="using:SevaDesk.Core.Models"
     xmlns:loc="using:SevaDesk_App.Services"
     xmlns:vm="using:SevaDesk_App.ViewModels.Pages"
+    xmlns:local="using:SevaDesk_App.Views.Pages"
     mc:Ignorable="d">
 
     <Grid RowDefinitions="Auto,Auto,*" Padding="24" RowSpacing="16">
@@ -29,7 +30,7 @@
                     </Border>
                 </StackPanel>
                 <TextBlock loc:Loc.Key="Documents.Subtitle"
-                           Text="Triage incoming Bluetooth &amp; WhatsApp files, apply photo/signature compression presets, and sort with 1-click"
+                           Text="Process incoming Bluetooth &amp; WhatsApp files, apply photo/signature compression presets, and sort with 1-click"
                            Style="{StaticResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
@@ -44,7 +45,7 @@
                 <Button Style="{StaticResource AccentButtonStyle}" Click="OpenExplorer_Click">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <FontIcon Glyph="&#xED25;" FontSize="14" />
-                        <TextBlock loc:Loc.Key="Documents.OpenWorkingRootBtn" Text="Open Working Root" />
+                        <TextBlock loc:Loc.Key="Documents.OpenWorkingRootBtn" Text="Open Working Directory" />
                     </StackPanel>
                 </Button>
             </StackPanel>
@@ -67,7 +68,7 @@
                         <Border Grid.Row="0" Padding="14,10" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
                             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                 <FontIcon Glyph="&#xE8B7;" Foreground="#F59E0B" FontSize="14" />
-                                <TextBlock loc:Loc.Key="Documents.IncomingQueueTitle" Text="Pending Files (00_Unorganised)" FontWeight="SemiBold" />
+                                <TextBlock loc:Loc.Key="Documents.IncomingQueueTitle" Text="Unorganised Files (Pending)" FontWeight="SemiBold" />
                             </StackPanel>
                         </Border>
 
@@ -136,8 +137,29 @@
             <!-- Right: Document Inspector & Sort Actions -->
             <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="16">
-                    <!-- Selected Document Card -->
-                    <Border Padding="20" CornerRadius="8"
+                    <!-- Empty State when no document selected -->
+                    <Border Visibility="{x:Bind local:DocumentsPage.CollapsedIf(ViewModel.HasSelectedDocument), Mode=OneWay}"
+                            Padding="28" CornerRadius="8"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                            <Border Width="56" Height="56" CornerRadius="28"
+                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                    HorizontalAlignment="Center">
+                                <FontIcon Glyph="&#xE8A5;" FontSize="24" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Spacing="4" HorizontalAlignment="Center">
+                                <TextBlock Text="No Unorganized File Selected" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center" />
+                                <TextBlock Text="Select a file from the incoming queue to view, apply compression, or move to customer folders."
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" TextAlignment="Center" MaxWidth="320" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Selected Document Card & Sort Actions -->
+                    <Border Visibility="{x:Bind local:DocumentsPage.VisibleIf(ViewModel.HasSelectedDocument), Mode=OneWay}"
+                            Padding="20" CornerRadius="8"
                             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                         <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="16">
@@ -163,33 +185,62 @@
                                                    FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                     </StackPanel>
                                 </StackPanel>
+                                <Button Grid.Column="2" VerticalAlignment="Center" Click="OpenFile_Click" ToolTipService.ToolTip="Open file in default viewer">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE8A7;" FontSize="13" />
+                                        <TextBlock Text="Open" FontSize="12" />
+                                    </StackPanel>
+                                </Button>
                             </Grid>
 
                             <Border Grid.Row="1" Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
 
-                            <!-- 1-Click Move Destination Buttons -->
-                            <StackPanel Grid.Row="2" Spacing="8">
-                                <TextBlock loc:Loc.Key="Documents.InspectorTitle" Text="Quick Sort &amp; Move to Customer Subfolder:" FontWeight="SemiBold" FontSize="13" />
-                                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
-                                    <Button Grid.Column="0" HorizontalAlignment="Stretch" Click="MoveToShared_Click">
+                            <!-- Dynamic Subfolder Move Destination Buttons & New Subfolder Action -->
+                            <StackPanel Grid.Row="2" Spacing="10">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <FontIcon Glyph="&#xE8DE;" FontSize="14" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                        <TextBlock loc:Loc.Key="Documents.InspectorTitle" Text="Quick Sort &amp; Move to Customer Subfolder:" FontWeight="SemiBold" FontSize="13" />
+                                    </StackPanel>
+
+                                    <!-- Quick New Subfolder Button -->
+                                    <Button Grid.Column="1" Click="NewSubfolder_Click" Style="{StaticResource AccentButtonStyle}" Padding="10,5">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <FontIcon Glyph="&#xE8A5;" Foreground="#3B82F6" FontSize="14" />
-                                            <TextBlock loc:Loc.Key="Sessions.TileSharedDocsTitle" Text="01_Shared Docs" />
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Grid.Column="1" HorizontalAlignment="Stretch" Click="MoveToApplications_Click">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <FontIcon Glyph="&#xE7C3;" Foreground="#8B5CF6" FontSize="14" />
-                                            <TextBlock loc:Loc.Key="Sessions.TileApplicationsTitle" Text="02_Applications" />
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Grid.Column="2" HorizontalAlignment="Stretch" Style="{StaticResource AccentButtonStyle}" Click="MoveToPrint_Click">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <FontIcon Glyph="&#xE749;" FontSize="14" />
-                                            <TextBlock loc:Loc.Key="Sessions.TileReadyPrintTitle" Text="03_Ready to Print" />
+                                            <FontIcon Glyph="&#xE710;" FontSize="12" />
+                                            <TextBlock Text="New Subfolder" FontWeight="SemiBold" FontSize="12" />
                                         </StackPanel>
                                     </Button>
                                 </Grid>
+
+                                <!-- Dynamic Customer Subfolders List -->
+                                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled">
+                                    <ItemsControl ItemsSource="{x:Bind ViewModel.CustomerSubfolders, Mode=OneWay}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" Spacing="8" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="models:SubfolderItem">
+                                                <Button Click="MoveToSubfolder_Click" Tag="{x:Bind RelativePath}"
+                                                        Padding="12,8" MinWidth="130" CornerRadius="6"
+                                                        Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                                    <ToolTipService.ToolTip>
+                                                        <ToolTip Content="{x:Bind RelativePath}" />
+                                                    </ToolTipService.ToolTip>
+                                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                                        <FontIcon Grid.Column="0" Glyph="{x:Bind Glyph}" Foreground="{x:Bind AccentColor}" FontSize="15" VerticalAlignment="Center" />
+                                                        <TextBlock Grid.Column="1" Text="{x:Bind DisplayName}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="160" />
+                                                        <Border Grid.Column="2" Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="10" Padding="6,1" VerticalAlignment="Center">
+                                                            <TextBlock Text="{x:Bind FileCount}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                        </Border>
+                                                    </Grid>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
                             </StackPanel>
                         </Grid>
                     </Border>

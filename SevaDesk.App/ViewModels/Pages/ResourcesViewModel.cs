@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SevaDesk.Core.Models;
+using SevaDesk_App.Services;
 
 namespace SevaDesk_App.ViewModels.Pages;
 
@@ -30,92 +31,18 @@ public partial class ResourcesViewModel : ObservableObject
 
     public ResourcesViewModel()
     {
-        InitializeResources();
+        _ = LoadResourcesAsync();
     }
 
-    private void InitializeResources()
+    [RelayCommand]
+    public async Task LoadResourcesAsync()
     {
         AllResources.Clear();
-
-        AllResources.Add(new ResourceItem
+        var items = await AppServices.Resources.GetAllAsync();
+        foreach (var item in items)
         {
-            Title = "Form 49A — New PAN Card Physical Form",
-            Category = "Blank Forms",
-            FileType = "PDF",
-            FileSize = "1.2 MB",
-            Glyph = "\uE8A5",
-            IsFavorite = true
-        });
-
-        AllResources.Add(new ResourceItem
-        {
-            Title = "Income Declaration Affidavit (Standard Format ₹10/₹100 Stamp)",
-            Category = "Affidavits",
-            FileType = "DOCX",
-            FileSize = "45 KB",
-            Glyph = "\uE8C1",
-            IsFavorite = true
-        });
-
-        AllResources.Add(new ResourceItem
-        {
-            Title = "Educational Gap Year Affidavit (College/Job)",
-            Category = "Affidavits",
-            FileType = "DOCX",
-            FileSize = "38 KB",
-            Glyph = "\uE8C1",
-            IsFavorite = true
-        });
-
-        AllResources.Add(new ResourceItem
-        {
-            Title = "Name Correction / Alias Affidavit (Govt Gazette)",
-            Category = "Affidavits",
-            FileType = "DOCX",
-            FileSize = "52 KB",
-            Glyph = "\uE8C1",
-            IsFavorite = false
-        });
-
-        AllResources.Add(new ResourceItem
-        {
-            Title = "Caste Certificate Application Form (State Standard)",
-            Category = "Blank Forms",
-            FileType = "PDF",
-            FileSize = "890 KB",
-            Glyph = "\uE8A5",
-            IsFavorite = false
-        });
-
-        AllResources.Add(new ResourceItem
-        {
-            Title = "Lost Marksheet / Certificate Police Intimation Format",
-            Category = "Affidavits",
-            FileType = "DOCX",
-            FileSize = "34 KB",
-            Glyph = "\uE8C1",
-            IsFavorite = false
-        });
-
-        AllResources.Add(new ResourceItem
-        {
-            Title = "SevaDesk Cyber Café Official Rate Card 2026",
-            Category = "Guidelines",
-            FileType = "PDF",
-            FileSize = "240 KB",
-            Glyph = "\uE749",
-            IsFavorite = true
-        });
-
-        AllResources.Add(new ResourceItem
-        {
-            Title = "Passport Photo Guidelines & Specs Reference",
-            Category = "Guidelines",
-            FileType = "PDF",
-            FileSize = "620 KB",
-            Glyph = "\uEB9F",
-            IsFavorite = false
-        });
+            AllResources.Add(item);
+        }
 
         ApplyFilter();
     }
@@ -130,22 +57,68 @@ public partial class ResourcesViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public void ToggleFavorite(ResourceItem item)
+    public async Task ToggleFavoriteAsync(ResourceItem item)
     {
+        if (item == null) return;
         item.IsFavorite = !item.IsFavorite;
+        await AppServices.Resources.ToggleFavoriteAsync(item.Id, item.IsFavorite);
         ApplyFilter();
     }
 
     [RelayCommand]
     public void QuickPrint(ResourceItem item)
     {
-        StatusMessage = $"Sent '{item.Title}' to default printer.";
+        if (item == null) return;
+        StatusMessage = $"Sent '{item.Title}' to default printer queue.";
     }
 
     [RelayCommand]
-    public void CopyToActiveSession(ResourceItem item)
+    public async Task CopyToActiveSessionAsync(ResourceItem item)
     {
-        StatusMessage = $"Copied '{item.Title}' to Active Customer's 01_Shared Documents folder.";
+        if (item == null) return;
+
+        var activeSessions = (await AppServices.Sessions.GetActiveSessionsAsync()).ToList();
+        var current = activeSessions.FirstOrDefault();
+        if (current == null)
+        {
+            StatusMessage = "No active customer session. Start a customer session first to copy resources.";
+            return;
+        }
+
+        try
+        {
+            var destFolder = Path.Combine(current.FolderPath, "Shared Docs");
+            Directory.CreateDirectory(destFolder);
+
+            var safeTitle = string.Join("_", item.Title.Split(Path.GetInvalidFileNameChars()));
+            var ext = item.FileType.ToLowerInvariant() == "pdf" ? ".pdf" : ".docx";
+            var destPath = Path.Combine(destFolder, $"{safeTitle}{ext}");
+
+            if (item.FilePath != null && File.Exists(item.FilePath))
+            {
+                File.Copy(item.FilePath, destPath, overwrite: true);
+            }
+            else
+            {
+                File.WriteAllText(destPath, $"[SevaDesk Resource Template: {item.Title}]\nCategory: {item.Category}\nCreated: {DateTime.Now}\n");
+            }
+
+            StatusMessage = $"Copied '{item.Title}' to {current.Customer.Name}'s Shared Docs folder.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Failed to copy template: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    public async Task AddResourceAsync(ResourceItem item)
+    {
+        if (item == null) return;
+        var created = await AppServices.Resources.AddCustomResourceAsync(item);
+        AllResources.Insert(0, created);
+        ApplyFilter();
+        StatusMessage = $"Added resource '{created.Title}' to catalog.";
     }
 
     private void ApplyFilter()
@@ -154,7 +127,7 @@ public partial class ResourcesViewModel : ObservableObject
 
         if (SelectedCategory != "All")
         {
-            filtered = filtered.Where(r => r.Category == SelectedCategory);
+            filtered = filtered.Where(r => r.Category.Equals(SelectedCategory, StringComparison.OrdinalIgnoreCase));
         }
 
         if (!string.IsNullOrWhiteSpace(SearchQuery))
@@ -167,3 +140,4 @@ public partial class ResourcesViewModel : ObservableObject
         SelectedResource = FilteredResources.FirstOrDefault();
     }
 }
+

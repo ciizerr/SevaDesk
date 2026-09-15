@@ -473,6 +473,39 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Card: Incoming File Floating Overlay Widget -->
+                    <Border CornerRadius="8" Padding="16,14"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                        <StackPanel Spacing="12">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock loc:Loc.Key="Settings.Storage.OverlayTitle" Text="Floating Incoming File HUD Widget" FontWeight="SemiBold" FontSize="14" />
+                                    <TextBlock loc:Loc.Key="Settings.Storage.OverlayDesc" Text="Pop up an always-on-top overlay widget to 1-click move files when SevaDesk is minimized"
+                                               FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1"
+                                              IsOn="{x:Bind ViewModel.IsOverlayWidgetEnabled, Mode=TwoWay}"
+                                              OnContent="" OffContent="" />
+                            </Grid>
+
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock loc:Loc.Key="Settings.Storage.OverlayPosTitle" Text="Overlay Screen Placement" FontWeight="SemiBold" FontSize="13" />
+                                    <TextBlock loc:Loc.Key="Settings.Storage.OverlayPosDesc" Text="Choose which corner of the monitor the floating triage popup appears in"
+                                               FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                                <ComboBox Grid.Column="1" Width="200"
+                                          SelectedIndex="{x:Bind ViewModel.OverlayPositionIndex, Mode=TwoWay}">
+                                    <ComboBoxItem Content="Bottom-Right (Default)" />
+                                    <ComboBoxItem Content="Top-Right" />
+                                    <ComboBoxItem Content="Bottom-Left" />
+                                    <ComboBoxItem Content="Top-Left" />
+                                </ComboBox>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Card: Auto-Archive Sessions -->
                     <Border CornerRadius="8" Padding="16,12"
                             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"

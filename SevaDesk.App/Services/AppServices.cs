@@ -10,6 +10,9 @@ public static class AppServices
     public static IFolderManager FolderManager { get; } = new FolderManager();
     public static ICustomerRepository Customers { get; } = new CustomerRepository(Database);
     public static ISessionRepository Sessions { get; } = new SessionRepository(Database, Customers, FolderManager);
+    public static IPaymentRepository Payments { get; } = new PaymentRepository(Database);
+    public static IApplicationRepository Applications { get; } = new ApplicationRepository(Database);
+    public static IResourceRepository Resources { get; } = new ResourceRepository(Database);
     public static LocalizationService Localization { get; } = new();
     public static IncomingFileWatcherService FileWatcher => IncomingFileWatcherService.Instance;
 

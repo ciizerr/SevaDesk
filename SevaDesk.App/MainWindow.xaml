@@ -104,7 +104,33 @@
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
-            <Frame x:Name="NavFrame" />
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Global In-App Triage InfoBar for Incoming Files -->
+                <InfoBar x:Name="GlobalTriageBar"
+                         Grid.Row="0"
+                         IsOpen="False"
+                         IsClosable="True"
+                         CloseButtonClick="GlobalTriageBar_CloseButtonClick"
+                         Severity="Informational"
+                         Title="Incoming File Detected"
+                         Margin="16,8,16,0">
+                    <InfoBar.ActionButton>
+                        <Button x:Name="BtnTriageAction" Style="{StaticResource AccentButtonStyle}" Click="TriageAction_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE8B7;" FontSize="12" />
+                                <TextBlock x:Name="TxtTriageAction" Text="Move to Customer" />
+                            </StackPanel>
+                        </Button>
+                    </InfoBar.ActionButton>
+                </InfoBar>
+
+                <Frame x:Name="NavFrame" Grid.Row="1" />
+            </Grid>
         </NavigationView>
     </Grid>
 </Window>

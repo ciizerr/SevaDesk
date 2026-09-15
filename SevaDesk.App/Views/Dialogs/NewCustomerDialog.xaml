@@ -16,7 +16,7 @@
     DefaultButton="Primary"
     mc:Ignorable="d">
 
-    <StackPanel Spacing="16" Width="440">
+    <StackPanel Spacing="12" Margin="0,0,16,0" MinWidth="380" MaxWidth="460">
         <!-- Customer Name AutoSuggestBox with real-time DB lookup -->
         <AutoSuggestBox
             x:Name="NameSuggestBox"
