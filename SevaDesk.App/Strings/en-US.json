@@ -258,5 +258,32 @@
   "Settings.General.CloseExit": "Exit Application",
   "Triage.FileDetectedTitle": "Incoming File Detected",
   "Triage.MoveToCustomerBtn": "Move to Customer",
-  "Triage.DismissBtn": "Dismiss"
+  "Triage.DismissBtn": "Dismiss",
+
+  "Dialog.NewCustomer.Title": "Start Customer Session",
+  "Dialog.NewCustomer.PrimaryBtn": "Start Session",
+  "Dialog.NewCustomer.CloseBtn": "Cancel",
+  "Dialog.NewCustomer.NameHeader": "Customer Name *",
+  "Dialog.NewCustomer.NamePlaceholder": "Type name to search or create...",
+  "Dialog.NewCustomer.ExistingCustomerFound": "Existing customer matched ({0}) — session will link to profile.",
+  "Dialog.NewCustomer.MobileHeader": "Mobile Number",
+  "Dialog.NewCustomer.MobilePlaceholder": "e.g. 9876543210",
+  "Dialog.NewCustomer.VillageHeader": "Village / Locality",
+  "Dialog.NewCustomer.VillagePlaceholder": "e.g. Rampur",
+  "Dialog.NewCustomer.IdRefHeader": "Aadhaar / ID Ref (Optional)",
+  "Dialog.NewCustomer.IdRefPlaceholder": "e.g. Last 4 digits: 1234",
+  "Dialog.NewCustomer.NotesHeader": "Session Notes / Service (Optional)",
+  "Dialog.NewCustomer.NotesPlaceholder": "e.g. PAN application & photo scan",
+
+  "Dialog.CompleteSession.Title": "Complete Session & Update Profile",
+  "Dialog.CompleteSession.Subtitle": "Save contact or ID details for {0} to easily locate documents and records on future visits:",
+  "Dialog.CompleteSession.MobileHeader": "Mobile Number (Recommended)",
+  "Dialog.CompleteSession.MobilePlaceholder": "10-digit mobile number",
+  "Dialog.CompleteSession.IdRefHeader": "Aadhaar (Last 4 Digits) / ID Ref",
+  "Dialog.CompleteSession.IdRefPlaceholder": "e.g. 5678",
+  "Dialog.CompleteSession.VillageHeader": "Village / Locality",
+  "Dialog.CompleteSession.VillagePlaceholder": "e.g. Rampur",
+  "Dialog.CompleteSession.SaveAndFinishBtn": "Save & Finish",
+  "Dialog.CompleteSession.SkipAndFinishBtn": "Skip & Finish",
+  "Dialog.CompleteSession.CancelBtn": "Cancel"
 }

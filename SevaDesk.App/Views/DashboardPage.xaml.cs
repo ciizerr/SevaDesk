@@ -1,5 +1,7 @@
+using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using SevaDesk.Core.Models;
 using SevaDesk_App.Services;
 using SevaDesk_App.ViewModels;
 
@@ -28,16 +30,53 @@ public sealed partial class DashboardPage : Page
         };
 
         var result = await dialog.ShowAsync();
-        if (result == ContentDialogResult.Primary)
+        if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(dialog.CustomerName))
         {
-            var customer = await AppServices.Customers.CreateAsync(new SevaDesk.Core.Models.Customer
+            Customer customer;
+            if (dialog.SelectedExistingCustomer != null)
             {
-                Name = dialog.CustomerName,
-                Mobile = string.IsNullOrWhiteSpace(dialog.Mobile) ? null : dialog.Mobile,
-                Village = string.IsNullOrWhiteSpace(dialog.Village) ? null : dialog.Village,
-                IdReference = string.IsNullOrWhiteSpace(dialog.IdRef) ? null : dialog.IdRef,
-                Notes = string.IsNullOrWhiteSpace(dialog.Notes) ? null : dialog.Notes
-            });
+                customer = dialog.SelectedExistingCustomer;
+                bool changed = false;
+                if (!string.IsNullOrWhiteSpace(dialog.Mobile) && dialog.Mobile != customer.Mobile)
+                {
+                    customer.Mobile = dialog.Mobile;
+                    changed = true;
+                }
+                if (!string.IsNullOrWhiteSpace(dialog.Village) && dialog.Village != customer.Village)
+                {
+                    customer.Village = dialog.Village;
+                    changed = true;
+                }
+                if (!string.IsNullOrWhiteSpace(dialog.IdRef) && dialog.IdRef != customer.IdReference)
+                {
+                    customer.IdReference = dialog.IdRef;
+                    changed = true;
+                }
+                if (changed)
+                {
+                    await AppServices.Customers.UpdateAsync(customer);
+                }
+            }
+            else
+            {
+                var matches = (await AppServices.Customers.SearchAsync(dialog.CustomerName)).ToList();
+                var exact = matches.FirstOrDefault(c => string.Equals(c.Name, dialog.CustomerName, System.StringComparison.OrdinalIgnoreCase));
+                if (exact != null)
+                {
+                    customer = exact;
+                }
+                else
+                {
+                    customer = await AppServices.Customers.CreateAsync(new Customer
+                    {
+                        Name = dialog.CustomerName,
+                        Mobile = string.IsNullOrWhiteSpace(dialog.Mobile) ? null : dialog.Mobile,
+                        Village = string.IsNullOrWhiteSpace(dialog.Village) ? null : dialog.Village,
+                        IdReference = string.IsNullOrWhiteSpace(dialog.IdRef) ? null : dialog.IdRef,
+                        Notes = string.IsNullOrWhiteSpace(dialog.Notes) ? null : dialog.Notes
+                    });
+                }
+            }
 
             await AppServices.Sessions.StartSessionAsync(customer.Id, dialog.Notes);
             await ViewModel.LoadActiveSessionsAsync();
@@ -61,6 +100,27 @@ public sealed partial class DashboardPage : Page
     {
         if (ViewModel.SelectedSession != null)
         {
+            var customer = ViewModel.SelectedSession.Customer;
+            if (customer != null && (string.IsNullOrWhiteSpace(customer.Mobile) || string.IsNullOrWhiteSpace(customer.IdReference)))
+            {
+                var dialog = new CompleteSessionDialog(customer)
+                {
+                    XamlRoot = XamlRoot
+                };
+
+                var res = await dialog.ShowAsync();
+                if (res == ContentDialogResult.Primary)
+                {
+                    dialog.ApplyToCustomer(customer);
+                    await AppServices.Customers.UpdateAsync(customer);
+                }
+                else if (res != ContentDialogResult.Secondary)
+                {
+                    // User canceled
+                    return;
+                }
+            }
+
             await ViewModel.CompleteSessionAsync(ViewModel.SelectedSession.Session.Id);
         }
     }

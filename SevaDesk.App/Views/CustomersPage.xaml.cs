@@ -23,17 +23,46 @@ public sealed partial class CustomersPage : Page
         };
 
         var result = await dialog.ShowAsync();
-        if (result == ContentDialogResult.Primary)
+        if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(dialog.CustomerName))
         {
-            var customer = await ViewModel.CreateCustomerAsync(
-                dialog.CustomerName,
-                dialog.Mobile,
-                dialog.Village,
-                dialog.IdRef,
-                dialog.Notes
-            );
+            SevaDesk.Core.Models.Customer customer;
+            if (dialog.SelectedExistingCustomer != null)
+            {
+                customer = dialog.SelectedExistingCustomer;
+                bool changed = false;
+                if (!string.IsNullOrWhiteSpace(dialog.Mobile) && dialog.Mobile != customer.Mobile)
+                {
+                    customer.Mobile = dialog.Mobile;
+                    changed = true;
+                }
+                if (!string.IsNullOrWhiteSpace(dialog.Village) && dialog.Village != customer.Village)
+                {
+                    customer.Village = dialog.Village;
+                    changed = true;
+                }
+                if (!string.IsNullOrWhiteSpace(dialog.IdRef) && dialog.IdRef != customer.IdReference)
+                {
+                    customer.IdReference = dialog.IdRef;
+                    changed = true;
+                }
+                if (changed)
+                {
+                    await AppServices.Customers.UpdateAsync(customer);
+                }
+            }
+            else
+            {
+                customer = await ViewModel.CreateCustomerAsync(
+                    dialog.CustomerName,
+                    dialog.Mobile,
+                    dialog.Village,
+                    dialog.IdRef,
+                    dialog.Notes
+                );
+            }
 
             await AppServices.Sessions.StartSessionAsync(customer.Id, dialog.Notes);
+            await ViewModel.LoadCustomersAsync();
         }
     }
 

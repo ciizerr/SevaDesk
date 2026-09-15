@@ -97,4 +97,36 @@ public class CustomerRepository : ICustomerRepository
 
         return customer;
     }
+
+    public async Task UpdateAsync(Customer customer)
+    {
+        customer.UpdatedAt = DateTime.UtcNow;
+
+        using var connection = _db.CreateConnection();
+        await connection.OpenAsync();
+
+        const string sql = @"
+            UPDATE customers
+            SET name = @Name,
+                mobile = @Mobile,
+                id_type = @IdType,
+                id_reference = @IdReference,
+                village = @Village,
+                notes = @Notes,
+                updated_at = @UpdatedAt
+            WHERE id = @Id";
+
+        await connection.ExecuteAsync(sql, new
+        {
+            customer.Id,
+            customer.Name,
+            customer.Mobile,
+            customer.IdType,
+            customer.IdReference,
+            customer.Village,
+            customer.Notes,
+            UpdatedAt = customer.UpdatedAt.ToString("o")
+        });
+    }
 }
+

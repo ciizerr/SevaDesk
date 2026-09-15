@@ -258,5 +258,32 @@
   "Settings.General.CloseExit": "ऐप बंद करें",
   "Triage.FileDetectedTitle": "नई फ़ाइल प्राप्त हुई",
   "Triage.MoveToCustomerBtn": "ग्राहक फ़ोल्डर में ले जाएं",
-  "Triage.DismissBtn": "खारिज करें"
+  "Triage.DismissBtn": "खारिज करें",
+
+  "Dialog.NewCustomer.Title": "ग्राहक सत्र शुरू करें",
+  "Dialog.NewCustomer.PrimaryBtn": "सत्र शुरू करें",
+  "Dialog.NewCustomer.CloseBtn": "रद्द करें",
+  "Dialog.NewCustomer.NameHeader": "ग्राहक का नाम *",
+  "Dialog.NewCustomer.NamePlaceholder": "खोजने या नया बनाने के लिए नाम लिखें...",
+  "Dialog.NewCustomer.ExistingCustomerFound": "मौजूदा ग्राहक मिला ({0}) — सत्र प्रोफ़ाइल से जुड़ जाएगा।",
+  "Dialog.NewCustomer.MobileHeader": "मोबाइल नंबर",
+  "Dialog.NewCustomer.MobilePlaceholder": "उदा. 9876543210",
+  "Dialog.NewCustomer.VillageHeader": "गाँव / क्षेत्र",
+  "Dialog.NewCustomer.VillagePlaceholder": "उदा. रामपुर",
+  "Dialog.NewCustomer.IdRefHeader": "आधार / आईडी संदर्भ (वैकल्पिक)",
+  "Dialog.NewCustomer.IdRefPlaceholder": "उदा. अंतिम 4 अंक: 1234",
+  "Dialog.NewCustomer.NotesHeader": "सत्र विवरण / सेवा (वैकल्पिक)",
+  "Dialog.NewCustomer.NotesPlaceholder": "उदा. पैन कार्ड और फोटो स्कैन",
+
+  "Dialog.CompleteSession.Title": "सत्र पूरा करें और विवरण सहेजें",
+  "Dialog.CompleteSession.Subtitle": "{0} के लिए संपर्क या आईडी विवरण सहेजें ताकि भविष्य में रिकॉर्ड आसानी से मिल सकें:",
+  "Dialog.CompleteSession.MobileHeader": "मोबाइल नंबर (अनुशंसित)",
+  "Dialog.CompleteSession.MobilePlaceholder": "10 अंकों का मोबाइल नंबर",
+  "Dialog.CompleteSession.IdRefHeader": "आधार (अंतिम 4 अंक) / आईडी संदर्भ",
+  "Dialog.CompleteSession.IdRefPlaceholder": "उदा. 5678",
+  "Dialog.CompleteSession.VillageHeader": "गाँव / क्षेत्र",
+  "Dialog.CompleteSession.VillagePlaceholder": "उदा. रामपुर",
+  "Dialog.CompleteSession.SaveAndFinishBtn": "सहेजें और पूरा करें",
+  "Dialog.CompleteSession.SkipAndFinishBtn": "छोड़ें और पूरा करें",
+  "Dialog.CompleteSession.CancelBtn": "रद्द करें"
 }

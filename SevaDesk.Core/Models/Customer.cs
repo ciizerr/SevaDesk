@@ -26,4 +26,16 @@ public class Customer
             };
         }
     }
+
+    public string Subtitle
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(Mobile)) parts.Add(Mobile);
+            if (!string.IsNullOrWhiteSpace(Village)) parts.Add(Village);
+            if (!string.IsNullOrWhiteSpace(Code)) parts.Add(Code);
+            return string.Join(" · ", parts);
+        }
+    }
 }

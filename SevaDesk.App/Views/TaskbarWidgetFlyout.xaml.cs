@@ -186,14 +186,95 @@ public sealed partial class TaskbarWidgetFlyout : Window
         HideFlyout();
     }
 
+    private Customer? _selectedQuickCustomer;
+    private CancellationTokenSource? _quickSearchCts;
+
     private async void EndSessionItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button btn && btn.Tag is string sessionId)
         {
+            var item = _sessionItems.FirstOrDefault(s => s.Session.Id == sessionId);
+            var customer = item?.Customer;
+
+            if (customer != null && (string.IsNullOrWhiteSpace(customer.Mobile) || string.IsNullOrWhiteSpace(customer.IdReference)))
+            {
+                var dialog = new CompleteSessionDialog(customer)
+                {
+                    XamlRoot = this.Content.XamlRoot
+                };
+
+                var res = await dialog.ShowAsync();
+                if (res == ContentDialogResult.Primary)
+                {
+                    dialog.ApplyToCustomer(customer);
+                    await AppServices.Customers.UpdateAsync(customer);
+                }
+                else if (res != ContentDialogResult.Secondary)
+                {
+                    // User clicked cancel
+                    return;
+                }
+            }
+
             await AppServices.Sessions.CompleteSessionAsync(sessionId);
             await LoadSessionsAsync();
             await TaskbarWidgetService.Instance.RefreshLiveSessionsAsync();
         }
+    }
+
+    private async void TxtQuickCustomerName_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    {
+        if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput)
+        {
+            var text = sender.Text?.Trim();
+            if (_selectedQuickCustomer != null && !string.Equals(_selectedQuickCustomer.Name, text, StringComparison.OrdinalIgnoreCase))
+            {
+                _selectedQuickCustomer = null;
+            }
+
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                sender.ItemsSource = null;
+                return;
+            }
+
+            _quickSearchCts?.Cancel();
+            _quickSearchCts = new CancellationTokenSource();
+            var token = _quickSearchCts.Token;
+
+            try
+            {
+                await Task.Delay(150, token);
+                if (token.IsCancellationRequested) return;
+
+                var results = await AppServices.Customers.SearchAsync(text);
+                if (!token.IsCancellationRequested)
+                {
+                    sender.ItemsSource = results.ToList();
+                }
+            }
+            catch (TaskCanceledException)
+            {
+            }
+        }
+    }
+
+    private void TxtQuickCustomerName_SuggestionChosen(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)
+    {
+        if (args.SelectedItem is Customer customer)
+        {
+            _selectedQuickCustomer = customer;
+            sender.Text = customer.Name;
+        }
+    }
+
+    private async void TxtQuickCustomerName_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+    {
+        if (args.ChosenSuggestion is Customer customer)
+        {
+            _selectedQuickCustomer = customer;
+        }
+        await ExecuteQuickStartAsync();
     }
 
     private async void QuickStart_Click(object sender, RoutedEventArgs e)
@@ -201,25 +282,29 @@ public sealed partial class TaskbarWidgetFlyout : Window
         await ExecuteQuickStartAsync();
     }
 
-    private async void TxtQuickCustomerName_KeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (e.Key == Windows.System.VirtualKey.Enter)
-        {
-            await ExecuteQuickStartAsync();
-        }
-    }
-
     private async Task ExecuteQuickStartAsync()
     {
         var name = TxtQuickCustomerName.Text?.Trim();
         if (string.IsNullOrWhiteSpace(name)) return;
 
-        TxtQuickCustomerName.Text = string.Empty;
+        Customer? customer = _selectedQuickCustomer;
 
-        var customer = await AppServices.Customers.CreateAsync(new Customer
+        if (customer == null)
         {
-            Name = name
-        });
+            var matches = (await AppServices.Customers.SearchAsync(name)).ToList();
+            customer = matches.FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (customer == null)
+        {
+            customer = await AppServices.Customers.CreateAsync(new Customer
+            {
+                Name = name
+            });
+        }
+
+        TxtQuickCustomerName.Text = string.Empty;
+        _selectedQuickCustomer = null;
 
         var session = await AppServices.Sessions.StartSessionAsync(customer.Id);
         var folder = AppServices.FolderManager.EnsureCustomerWorkingFolder(customer.Name, customer.Code);
