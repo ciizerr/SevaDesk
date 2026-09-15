@@ -227,12 +227,6 @@
   "Settings.About.ResetDesc": "Restore all themes, rates, and configuration values to initial factory defaults",
   "Settings.About.ResetBtn": "Restore Defaults",
 
-  "AboutPage.Title": "About SevaDesk",
-  "AboutPage.Description": "SevaDesk is a specialized desktop workspace platform built for Indian CSC operators and cyber café centers.",
-
-  "HomePage.Title": "Home",
-  "HomePage.Description": "Welcome to SevaDesk Cyber Café Management Platform.",
-
   "Widget.Title": "Live Active Sessions",
   "Widget.ActiveBadge": "Active",
   "Widget.NoActiveSessions": "No active sessions currently running",

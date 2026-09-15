@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="SevaDesk_App.Views.Dialogs.CompleteSessionDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:loc="using:SevaDesk_App.Services"
+    loc:Loc.Key="Dialog.CompleteSession.Title"
+    Title="Complete Session &amp; Update Profile"
+    loc:Loc.PrimaryButtonKey="Dialog.CompleteSession.SaveAndFinishBtn"
+    PrimaryButtonText="Save &amp; Finish"
+    loc:Loc.SecondaryButtonKey="Dialog.CompleteSession.SkipAndFinishBtn"
+    SecondaryButtonText="Skip &amp; Finish"
+    loc:Loc.CloseButtonKey="Dialog.CompleteSession.CancelBtn"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary"
+    mc:Ignorable="d">
+
+    <StackPanel Spacing="14" Width="440">
+        <TextBlock x:Name="TxtPromptSubtitle"
+                   TextWrapping="Wrap"
+                   FontSize="13"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+        <TextBox x:Name="TxtMobile"
+                 loc:Loc.HeaderKey="Dialog.CompleteSession.MobileHeader"
+                 Header="Mobile Number (Recommended)"
+                 loc:Loc.PlaceholderKey="Dialog.CompleteSession.MobilePlaceholder"
+                 PlaceholderText="10-digit mobile number"
+                 InputScope="TelephoneNumber" />
+
+        <Grid ColumnDefinitions="*,*">
+            <TextBox x:Name="TxtIdRef"
+                     Grid.Column="0"
+                     loc:Loc.HeaderKey="Dialog.CompleteSession.IdRefHeader"
+                     Header="Aadhaar (Last 4 Digits) / ID Ref"
+                     Margin="0,0,8,0"
+                     loc:Loc.PlaceholderKey="Dialog.CompleteSession.IdRefPlaceholder"
+                     PlaceholderText="e.g. 5678"
+                     InputScope="Number" />
+
+            <TextBox x:Name="TxtVillage"
+                     Grid.Column="1"
+                     loc:Loc.HeaderKey="Dialog.CompleteSession.VillageHeader"
+                     Header="Village / Locality"
+                     Margin="8,0,0,0"
+                     loc:Loc.PlaceholderKey="Dialog.CompleteSession.VillagePlaceholder"
+                     PlaceholderText="e.g. Rampur" />
+        </Grid>
+
+        <Border Background="{ThemeResource SystemFillColorAttentionBackgroundBrush}"
+                CornerRadius="6"
+                Padding="10,8">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <FontIcon Glyph="&#xE946;" FontSize="14" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Center" />
+                <TextBlock Text="Tip: Saving phone or Aadhaar last 4 digits allows instant 1-click lookup when this customer returns."
+                           FontSize="11"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</ContentDialog>

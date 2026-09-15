@@ -5,9 +5,9 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
-using SevaDesk_App.Pages;
 using SevaDesk_App.Services;
-using SevaDesk_App.Views;
+using SevaDesk_App.ViewModels.Pages;
+using SevaDesk_App.Views.Pages;
 
 namespace SevaDesk_App;
 
@@ -249,7 +249,7 @@ public sealed partial class MainWindow : Window
 
     private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
-        var behavior = ViewModels.SettingsViewModel.CloseActionBehavior;
+        var behavior = SettingsViewModel.CloseActionBehavior;
         if (behavior == 1) // Minimize to Tray
         {
             args.Cancel = true;
@@ -302,7 +302,7 @@ public sealed partial class MainWindow : Window
         {
             if (chkRemember.IsChecked == true)
             {
-                ViewModels.SettingsViewModel.CloseActionBehavior = 1;
+                SettingsViewModel.CloseActionBehavior = 1;
             }
             AppWindow.Hide();
             TaskbarWidgetService.Instance.ShowNotification("SevaDesk Running in Background", "Customer sessions remain active in the system tray. Click the tray icon to restore.");
@@ -311,7 +311,7 @@ public sealed partial class MainWindow : Window
         {
             if (chkRemember.IsChecked == true)
             {
-                ViewModels.SettingsViewModel.CloseActionBehavior = 2;
+                SettingsViewModel.CloseActionBehavior = 2;
             }
             TaskbarWidgetService.Instance.Dispose();
             Application.Current.Exit();
