@@ -293,21 +293,11 @@ public sealed partial class WorkingFolderBrowserControl : UserControl
             var targetDir = CurrentSubfolderFullPath;
             if (!Directory.Exists(targetDir)) Directory.CreateDirectory(targetDir);
 
-            var picker = new FileOpenPicker();
-            picker.SuggestedStartLocation = PickerLocationId.Desktop;
-            picker.FileTypeFilter.Add("*");
-
-            if (MainWindow.Instance != null)
-            {
-                var hwnd = Microsoft.UI.Win32Interop.GetWindowFromWindowId(MainWindow.Instance.AppWindow.Id);
-                InitializeWithWindow.Initialize(picker, hwnd);
-            }
-
-            var file = await picker.PickSingleFileAsync();
+            var file = await AppServices.Pickers.PickFileAsync(["*"]);
             if (file != null)
             {
-                var destPath = Path.Combine(targetDir, file.Name);
-                File.Copy(file.Path, destPath, overwrite: true);
+                var destPath = Path.Combine(targetDir, Path.GetFileName(file));
+                File.Copy(file, destPath, overwrite: true);
                 RefreshFolder_Click(this, new RoutedEventArgs());
             }
         }
@@ -318,28 +308,19 @@ public sealed partial class WorkingFolderBrowserControl : UserControl
     {
         if (string.IsNullOrWhiteSpace(CustomerFolderPath)) return;
 
-        var input = new TextBox
-        {
-            PlaceholderText = "e.g. SSC CGL, PAN Card, Scholarship",
-            Margin = new Thickness(0, 8, 0, 0)
-        };
+        var (result, rawName) = await AppServices.Dialogs.ShowInputAsync(
+            "Create Application Subfolder",
+            "",
+            "e.g. SSC CGL, PAN Card, Scholarship",
+            "Create",
+            "Cancel"
+        );
 
-        var dialog = new ContentDialog
+        if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(rawName))
         {
-            Title = "Create Application Subfolder",
-            Content = input,
-            PrimaryButtonText = "Create",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = this.XamlRoot
-        };
-
-        var result = await dialog.ShowAsync();
-        if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(input.Text))
-        {
-            AppServices.FolderManager.EnsureApplicationSubfolder(CustomerFolderPath, input.Text.Trim());
+            AppServices.FolderManager.EnsureApplicationSubfolder(CustomerFolderPath, rawName.Trim());
             RefreshSubfolderStrip();
-            SelectSubfolder(input.Text.Trim());
+            SelectSubfolder(rawName.Trim());
         }
     }
 
@@ -454,14 +435,7 @@ public sealed partial class WorkingFolderBrowserControl : UserControl
         else
         {
             item.IsRenaming = false;
-            var dialog = new ContentDialog
-            {
-                Title = "Rename Failed",
-                Content = error,
-                CloseButtonText = "OK",
-                XamlRoot = this.XamlRoot
-            };
-            await dialog.ShowAsync();
+            await AppServices.Dialogs.ShowAlertAsync("Rename Failed", error);
         }
     }
 
@@ -482,17 +456,7 @@ public sealed partial class WorkingFolderBrowserControl : UserControl
                 AppServices.Localization.GetString("FolderBrowser.DeleteConfirmMessage", "Are you sure you want to permanently delete '{0}'?"),
                 item.Name);
 
-            var dialog = new ContentDialog
-            {
-                Title = title,
-                Content = msg,
-                PrimaryButtonText = "Delete",
-                CloseButtonText = "Cancel",
-                DefaultButton = ContentDialogButton.Close,
-                XamlRoot = this.XamlRoot
-            };
-
-            var res = await dialog.ShowAsync();
+            var res = await AppServices.Dialogs.ShowConfirmationAsync(title, msg, "Delete", "Cancel");
             if (res == ContentDialogResult.Primary)
             {
                 if (AppServices.FolderManager.DeleteFile(item.FullPath, out string err))
@@ -504,14 +468,7 @@ public sealed partial class WorkingFolderBrowserControl : UserControl
                 }
                 else
                 {
-                    var errDialog = new ContentDialog
-                    {
-                        Title = "Delete Failed",
-                        Content = err,
-                        CloseButtonText = "OK",
-                        XamlRoot = this.XamlRoot
-                    };
-                    await errDialog.ShowAsync();
+                    await AppServices.Dialogs.ShowAlertAsync("Delete Failed", err);
                 }
             }
         }

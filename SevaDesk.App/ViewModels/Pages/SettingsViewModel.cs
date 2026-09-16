@@ -410,22 +410,12 @@ public partial class SettingsViewModel : StatusViewModel
     {
         try
         {
-            var picker = new Windows.Storage.Pickers.FolderPicker();
-            if (MainWindow.Instance != null)
+            var folderPath = await AppServices.Pickers.PickFolderAsync();
+            if (folderPath != null && !string.IsNullOrWhiteSpace(folderPath))
             {
-                var hwnd = Win32Interop.GetWindowFromWindowId(MainWindow.Instance.AppWindow.Id);
-                InitializeWithWindow.Initialize(picker, hwnd);
-            }
-
-            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.Desktop;
-            picker.FileTypeFilter.Add("*");
-
-            var folder = await picker.PickSingleFolderAsync();
-            if (folder != null && !string.IsNullOrWhiteSpace(folder.Path))
-            {
-                WorkingRootPath = folder.Path;
-                AppServices.FolderManager.SetBaseDirectory(folder.Path);
-                AppServices.Database.SetSetting("working_root_path", folder.Path);
+                WorkingRootPath = folderPath;
+                AppServices.FolderManager.SetBaseDirectory(folderPath);
+                AppServices.Database.SetSetting("working_root_path", folderPath);
                 AppServices.FileWatcher.RestartWatchers();
                 AutoSave("Working folder changed successfully.");
             }
@@ -441,25 +431,15 @@ public partial class SettingsViewModel : StatusViewModel
     {
         try
         {
-            var picker = new Windows.Storage.Pickers.FolderPicker();
-            if (MainWindow.Instance != null)
+            var folderPath = await AppServices.Pickers.PickFolderAsync();
+            if (folderPath != null && !string.IsNullOrWhiteSpace(folderPath))
             {
-                var hwnd = Win32Interop.GetWindowFromWindowId(MainWindow.Instance.AppWindow.Id);
-                InitializeWithWindow.Initialize(picker, hwnd);
-            }
-
-            picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder;
-            picker.FileTypeFilter.Add("*");
-
-            var folder = await picker.PickSingleFolderAsync();
-            if (folder != null && !string.IsNullOrWhiteSpace(folder.Path))
-            {
-                if (!CustomWatchFolders.Contains(folder.Path))
+                if (!CustomWatchFolders.Contains(folderPath))
                 {
-                    CustomWatchFolders.Add(folder.Path);
+                    CustomWatchFolders.Add(folderPath);
                     AppServices.FileWatcher.SaveSettings();
                     AppServices.FileWatcher.RestartWatchers();
-                    AutoSave($"Added watched folder: {folder.Name}");
+                    AutoSave($"Added watched folder: {Path.GetFileName(folderPath)}");
                 }
             }
         }

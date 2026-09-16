@@ -15,6 +15,8 @@ public static class AppServices
     public static IResourceRepository Resources { get; } = new ResourceRepository(Database);
     public static LocalizationService Localization { get; } = new();
     public static IncomingFileWatcherService FileWatcher => IncomingFileWatcherService.Instance;
+    public static IDialogService Dialogs { get; } = new DialogService();
+    public static IPickerService Pickers { get; } = new PickerService();
 
     public static void Initialize()
     {

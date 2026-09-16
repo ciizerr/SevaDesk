@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SevaDesk_App.ViewModels.Pages;
+using SevaDesk_App.Services;
 using SevaDesk.Core.Models;
 
 namespace SevaDesk_App.Views.Pages;
@@ -71,17 +72,13 @@ public sealed partial class ApplicationsPage : Page
     {
         if (ViewModel.SelectedTemplate == null) return;
 
-        var confirmDialog = new ContentDialog
-        {
-            XamlRoot = this.XamlRoot,
-            Title = "Delete Form Template?",
-            Content = $"Are you sure you want to remove '{ViewModel.SelectedTemplate.Title}' from the scheme catalog?",
-            PrimaryButtonText = "Delete",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Close
-        };
+        var res = await AppServices.Dialogs.ShowConfirmationAsync(
+            "Delete Form Template?",
+            $"Are you sure you want to remove '{ViewModel.SelectedTemplate.Title}' from the scheme catalog?",
+            "Delete",
+            "Cancel"
+        );
 
-        var res = await confirmDialog.ShowAsync();
         if (res == ContentDialogResult.Primary)
         {
             await ViewModel.DeleteTemplateAsync();
@@ -139,7 +136,6 @@ public sealed partial class ApplicationsPage : Page
 
         var dialog = new ContentDialog
         {
-            XamlRoot = this.XamlRoot,
             Title = "Register New Citizen Application",
             Content = new ScrollViewer
             {
@@ -171,7 +167,7 @@ public sealed partial class ApplicationsPage : Page
             DefaultButton = ContentDialogButton.Primary
         };
 
-        var res = await dialog.ShowAsync();
+        var res = await AppServices.Dialogs.ShowCustomDialogAsync(dialog);
         if (res == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(txtTitle.Text))
         {
             var newApp = new ApplicationItem

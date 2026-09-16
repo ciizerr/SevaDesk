@@ -281,34 +281,17 @@ public sealed partial class SessionsPage : Page
     {
         if (ViewModel.SelectedSession == null) return;
 
-        var txtName = new TextBox
-        {
-            PlaceholderText = "e.g. PMS, SSC_CGL, NSP, GDS",
-            Margin = new Thickness(0, 8, 0, 0)
-        };
+        var (result, rawName) = await Services.AppServices.Dialogs.ShowInputAsync(
+            Services.AppServices.Localization.GetString("Sessions.CreateFolderDialogTitle"),
+            Services.AppServices.Localization.GetString("Sessions.CreateFolderDialogPrompt"),
+            "e.g. PMS, SSC_CGL, NSP, GDS",
+            Services.AppServices.Localization.GetString("Common.Add"),
+            Services.AppServices.Localization.GetString("Common.Cancel")
+        );
 
-        var dialog = new ContentDialog
+        if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(rawName))
         {
-            XamlRoot = this.XamlRoot,
-            Title = Services.AppServices.Localization.GetString("Sessions.CreateFolderDialogTitle"),
-            Content = new StackPanel
-            {
-                Spacing = 6,
-                Children =
-                {
-                    new TextBlock { Text = Services.AppServices.Localization.GetString("Sessions.CreateFolderDialogPrompt") },
-                    txtName
-                }
-            },
-            PrimaryButtonText = Services.AppServices.Localization.GetString("Common.Add"),
-            CloseButtonText = Services.AppServices.Localization.GetString("Common.Cancel"),
-            DefaultButton = ContentDialogButton.Primary
-        };
-
-        var result = await dialog.ShowAsync();
-        if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(txtName.Text))
-        {
-            ViewModel.CreateApplicationFolderCommand.Execute(txtName.Text.Trim());
+            ViewModel.CreateApplicationFolderCommand.Execute(rawName.Trim());
         }
     }
 

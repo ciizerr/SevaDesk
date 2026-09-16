@@ -61,38 +61,14 @@ public sealed partial class DocumentsPage : Page
             return;
         }
 
-        var input = new TextBox
-        {
-            PlaceholderText = "e.g. SSC CGL, PAN Card, Scholarship",
-            Margin = new Thickness(0, 4, 0, 0)
-        };
-
-        var dialog = new ContentDialog
-        {
-            Title = "Create Customer Subfolder",
-            Content = new StackPanel
-            {
-                Spacing = 10,
-                Children =
-                {
-                    new TextBlock
-                    {
-                        Text = $"Target: {ViewModel.SelectedDocument.CustomerName}",
-                        FontSize = 12,
-                        Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
-                    },
-                    input
-                }
-            },
-            PrimaryButtonText = "Create & Move File",
-            SecondaryButtonText = "Create Only",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = this.XamlRoot
-        };
-
-        var result = await dialog.ShowAsync();
-        var rawName = input.Text?.Trim();
+        var (result, rawName) = await AppServices.Dialogs.ShowInputAsync(
+            "Create Customer Subfolder",
+            $"Target: {ViewModel.SelectedDocument.CustomerName}",
+            "e.g. SSC CGL, PAN Card, Scholarship",
+            "Create & Move File",
+            "Create Only"
+        );
+        rawName = rawName?.Trim();
         if (string.IsNullOrWhiteSpace(rawName)) return;
 
         try

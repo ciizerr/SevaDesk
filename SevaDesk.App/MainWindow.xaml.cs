@@ -59,6 +59,13 @@ public sealed partial class MainWindow : Window
             TaskbarWidgetService.Instance.Initialize(this);
             AppWindow.Closing += AppWindow_Closing;
 
+            RootGrid.Loaded += (s, e) => 
+            {
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+                PickerService.Initialize(hwnd);
+                DialogService.Initialize(RootGrid.XamlRoot);
+            };
+
             // Initialize Global File Watcher Listener
             InitializeFileWatcherListener();
 
