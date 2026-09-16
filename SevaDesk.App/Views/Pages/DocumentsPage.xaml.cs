@@ -106,4 +106,21 @@ public sealed partial class DocumentsPage : Page
     {
         await ViewModel.MoveDocumentToSubfolderAsync("Ready to Print");
     }
+
+    private void DocNav_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+    {
+        if (args.SelectedItem is NavigationViewItem item)
+        {
+            if (item.Tag.ToString() == "Studio")
+            {
+                OrgView.Visibility = Visibility.Collapsed;
+                StudioView.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                OrgView.Visibility = Visibility.Visible;
+                StudioView.Visibility = Visibility.Collapsed;
+            }
+        }
+    }
 }

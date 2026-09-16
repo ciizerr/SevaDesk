@@ -9,6 +9,7 @@
     xmlns:loc="using:SevaDesk_App.Services"
     xmlns:vm="using:SevaDesk_App.ViewModels.Pages"
     xmlns:local="using:SevaDesk_App.Views.Pages"
+    xmlns:controls="using:SevaDesk_App.Views.Controls"
     mc:Ignorable="d">
 
     <Grid RowDefinitions="Auto,Auto,*" Padding="24" RowSpacing="16">
@@ -52,10 +53,26 @@
         </Grid>
 
 
-        <!-- 2 Column Layout: Incoming Queue & Presets on Left, Inspector & Sorting on Right -->
-        <Grid Grid.Row="2" ColumnDefinitions="420,*" ColumnSpacing="16">
-            <!-- Left: Incoming Unorganised Queue & Compression Presets -->
-            <Grid RowDefinitions="*,Auto" RowSpacing="12">
+        <!-- NavigationView for Tabs -->
+        <NavigationView x:Name="DocNav" Grid.Row="2" PaneDisplayMode="Top" IsBackButtonVisible="Collapsed" SelectionChanged="DocNav_SelectionChanged">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="Organization" Tag="Org">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE8B7;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Document Studio" Tag="Studio">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE70F;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+
+            <Grid Margin="0,16,0,0">
+                <!-- Organization View -->
+                <Grid x:Name="OrgView" ColumnDefinitions="420,*" ColumnSpacing="16">
+                    <!-- Left: Incoming Unorganised Queue & Compression Presets -->
+                    <Grid RowDefinitions="*,Auto" RowSpacing="12">
                 <!-- Pending Queue Card -->
                 <Border Grid.Row="0" CornerRadius="8"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -279,6 +296,11 @@
                     </Border>
                 </StackPanel>
             </ScrollViewer>
+            </Grid>
+
+            <!-- Document Studio View -->
+            <controls:DocumentStudioControl x:Name="StudioView" Visibility="Collapsed" />
         </Grid>
+    </NavigationView>
     </Grid>
 </Page>

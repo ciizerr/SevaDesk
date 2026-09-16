@@ -53,8 +53,7 @@
             Padding="14,10,14,10"
             CornerRadius="8"
             Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
-            BorderThickness="1"
-            Shadow="{ThemeResource SharedShadow}">
+            BorderThickness="1">
         <Border.RenderTransform>
             <TranslateTransform x:Name="ToastTransform" Y="30" />
         </Border.RenderTransform>

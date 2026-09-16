@@ -17,6 +17,8 @@ public static class AppServices
     public static IncomingFileWatcherService FileWatcher => IncomingFileWatcherService.Instance;
     public static IDialogService Dialogs { get; } = new DialogService();
     public static IPickerService Pickers { get; } = new PickerService();
+    public static IImageProcessingService ImageProcessing { get; } = new ImageProcessingService();
+    public static IPdfGenerationService PdfGeneration { get; } = new PdfGenerationService();
 
     public static void Initialize()
     {
