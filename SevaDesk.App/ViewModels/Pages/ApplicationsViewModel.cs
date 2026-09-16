@@ -7,7 +7,7 @@ using Windows.System;
 
 namespace SevaDesk_App.ViewModels.Pages;
 
-public partial class ApplicationsViewModel : ObservableObject
+public partial class ApplicationsViewModel : StatusViewModel
 {
     // --- Top View Switcher ---
     [ObservableProperty]
@@ -50,11 +50,6 @@ public partial class ApplicationsViewModel : ObservableObject
     [ObservableProperty]
     private string _filterStatus = "All";
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasStatusMessage))]
-    private string _statusMessage = string.Empty;
-
-    public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusMessage);
 
     public ApplicationsViewModel()
     {
@@ -101,7 +96,7 @@ public partial class ApplicationsViewModel : ObservableObject
         };
         Templates.Insert(0, newTmpl);
         SelectedTemplate = newTmpl;
-        StatusMessage = "Draft template created. Fill in details and click Save.";
+        ShowInfo("Draft template created. Fill in details and click Save.");
     }
 
     [RelayCommand]
@@ -110,7 +105,7 @@ public partial class ApplicationsViewModel : ObservableObject
         if (SelectedTemplate == null) return;
         if (string.IsNullOrWhiteSpace(SelectedTemplate.Title))
         {
-            StatusMessage = "Template title cannot be empty.";
+            ShowWarning("Template title cannot be empty.");
             return;
         }
 
@@ -118,12 +113,12 @@ public partial class ApplicationsViewModel : ObservableObject
         if (existing == null)
         {
             await AppServices.Applications.CreateTemplateAsync(SelectedTemplate);
-            StatusMessage = $"Template '{SelectedTemplate.Title}' saved to catalog.";
+            ShowSuccess($"Template '{SelectedTemplate.Title}' saved to catalog.");
         }
         else
         {
             await AppServices.Applications.UpdateTemplateAsync(SelectedTemplate);
-            StatusMessage = $"Template '{SelectedTemplate.Title}' updated.";
+            ShowSuccess($"Template '{SelectedTemplate.Title}' updated.");
         }
         OnPropertyChanged(nameof(Templates));
     }
@@ -136,7 +131,7 @@ public partial class ApplicationsViewModel : ObservableObject
         await AppServices.Applications.DeleteTemplateAsync(SelectedTemplate.Id);
         Templates.Remove(SelectedTemplate);
         SelectedTemplate = Templates.FirstOrDefault();
-        StatusMessage = $"Template '{title}' deleted from catalog.";
+        ShowInfo($"Template '{title}' deleted from catalog.");
     }
 
     // --- Submissions Commands ---
@@ -188,7 +183,7 @@ public partial class ApplicationsViewModel : ObservableObject
         }
         catch
         {
-            StatusMessage = $"Failed to launch {url}";
+            ShowError($"Failed to launch {url}");
         }
     }
 
@@ -199,7 +194,7 @@ public partial class ApplicationsViewModel : ObservableObject
         SelectedApplication.Status = newStatus;
         SelectedApplication.UpdatedAt = DateTime.UtcNow;
         await AppServices.Applications.UpdateAsync(SelectedApplication);
-        StatusMessage = $"Status updated to '{newStatus}' for {SelectedApplication.Title}.";
+        ShowSuccess($"Status updated to '{newStatus}' for {SelectedApplication.Title}.");
         UpdateChecklistForSelected();
         OnPropertyChanged(nameof(Applications));
     }
@@ -211,6 +206,6 @@ public partial class ApplicationsViewModel : ObservableObject
         var created = await AppServices.Applications.CreateAsync(newApp);
         Applications.Insert(0, created);
         SelectedApplication = created;
-        StatusMessage = $"Application '{created.Title}' registered.";
+        ShowSuccess($"Application '{created.Title}' registered.");
     }
 }

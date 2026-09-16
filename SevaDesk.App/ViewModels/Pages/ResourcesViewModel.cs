@@ -6,7 +6,7 @@ using SevaDesk_App.Services;
 
 namespace SevaDesk_App.ViewModels.Pages;
 
-public partial class ResourcesViewModel : ObservableObject
+public partial class ResourcesViewModel : StatusViewModel
 {
     [ObservableProperty]
     private ObservableCollection<ResourceItem> _allResources = [];
@@ -23,11 +23,6 @@ public partial class ResourcesViewModel : ObservableObject
     [ObservableProperty]
     private string _selectedCategory = "All";
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasStatusMessage))]
-    private string _statusMessage = string.Empty;
-
-    public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusMessage);
 
     public ResourcesViewModel()
     {
@@ -69,7 +64,7 @@ public partial class ResourcesViewModel : ObservableObject
     public void QuickPrint(ResourceItem item)
     {
         if (item == null) return;
-        StatusMessage = $"Sent '{item.Title}' to default printer queue.";
+        ShowSuccess($"Sent '{item.Title}' to default printer queue.");
     }
 
     [RelayCommand]
@@ -81,7 +76,7 @@ public partial class ResourcesViewModel : ObservableObject
         var current = activeSessions.FirstOrDefault();
         if (current == null)
         {
-            StatusMessage = "No active customer session. Start a customer session first to copy resources.";
+            ShowWarning("No active customer session. Start a customer session first to copy resources.");
             return;
         }
 
@@ -103,11 +98,11 @@ public partial class ResourcesViewModel : ObservableObject
                 File.WriteAllText(destPath, $"[SevaDesk Resource Template: {item.Title}]\nCategory: {item.Category}\nCreated: {DateTime.Now}\n");
             }
 
-            StatusMessage = $"Copied '{item.Title}' to {current.Customer.Name}'s Shared Docs folder.";
+            ShowSuccess($"Copied '{item.Title}' to {current.Customer.Name}'s Shared Docs folder.");
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Failed to copy template: {ex.Message}";
+            ShowError($"Failed to copy template: {ex.Message}");
         }
     }
 
@@ -118,7 +113,7 @@ public partial class ResourcesViewModel : ObservableObject
         var created = await AppServices.Resources.AddCustomResourceAsync(item);
         AllResources.Insert(0, created);
         ApplyFilter();
-        StatusMessage = $"Added resource '{created.Title}' to catalog.";
+        ShowSuccess($"Added resource '{created.Title}' to catalog.");
     }
 
     private void ApplyFilter()

@@ -66,10 +66,6 @@
                 </StackPanel>
             </Grid>
 
-            <!-- Status InfoBar -->
-            <InfoBar IsOpen="{x:Bind ViewModel.HasStatusMessage, Mode=OneWay}"
-                     Severity="Success" loc:Loc.Key="Common.Status" Title="Payment"
-                     Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
 
             <!-- Main Layout: Rate Card on Left, Bill & UPI on Right -->
             <Grid ColumnDefinitions="*,420" ColumnSpacing="20">

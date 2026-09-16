@@ -7,7 +7,7 @@ using Windows.System;
 
 namespace SevaDesk_App.ViewModels.Pages;
 
-public partial class SessionsViewModel : ObservableObject
+public partial class SessionsViewModel : StatusViewModel
 {
     [ObservableProperty]
     private ObservableCollection<ActiveSessionItem> _sessions = [];

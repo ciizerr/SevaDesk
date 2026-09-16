@@ -51,10 +51,6 @@
             </StackPanel>
         </Grid>
 
-        <!-- Status InfoBar -->
-        <InfoBar Grid.Row="1" IsOpen="{x:Bind ViewModel.HasStatusMessage, Mode=OneWay}"
-                 Severity="Informational" loc:Loc.Key="Common.Status" Title="Status"
-                 Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
 
         <!-- 2 Column Layout: Incoming Queue & Presets on Left, Inspector & Sorting on Right -->
         <Grid Grid.Row="2" ColumnDefinitions="420,*" ColumnSpacing="16">

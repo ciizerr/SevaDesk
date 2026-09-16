@@ -34,11 +34,7 @@
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="16" Padding="24,16,24,32" MaxWidth="1040" HorizontalAlignment="Left">
                 
-                <!-- Status InfoBar with Auto-Dismiss -->
-                <InfoBar IsOpen="{x:Bind ViewModel.HasStatusMessage, Mode=OneWay}"
-                         Severity="{x:Bind ViewModel.StatusSeverity, Mode=OneWay}"
-                         Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
-                         Margin="0,0,0,8" />
+
 
                 <!-- ======================================================== -->
                 <!-- 1. APPEARANCE TAB -->

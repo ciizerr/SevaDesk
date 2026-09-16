@@ -68,8 +68,7 @@
                 </Button>
             </StackPanel>
 
-            <InfoBar Grid.Column="1" IsOpen="{x:Bind ViewModel.HasStatusMessage, Mode=OneWay}"
-                     Severity="Success" Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
+
         </Grid>
 
         <!-- 2 Column Layout: Resources Catalog on Left, Template Inspector on Right -->

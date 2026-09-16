@@ -57,7 +57,7 @@ public sealed partial class DocumentsPage : Page
         var customerRoot = ViewModel.GetCustomerRootFolder(ViewModel.SelectedDocument);
         if (string.IsNullOrWhiteSpace(customerRoot))
         {
-            ViewModel.StatusMessage = "Cannot determine customer working directory.";
+            ViewModel.ShowError("Cannot determine customer working directory.");
             return;
         }
 
@@ -107,12 +107,12 @@ public sealed partial class DocumentsPage : Page
             else if (result == ContentDialogResult.Secondary)
             {
                 ViewModel.RefreshCustomerSubfolders();
-                ViewModel.StatusMessage = $"Subfolder '{subfolderName}' created.";
+                ViewModel.ShowSuccess($"Subfolder '{subfolderName}' created.");
             }
         }
         catch (Exception ex)
         {
-            ViewModel.StatusMessage = $"Error creating subfolder: {ex.Message}";
+            ViewModel.ShowError($"Error creating subfolder: {ex.Message}");
         }
     }
 

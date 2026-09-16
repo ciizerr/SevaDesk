@@ -6,7 +6,7 @@ using SevaDesk_App.Services;
 
 namespace SevaDesk_App.ViewModels.Pages;
 
-public partial class DashboardViewModel : ObservableObject
+public partial class DashboardViewModel : StatusViewModel
 {
     [ObservableProperty]
     private ObservableCollection<ActiveSessionItem> _activeSessions = [];

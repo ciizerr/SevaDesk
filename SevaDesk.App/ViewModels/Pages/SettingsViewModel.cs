@@ -12,7 +12,7 @@ using WinRT.Interop;
 
 namespace SevaDesk_App.ViewModels.Pages;
 
-public partial class SettingsViewModel : ObservableObject
+public partial class SettingsViewModel : StatusViewModel
 {
     // ==========================================
     // Tab 1: Appearance, Material & Language
@@ -172,19 +172,6 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _upiId = "sevadesk.csc@upi";
 
-    // ==========================================
-    // Feedback & Status (with Auto-Dismiss Timer)
-    // ==========================================
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasStatusMessage))]
-    private string _statusMessage = string.Empty;
-
-    [ObservableProperty]
-    private InfoBarSeverity _statusSeverity = InfoBarSeverity.Success;
-
-    private CancellationTokenSource? _statusDismissCts;
-
-    public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusMessage);
 
     public SettingsViewModel()
     {
@@ -338,54 +325,21 @@ public partial class SettingsViewModel : ObservableObject
 
     public string Text(string key) => AppServices.Localization.GetString(key);
 
-    public void ShowStatus(string message, InfoBarSeverity severity = InfoBarSeverity.Success, int durationMs = 4000)
-    {
-        _statusDismissCts?.Cancel();
-        _statusDismissCts?.Dispose();
-        _statusDismissCts = new CancellationTokenSource();
-        var token = _statusDismissCts.Token;
-
-        StatusSeverity = severity;
-        StatusMessage = message;
-
-        if (durationMs > 0)
-        {
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await Task.Delay(durationMs, token);
-                    if (!token.IsCancellationRequested)
-                    {
-                        MainWindow.Instance?.DispatcherQueue.TryEnqueue(() =>
-                        {
-                            if (!token.IsCancellationRequested)
-                            {
-                                StatusMessage = string.Empty;
-                            }
-                        });
-                    }
-                }
-                catch (OperationCanceledException) { }
-            });
-        }
-    }
 
     public void AutoSave(string? message = null)
     {
-        ShowStatus(message ?? "Changes saved automatically.", InfoBarSeverity.Success, 4000);
+        ShowSuccess(message ?? "Changes saved automatically.");
     }
 
     [RelayCommand]
     public async Task CheckLanguageUpdatesAsync()
     {
         IsCheckingLanguageUpdates = true;
-        ShowStatus("Checking GitHub for language updates...", InfoBarSeverity.Informational, 0);
+        ShowInfo("Checking GitHub for language updates...");
         try
         {
             var (success, msg, count) = await AppServices.Localization.SyncFromRemoteAsync(true);
-            var severity = success ? InfoBarSeverity.Success : InfoBarSeverity.Warning;
-            ShowStatus(msg, severity, 4000);
+            if (success) ShowSuccess(msg); else ShowWarning(msg);
             if (success)
             {
                 OnPropertyChanged(nameof(AvailableLanguages));
@@ -421,11 +375,11 @@ public partial class SettingsViewModel : ObservableObject
             var dataPackage = new DataPackage();
             dataPackage.SetText(UpiId);
             Clipboard.SetContent(dataPackage);
-            ShowStatus($"UPI ID copied to clipboard: {UpiId}", InfoBarSeverity.Success, 4000);
+            ShowSuccess($"UPI ID copied to clipboard: {UpiId}");
         }
         catch (Exception ex)
         {
-            ShowStatus($"Could not copy UPI ID: {ex.Message}", InfoBarSeverity.Warning, 4000);
+            ShowWarning($"Could not copy UPI ID: {ex.Message}");
         }
     }
 
@@ -441,7 +395,7 @@ public partial class SettingsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            ShowStatus($"Could not open link: {ex.Message}", InfoBarSeverity.Warning, 4000);
+            ShowWarning($"Could not open link: {ex.Message}");
         }
     }
 
@@ -478,7 +432,7 @@ public partial class SettingsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            ShowStatus($"Error changing folder: {ex.Message}", InfoBarSeverity.Error, 5000);
+            ShowError($"Error changing folder: {ex.Message}");
         }
     }
 
@@ -511,7 +465,7 @@ public partial class SettingsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            ShowStatus($"Error adding folder: {ex.Message}", InfoBarSeverity.Error, 5000);
+            ShowError($"Error adding folder: {ex.Message}");
         }
     }
 
@@ -539,23 +493,23 @@ public partial class SettingsViewModel : ObservableObject
                 var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                 var backupPath = Path.Combine(backupDir, $"sevadesk_backup_{timestamp}.db");
                 File.Copy(DatabasePath, backupPath, true);
-                ShowStatus($"Backup created successfully: {Path.GetFileName(backupPath)}", InfoBarSeverity.Success, 4000);
+                ShowSuccess($"Backup created successfully: {Path.GetFileName(backupPath)}");
             }
             else
             {
-                ShowStatus("Database file not found to backup.", InfoBarSeverity.Warning, 4000);
+                ShowWarning("Database file not found to backup.");
             }
         }
         catch (Exception ex)
         {
-            ShowStatus($"Backup failed: {ex.Message}", InfoBarSeverity.Error, 5000);
+            ShowError($"Backup failed: {ex.Message}");
         }
     }
 
     [RelayCommand]
     public void SaveSettings()
     {
-        ShowStatus("All settings saved successfully.", InfoBarSeverity.Success, 4000);
+        ShowSuccess("All settings saved successfully.");
     }
 
     [RelayCommand]
@@ -586,6 +540,6 @@ public partial class SettingsViewModel : ObservableObject
         WatchDocuments = true;
         AutoArchiveDaysIndex = 2;
 
-        StatusMessage = "Defaults restored successfully.";
+        ShowSuccess("Defaults restored successfully.");
     }
 }

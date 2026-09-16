@@ -6,7 +6,7 @@ using SevaDesk_App.Services;
 
 namespace SevaDesk_App.ViewModels.Pages;
 
-public partial class CustomersViewModel : ObservableObject
+public partial class CustomersViewModel : StatusViewModel
 {
     [ObservableProperty]
     private ObservableCollection<Customer> _customers = [];

@@ -6,7 +6,7 @@ using SevaDesk_App.Services;
 
 namespace SevaDesk_App.ViewModels.Pages;
 
-public partial class DocumentsViewModel : ObservableObject
+public partial class DocumentsViewModel : StatusViewModel
 {
     [ObservableProperty]
     private ObservableCollection<DocumentItem> _pendingDocuments = [];
@@ -33,12 +33,6 @@ public partial class DocumentsViewModel : ObservableObject
 
     [ObservableProperty]
     private int _unorganisedCount;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasStatusMessage))]
-    private string _statusMessage = string.Empty;
-
-    public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusMessage);
 
     public DocumentsViewModel()
     {
@@ -344,7 +338,7 @@ public partial class DocumentsViewModel : ObservableObject
         var sourcePath = SelectedDocument.FilePath;
         if (!File.Exists(sourcePath))
         {
-            StatusMessage = $"File '{SelectedDocument.Name}' no longer exists on disk.";
+            ShowWarning($"File '{SelectedDocument.Name}' no longer exists on disk.");
             await LoadDocumentsAsync();
             return;
         }
@@ -354,7 +348,7 @@ public partial class DocumentsViewModel : ObservableObject
             var customerRoot = GetCustomerRootFolder(SelectedDocument);
             if (string.IsNullOrEmpty(customerRoot))
             {
-                StatusMessage = "Cannot determine customer working folder.";
+                ShowError("Cannot determine customer working folder.");
                 return;
             }
 
@@ -374,13 +368,13 @@ public partial class DocumentsViewModel : ObservableObject
 
             File.Move(sourcePath, destPath);
             var movedDocName = SelectedDocument.Name;
-            StatusMessage = $"'{movedDocName}' moved to '{subfolderRelativePath}'.";
+            ShowSuccess($"'{movedDocName}' moved to '{subfolderRelativePath}'.");
 
             await LoadDocumentsAsync();
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Failed to move file: {ex.Message}";
+            ShowError($"Failed to move file: {ex.Message}");
         }
     }
 
@@ -404,7 +398,7 @@ public partial class DocumentsViewModel : ObservableObject
     {
         if (SelectedDocument == null) return;
 
-        StatusMessage = $"Preset '{preset.Name}' applied to {SelectedDocument.Name} (Target: {preset.TargetSize}).";
+        ShowInfo($"Preset '{preset.Name}' applied to {SelectedDocument.Name} (Target: {preset.TargetSize}).");
         SelectedDocument.Status = $"Target: {preset.TargetSize}";
     }
 

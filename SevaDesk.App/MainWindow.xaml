@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:SevaDesk_App"
     xmlns:loc="using:SevaDesk_App.Services"
+    xmlns:controls="using:SevaDesk_App.Views.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Title="SevaDesk — Cyber Café Management System"
     mc:Ignorable="d">
@@ -130,6 +131,9 @@
                 </InfoBar>
 
                 <Frame x:Name="NavFrame" Grid.Row="1" />
+
+                <!-- Global Toast Notification Overlay (bottom-center) -->
+                <controls:ToastNotificationControl Grid.RowSpan="2" />
             </Grid>
         </NavigationView>
     </Grid>

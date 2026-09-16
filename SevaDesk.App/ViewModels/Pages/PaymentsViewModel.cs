@@ -6,7 +6,7 @@ using SevaDesk_App.Services;
 
 namespace SevaDesk_App.ViewModels.Pages;
 
-public partial class PaymentsViewModel : ObservableObject
+public partial class PaymentsViewModel : StatusViewModel
 {
     [ObservableProperty]
     private ObservableCollection<ServiceRateItem> _rateCard = [];
@@ -53,11 +53,7 @@ public partial class PaymentsViewModel : ObservableObject
     [ObservableProperty]
     private string _upiDeepLink = string.Empty;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasStatusMessage))]
-    private string _statusMessage = string.Empty;
 
-    public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusMessage);
 
     public PaymentsViewModel()
     {
@@ -168,7 +164,7 @@ public partial class PaymentsViewModel : ObservableObject
     {
         CartItems.Clear();
         UpdateCartTotals();
-        StatusMessage = "Current bill cleared.";
+        ShowInfo("Current bill cleared.");
     }
 
     [RelayCommand]
@@ -210,7 +206,7 @@ public partial class PaymentsViewModel : ObservableObject
         TodayCashTotal = summary.CashTotal;
         TodayUpiTotal = summary.UpiTotal;
 
-        StatusMessage = $"Payment of ₹{GrandTotal} recorded via {paymentMode} ({invoiceNo})!";
+        ShowSuccess($"Payment of ₹{GrandTotal} recorded via {paymentMode} ({invoiceNo})!");
 
         CartItems.Clear();
         UpdateCartTotals();
@@ -241,6 +237,6 @@ public partial class PaymentsViewModel : ObservableObject
         }
 
         UpdateCartTotals();
-        StatusMessage = $"Pre-loaded fees from session for {CustomerName}. Total: ₹{GrandTotal:N0}";
+        ShowInfo($"Pre-loaded fees from session for {CustomerName}. Total: ₹{GrandTotal:N0}");
     }
 }

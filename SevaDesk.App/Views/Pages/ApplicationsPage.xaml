@@ -51,10 +51,6 @@
             </SelectorBar>
         </Border>
 
-        <!-- 2. Status InfoBar -->
-        <InfoBar Grid.Row="2" IsOpen="{x:Bind ViewModel.HasStatusMessage, Mode=OneWay}"
-                 Severity="Informational" loc:Loc.Key="Common.Status" Title="Application Update"
-                 Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" Margin="0,0,0,2" />
 
         <!-- 3A. TAB 0: SCHEME & FORM CATALOG -->
         <Grid Grid.Row="3" ColumnDefinitions="440,*" ColumnSpacing="16"
