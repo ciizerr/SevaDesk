@@ -61,6 +61,8 @@ public class SessionRepository : ISessionRepository
         var customer = await _customerRepo.GetByIdAsync(customerId)
             ?? throw new InvalidOperationException($"Customer {customerId} not found");
 
+        await _folderManager.SyncToWorkingAsync(customer.Name, customer.Code);
+
         using var connection = _db.CreateConnection();
         await connection.OpenAsync();
 
@@ -181,5 +183,31 @@ public class SessionRepository : ISessionRepository
             "UPDATE sessions SET status = 'Completed', ended_at = @EndedAt, duration_seconds = @Duration WHERE id = @Id",
             new { Id = sessionId, EndedAt = endedAt.ToString("o"), Duration = durationSec }
         );
+
+        if (existing != null)
+        {
+            var customerIdStr = connection.QuerySingleOrDefault<string>("SELECT customer_id FROM sessions WHERE id = @Id", new { Id = sessionId });
+            if (!string.IsNullOrEmpty(customerIdStr))
+            {
+                var customer = await _customerRepo.GetByIdAsync(customerIdStr);
+                if (customer != null)
+                {
+                    await _folderManager.SyncToBackupAsync(customer.Name, customer.Code);
+                }
+            }
+        }
+    }
+
+    public async Task<IEnumerable<Session>> GetCustomerSessionsAsync(string customerId)
+    {
+        using var connection = _db.CreateConnection();
+        await connection.OpenAsync();
+        
+        const string sql = @"
+            SELECT * FROM sessions 
+            WHERE customer_id = @CustomerId 
+            ORDER BY started_at DESC";
+
+        return await connection.QueryAsync<Session>(sql, new { CustomerId = customerId });
     }
 }

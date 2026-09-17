@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
+    xmlns:local="using:SevaDesk_App.Views.Controls"
     mc:Ignorable="d">
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
@@ -36,9 +37,22 @@
                         <Slider x:Name="SldRotation" Minimum="0" Maximum="360" Value="0" ValueChanged="Slider_ValueChanged" />
                     </StackPanel>
 
+                    <TextBlock Text="Crop" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,8,0,0" />
+                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" RowSpacing="8" ColumnSpacing="8">
+                        <NumberBox x:Name="NumCropX" Grid.Row="0" Grid.Column="0" Header="Left (X)" Value="0" ValueChanged="NumberBox_ValueChanged" />
+                        <NumberBox x:Name="NumCropY" Grid.Row="0" Grid.Column="1" Header="Top (Y)" Value="0" ValueChanged="NumberBox_ValueChanged" />
+                        <NumberBox x:Name="NumCropW" Grid.Row="1" Grid.Column="0" Header="Width" Value="0" ValueChanged="NumberBox_ValueChanged" />
+                        <NumberBox x:Name="NumCropH" Grid.Row="1" Grid.Column="1" Header="Height" Value="0" ValueChanged="NumberBox_ValueChanged" />
+                    </Grid>
+
                     <CheckBox x:Name="ChkGrayscale" Content="Grayscale" Checked="CheckBox_Changed" Unchecked="CheckBox_Changed" />
                     <CheckBox x:Name="ChkSharpen" Content="Sharpen" Checked="CheckBox_Changed" Unchecked="CheckBox_Changed" />
                     
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Output Quality (Compression)" />
+                        <Slider x:Name="SldQuality" Minimum="1" Maximum="100" Value="100" />
+                    </StackPanel>
+
                     <Button Content="Reset All" Click="Reset_Click" HorizontalAlignment="Stretch" />
                     
                     <MenuFlyoutSeparator Margin="0,10,0,10" />
@@ -87,8 +101,8 @@
                     <!-- Simulating a list of files for PDF generation -->
                     <ListView x:Name="SourceFilesList" Height="300" SelectionMode="Extended" SelectionChanged="SourceFilesList_SelectionChanged">
                         <ListView.ItemTemplate>
-                            <DataTemplate x:DataType="x:String">
-                                <TextBlock Text="{x:Bind}" TextTrimming="CharacterEllipsis" />
+                            <DataTemplate x:DataType="local:StudioSourceFile">
+                                <TextBlock Text="{x:Bind FileName}" ToolTipService.ToolTip="{x:Bind FullPath}" TextTrimming="CharacterEllipsis" />
                             </DataTemplate>
                         </ListView.ItemTemplate>
                     </ListView>

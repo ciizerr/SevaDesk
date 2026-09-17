@@ -280,94 +280,7 @@
                         </Grid>
                     </Border>
 
-                    <TextBlock loc:Loc.Key="Settings.Hardware.RatesHeader" Text="Standard Service Rates (₹ INR)" Style="{StaticResource SubtitleTextBlockStyle}" FontSize="16" FontWeight="SemiBold" Margin="0,8,0,0" />
 
-                    <!-- Grid of Rates -->
-                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="10">
-                        <!-- B&W Single -->
-                        <Border Grid.Row="0" Grid.Column="0" CornerRadius="8" Padding="14,10"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock loc:Loc.Key="Settings.Hardware.RateBwSingle" Text="B&amp;W Print (Single Side)" FontWeight="SemiBold" FontSize="13" />
-                                    <TextBlock loc:Loc.Key="Settings.Hardware.RateBwSingleDesc" Text="Standard A4 per page" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                </StackPanel>
-                                <TextBox Grid.Column="1" Width="80" TextAlignment="Right"
-                                         Text="{x:Bind ViewModel.BwSinglePageRate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </Grid>
-                        </Border>
-
-                        <!-- B&W Double -->
-                        <Border Grid.Row="0" Grid.Column="1" CornerRadius="8" Padding="14,10"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock loc:Loc.Key="Settings.Hardware.RateBwDouble" Text="B&amp;W Print (Both Sides)" FontWeight="SemiBold" FontSize="13" />
-                                    <TextBlock loc:Loc.Key="Settings.Hardware.RateBwDoubleDesc" Text="Duplex A4 sheet" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                </StackPanel>
-                                <TextBox Grid.Column="1" Width="80" TextAlignment="Right"
-                                         Text="{x:Bind ViewModel.BwDoublePageRate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </Grid>
-                        </Border>
-
-                        <!-- Color Document -->
-                        <Border Grid.Row="1" Grid.Column="0" CornerRadius="8" Padding="14,10"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock loc:Loc.Key="Settings.Hardware.RateColor" Text="Color Document Print" FontWeight="SemiBold" FontSize="13" />
-                                    <TextBlock loc:Loc.Key="Settings.Hardware.RateColorDesc" Text="A4 color printout per page" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                </StackPanel>
-                                <TextBox Grid.Column="1" Width="80" TextAlignment="Right"
-                                         Text="{x:Bind ViewModel.ColorPageRate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </Grid>
-                        </Border>
-
-                        <!-- Passport Photo -->
-                        <Border Grid.Row="1" Grid.Column="1" CornerRadius="8" Padding="14,10"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock loc:Loc.Key="Settings.Hardware.RatePhoto" Text="Passport Photo Set" FontWeight="SemiBold" FontSize="13" />
-                                    <TextBlock loc:Loc.Key="Settings.Hardware.RatePhotoDesc" Text="6 / 8 passport photo card" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                </StackPanel>
-                                <TextBox Grid.Column="1" Width="80" TextAlignment="Right"
-                                         Text="{x:Bind ViewModel.PhotoPrintRate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </Grid>
-                        </Border>
-
-                        <!-- Lamination -->
-                        <Border Grid.Row="2" Grid.Column="0" CornerRadius="8" Padding="14,10"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock loc:Loc.Key="Settings.Hardware.RateLamination" Text="Lamination Service" FontWeight="SemiBold" FontSize="13" />
-                                    <TextBlock loc:Loc.Key="Settings.Hardware.RateLaminationDesc" Text="ID / A4 pouch per sheet" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                </StackPanel>
-                                <TextBox Grid.Column="1" Width="80" TextAlignment="Right"
-                                         Text="{x:Bind ViewModel.LaminationRate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </Grid>
-                        </Border>
-
-                        <!-- Scanning -->
-                        <Border Grid.Row="2" Grid.Column="1" CornerRadius="8" Padding="14,10"
-                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock loc:Loc.Key="Settings.Hardware.RateScan" Text="Document Scanning" FontWeight="SemiBold" FontSize="13" />
-                                    <TextBlock loc:Loc.Key="Settings.Hardware.RateScanDesc" Text="Scan to PDF / JPEG per doc" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                </StackPanel>
-                                <TextBox Grid.Column="1" Width="80" TextAlignment="Right"
-                                         Text="{x:Bind ViewModel.ScanRate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            </Grid>
-                        </Border>
-                    </Grid>
                 </StackPanel>
 
                 <!-- ======================================================== -->
@@ -397,6 +310,27 @@
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <FontIcon Glyph="&#xED25;" FontSize="14" />
                                         <TextBlock loc:Loc.Key="Settings.Storage.OpenFolderBtn" Text="Open in Explorer" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Card: Backup Database Folder -->
+                    <Border CornerRadius="8" Padding="16,14"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Text="Customer Database Backup (Archive) Directory" FontWeight="SemiBold" FontSize="14" />
+                                <TextBlock Text="{x:Bind ViewModel.BackupRootPath, Mode=OneWay}"
+                                           FontFamily="Consolas" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                <Button Command="{x:Bind ViewModel.BrowseBackupFolderCommand}" Style="{StaticResource AccentButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE8B7;" FontSize="13" />
+                                        <TextBlock Text="Change Archive..." />
                                     </StackPanel>
                                 </Button>
                             </StackPanel>

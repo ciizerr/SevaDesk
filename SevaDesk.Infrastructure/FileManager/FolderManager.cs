@@ -8,6 +8,7 @@ namespace SevaDesk.Infrastructure.FileManager;
 public class FolderManager : IFolderManager
 {
     private string _baseDirectory;
+    private string _backupDirectory = string.Empty;
 
     public FolderManager()
     {
@@ -40,6 +41,33 @@ public class FolderManager : IFolderManager
         }
     }
 
+    public string BackupDirectory => _backupDirectory;
+
+    public void SetBackupDirectory(string newPath)
+    {
+        if (Directory.Exists(newPath))
+        {
+            _backupDirectory = newPath;
+        }
+    }
+
+    private static async Task CopyDirectoryAsync(string sourceDir, string targetDir)
+    {
+        Directory.CreateDirectory(targetDir);
+
+        foreach (var file in Directory.GetFiles(sourceDir))
+        {
+            var targetFile = Path.Combine(targetDir, Path.GetFileName(file));
+            await Task.Run(() => File.Copy(file, targetFile, overwrite: true));
+        }
+
+        foreach (var dir in Directory.GetDirectories(sourceDir))
+        {
+            var targetSubDir = Path.Combine(targetDir, Path.GetFileName(dir));
+            await CopyDirectoryAsync(dir, targetSubDir);
+        }
+    }
+
     private static string SanitizeFolderName(string name)
     {
         var invalidChars = new string(Path.GetInvalidFileNameChars()) + new string(Path.GetInvalidPathChars());
@@ -47,17 +75,22 @@ public class FolderManager : IFolderManager
         return Regex.Replace(sanitized.Trim(), @"\s+", "_");
     }
 
-    public string GetCustomerFolderPath(string customerName, string customerCode)
+    private string GetCustomerFolderName(string customerName, string customerCode)
     {
         var cleanName = SanitizeFolderName(customerName);
         var cleanId = customerCode.Replace("CUST-", "", StringComparison.OrdinalIgnoreCase).Trim();
         if (string.IsNullOrWhiteSpace(cleanId)) cleanId = customerCode;
 
-        var folderName = $"{cleanName}_{cleanId}";
+        return $"{cleanName}_{cleanId}";
+    }
+
+    public string GetCustomerFolderPath(string customerName, string customerCode)
+    {
+        var folderName = GetCustomerFolderName(customerName, customerCode);
         var newPath = Path.Combine(_baseDirectory, folderName);
 
         // Backward compatibility: If older legacy folder with CUST- prefix exists, return it
-        var legacyName = $"{cleanName}_{customerCode}";
+        var legacyName = $"{SanitizeFolderName(customerName)}_{customerCode}";
         var legacyPath = Path.Combine(_baseDirectory, legacyName);
         if (!Directory.Exists(newPath) && Directory.Exists(legacyPath))
         {
@@ -65,6 +98,34 @@ public class FolderManager : IFolderManager
         }
 
         return newPath;
+    }
+
+    public async Task SyncToWorkingAsync(string customerName, string customerCode)
+    {
+        if (string.IsNullOrWhiteSpace(_backupDirectory)) return;
+
+        var folderName = GetCustomerFolderName(customerName, customerCode);
+        var backupPath = Path.Combine(_backupDirectory, folderName);
+        var workingPath = GetCustomerFolderPath(customerName, customerCode);
+
+        if (Directory.Exists(backupPath))
+        {
+            await CopyDirectoryAsync(backupPath, workingPath);
+        }
+    }
+
+    public async Task SyncToBackupAsync(string customerName, string customerCode)
+    {
+        if (string.IsNullOrWhiteSpace(_backupDirectory)) return;
+
+        var folderName = GetCustomerFolderName(customerName, customerCode);
+        var backupPath = Path.Combine(_backupDirectory, folderName);
+        var workingPath = GetCustomerFolderPath(customerName, customerCode);
+
+        if (Directory.Exists(workingPath))
+        {
+            await CopyDirectoryAsync(workingPath, backupPath);
+        }
     }
 
     public string EnsureCustomerWorkingFolder(string customerName, string customerCode)

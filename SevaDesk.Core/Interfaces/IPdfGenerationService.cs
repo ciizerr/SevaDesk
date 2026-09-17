@@ -5,5 +5,5 @@ public enum PdfLayoutMode { SingleImageFit, SingleImageFill, MultipleImages }
 
 public interface IPdfGenerationService
 {
-    Task<string> GeneratePdfAsync(IReadOnlyList<string> imagePaths, string destinationPath, PdfPaperSize paperSize, PdfLayoutMode layoutMode);
+    Task<string> GeneratePdfAsync(IReadOnlyList<string> imagePaths, string destinationPath, PdfPaperSize paperSize, PdfLayoutMode layoutMode, int quality = 100);
 }

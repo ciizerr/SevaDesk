@@ -6,7 +6,7 @@ namespace SevaDesk.Infrastructure.FileManager;
 
 public class PdfGenerationService : IPdfGenerationService
 {
-    public Task<string> GeneratePdfAsync(IReadOnlyList<string> imagePaths, string destinationPath, PdfPaperSize paperSize, PdfLayoutMode layoutMode)
+    public Task<string> GeneratePdfAsync(IReadOnlyList<string> imagePaths, string destinationPath, PdfPaperSize paperSize, PdfLayoutMode layoutMode, int quality = 100)
     {
         return Task.Run(() =>
         {

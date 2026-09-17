@@ -10,11 +10,17 @@ using System.Diagnostics;
 
 namespace SevaDesk_App.Views.Controls;
 
+public class StudioSourceFile
+{
+    public string FullPath { get; set; } = string.Empty;
+    public string FileName => System.IO.Path.GetFileName(FullPath);
+}
+
 public sealed partial class DocumentStudioControl : UserControl
 {
     private CanvasBitmap? _previewBitmap;
     private string? _currentEditingFile;
-    public ObservableCollection<string> SourceFiles { get; } = new();
+    public ObservableCollection<StudioSourceFile> SourceFiles { get; } = new();
 
     public DocumentStudioControl()
     {
@@ -30,7 +36,12 @@ public sealed partial class DocumentStudioControl : UserControl
             Contrast = SldContrast.Value,
             RotationAngle = SldRotation.Value,
             Grayscale = ChkGrayscale.IsChecked ?? false,
-            Sharpen = ChkSharpen.IsChecked ?? false
+            Sharpen = ChkSharpen.IsChecked ?? false,
+            Quality = (int)SldQuality.Value,
+            CropX = double.IsNaN(NumCropX.Value) ? 0 : (int)NumCropX.Value,
+            CropY = double.IsNaN(NumCropY.Value) ? 0 : (int)NumCropY.Value,
+            CropWidth = double.IsNaN(NumCropW.Value) ? 0 : (int)NumCropW.Value,
+            CropHeight = double.IsNaN(NumCropH.Value) ? 0 : (int)NumCropH.Value
         };
     }
 
@@ -80,6 +91,11 @@ public sealed partial class DocumentStudioControl : UserControl
         UpdatePreview();
     }
 
+    private void NumberBox_ValueChanged(Microsoft.UI.Xaml.Controls.NumberBox sender, Microsoft.UI.Xaml.Controls.NumberBoxValueChangedEventArgs args)
+    {
+        UpdatePreview();
+    }
+
     private void CheckBox_Changed(object sender, RoutedEventArgs e)
     {
         UpdatePreview();
@@ -92,7 +108,22 @@ public sealed partial class DocumentStudioControl : UserControl
         SldRotation.Value = 0;
         ChkGrayscale.IsChecked = false;
         ChkSharpen.IsChecked = false;
+        SldQuality.Value = 100;
+        NumCropX.Value = 0;
+        NumCropY.Value = 0;
+        NumCropW.Value = 0;
+        NumCropH.Value = 0;
         UpdatePreview();
+    }
+
+    public void AddSourceFile(string filePath)
+    {
+        if (!string.IsNullOrWhiteSpace(filePath) && !SourceFiles.Any(x => x.FullPath == filePath))
+        {
+            var item = new StudioSourceFile { FullPath = filePath };
+            SourceFiles.Add(item);
+            SourceFilesList.SelectedItem = item;
+        }
     }
 
     private async void BrowseFile_Click(object sender, RoutedEventArgs e)
@@ -100,16 +131,16 @@ public sealed partial class DocumentStudioControl : UserControl
         var file = await AppServices.Pickers.PickFileAsync([".jpg", ".png", ".jpeg", ".pdf", ".tiff"]);
         if (file != null)
         {
-            SourceFiles.Add(file);
+            SourceFiles.Add(new StudioSourceFile { FullPath = file });
             SourceFilesList.SelectedIndex = SourceFiles.Count - 1;
         }
     }
 
     private void SourceFilesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (SourceFilesList.SelectedItem is string selectedFile && !selectedFile.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        if (SourceFilesList.SelectedItem is StudioSourceFile selectedFile && !selectedFile.FullPath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
         {
-            _currentEditingFile = selectedFile;
+            _currentEditingFile = selectedFile.FullPath;
             TxtNoImage.Visibility = Visibility.Collapsed;
             UpdatePreview();
         }
@@ -145,7 +176,7 @@ public sealed partial class DocumentStudioControl : UserControl
 
     private async void GeneratePdf_Click(object sender, RoutedEventArgs e)
     {
-        var files = SourceFiles.Where(f => !f.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)).ToList();
+        var files = SourceFiles.Where(f => !f.FullPath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)).Select(f => f.FullPath).ToList();
         if (files.Count == 0) return;
 
         var targetFolder = await AppServices.Pickers.PickFolderAsync();
@@ -173,7 +204,7 @@ public sealed partial class DocumentStudioControl : UserControl
         try
         {
             LoadingRing.IsActive = true;
-            await AppServices.PdfGeneration.GeneratePdfAsync(files, destPath, paperSize, layoutMode);
+            await AppServices.PdfGeneration.GeneratePdfAsync(files, destPath, paperSize, layoutMode, (int)SldQuality.Value);
             await AppServices.Dialogs.ShowAlertAsync("Success", $"PDF Generated at {destPath}");
         }
         catch (Exception ex)

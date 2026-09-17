@@ -9,6 +9,31 @@ public static class DatabaseSeeder
     {
         SeedResources(connection);
         SeedApplicationTemplates(connection);
+        SeedServiceRates(connection);
+    }
+
+    public static void SeedServiceRates(SqliteConnection connection)
+    {
+        var count = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM service_rates;");
+        if (count > 0) return;
+
+        var seedRates = new[]
+        {
+            new { Id = Guid.NewGuid().ToString(), ServiceName = "B&W Print (Single)", Rate = 5.0, Unit = "page", Category = "Printing", Glyph = "\uE749", IsActive = 1 },
+            new { Id = Guid.NewGuid().ToString(), ServiceName = "B&W Print (Both Sides)", Rate = 10.0, Unit = "page", Category = "Printing", Glyph = "\uE749", IsActive = 1 },
+            new { Id = Guid.NewGuid().ToString(), ServiceName = "Color Print", Rate = 20.0, Unit = "page", Category = "Printing", Glyph = "\uE790", IsActive = 1 },
+            new { Id = Guid.NewGuid().ToString(), ServiceName = "Document Scan to PDF", Rate = 15.0, Unit = "doc", Category = "Scanning", Glyph = "\uE8A5", IsActive = 1 },
+            new { Id = Guid.NewGuid().ToString(), ServiceName = "A4 Lamination", Rate = 30.0, Unit = "sheet", Category = "Finishing", Glyph = "\uE7C3", IsActive = 1 },
+            new { Id = Guid.NewGuid().ToString(), ServiceName = "PVC Card (Aadhaar/PAN)", Rate = 70.0, Unit = "card", Category = "Cards", Glyph = "\uE8C7", IsActive = 1 },
+            new { Id = Guid.NewGuid().ToString(), ServiceName = "Govt Online Form Fill", Rate = 100.0, Unit = "application", Category = "Services", Glyph = "\uE77B", IsActive = 1 },
+            new { Id = Guid.NewGuid().ToString(), ServiceName = "Urgent Typing / Affidavit", Rate = 80.0, Unit = "page", Category = "Services", Glyph = "\uE8C1", IsActive = 1 }
+        };
+
+        const string insertSeedSql = @"
+            INSERT INTO service_rates (id, service_name, rate, unit, category, glyph, is_active)
+            VALUES (@Id, @ServiceName, @Rate, @Unit, @Category, @Glyph, @IsActive);";
+
+        connection.Execute(insertSeedSql, seedRates);
     }
 
     public static void SeedResources(SqliteConnection connection)

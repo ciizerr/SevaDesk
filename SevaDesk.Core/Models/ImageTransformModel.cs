@@ -14,4 +14,5 @@ public class ImageTransformModel
     public int CropWidth { get; set; }
     public int CropHeight { get; set; }
     public bool IsCropEnabled => CropWidth > 0 && CropHeight > 0;
+    public int Quality { get; set; } = 100; // 1 to 100
 }

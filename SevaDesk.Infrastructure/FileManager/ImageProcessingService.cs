@@ -66,7 +66,15 @@ public class ImageProcessingService : IImageProcessingService
         return Task.Run(() =>
         {
             using var mat = ApplyTransforms(sourceImagePath, config);
-            Cv2.ImWrite(destinationPath, mat);
+            var ext = Path.GetExtension(destinationPath).ToLower();
+            if (ext == ".jpg" || ext == ".jpeg")
+            {
+                Cv2.ImWrite(destinationPath, mat, new ImageEncodingParam(ImwriteFlags.JpegQuality, config.Quality));
+            }
+            else
+            {
+                Cv2.ImWrite(destinationPath, mat);
+            }
             return destinationPath;
         });
     }
@@ -76,7 +84,7 @@ public class ImageProcessingService : IImageProcessingService
         return Task.Run<Stream>(() =>
         {
             using var mat = ApplyTransforms(sourceImagePath, config);
-            Cv2.ImEncode(".jpg", mat, out byte[] buf);
+            Cv2.ImEncode(".jpg", mat, out byte[] buf, new ImageEncodingParam(ImwriteFlags.JpegQuality, config.Quality));
             return new MemoryStream(buf);
         });
     }

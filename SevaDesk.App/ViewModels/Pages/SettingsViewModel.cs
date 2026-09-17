@@ -72,29 +72,16 @@ public partial class SettingsViewModel : StatusViewModel
     [ObservableProperty]
     private string _defaultColorPrinter = "Epson EcoTank L8050 Photo";
 
-    [ObservableProperty]
-    private decimal _bwSinglePageRate = 5;
 
-    [ObservableProperty]
-    private decimal _bwDoublePageRate = 8;
-
-    [ObservableProperty]
-    private decimal _colorPageRate = 15;
-
-    [ObservableProperty]
-    private decimal _photoPrintRate = 30;
-
-    [ObservableProperty]
-    private decimal _laminationRate = 20;
-
-    [ObservableProperty]
-    private decimal _scanRate = 10;
 
     // ==========================================
     // Tab 4: Storage & Automation
     // ==========================================
     [ObservableProperty]
     private string _workingRootPath = string.Empty;
+
+    [ObservableProperty]
+    private string _backupRootPath = string.Empty;
 
     [ObservableProperty]
     private bool _watchDownloads = true;
@@ -176,6 +163,7 @@ public partial class SettingsViewModel : StatusViewModel
     public SettingsViewModel()
     {
         WorkingRootPath = AppServices.FolderManager.BaseDirectory;
+        BackupRootPath = AppServices.FolderManager.BackupDirectory;
         WatchDownloads = AppServices.FileWatcher.WatchDownloads;
         WatchDesktop = AppServices.FileWatcher.WatchDesktop;
         WatchDocuments = AppServices.FileWatcher.WatchDocuments;
@@ -411,13 +399,33 @@ public partial class SettingsViewModel : StatusViewModel
         try
         {
             var folderPath = await AppServices.Pickers.PickFolderAsync();
-            if (folderPath != null && !string.IsNullOrWhiteSpace(folderPath))
+            if (!string.IsNullOrWhiteSpace(folderPath))
             {
                 WorkingRootPath = folderPath;
                 AppServices.FolderManager.SetBaseDirectory(folderPath);
                 AppServices.Database.SetSetting("working_root_path", folderPath);
                 AppServices.FileWatcher.RestartWatchers();
                 AutoSave("Working folder changed successfully.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error changing folder: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    public async Task BrowseBackupFolderAsync()
+    {
+        try
+        {
+            var folderPath = await AppServices.Pickers.PickFolderAsync();
+            if (!string.IsNullOrWhiteSpace(folderPath))
+            {
+                BackupRootPath = folderPath;
+                AppServices.FolderManager.SetBackupDirectory(folderPath);
+                AppServices.Database.SetSetting("backup_root_path", folderPath);
+                AutoSave("Archive Database folder changed successfully.");
             }
         }
         catch (Exception ex)
@@ -508,12 +516,7 @@ public partial class SettingsViewModel : StatusViewModel
         ShopUpiVpa = "sevadesk.csc@upi";
         PayeeName = "SevaDesk Cyber Center";
 
-        BwSinglePageRate = 5;
-        BwDoublePageRate = 8;
-        ColorPageRate = 15;
-        PhotoPrintRate = 30;
-        LaminationRate = 20;
-        ScanRate = 10;
+
 
         WatchDownloads = true;
         WatchDesktop = true;

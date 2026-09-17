@@ -11,6 +11,7 @@ public static class AppServices
     public static ICustomerRepository Customers { get; } = new CustomerRepository(Database);
     public static ISessionRepository Sessions { get; } = new SessionRepository(Database, Customers, FolderManager);
     public static IPaymentRepository Payments { get; } = new PaymentRepository(Database);
+    public static IServiceRateRepository ServiceRates { get; } = new ServiceRateRepository(Database);
     public static IApplicationRepository Applications { get; } = new ApplicationRepository(Database);
     public static IResourceRepository Resources { get; } = new ResourceRepository(Database);
     public static LocalizationService Localization { get; } = new();
@@ -29,6 +30,12 @@ public static class AppServices
         if (!string.IsNullOrWhiteSpace(savedWorkingPath) && Directory.Exists(savedWorkingPath))
         {
             FolderManager.SetBaseDirectory(savedWorkingPath);
+        }
+
+        var savedBackupPath = Database.GetSetting("backup_root_path");
+        if (!string.IsNullOrWhiteSpace(savedBackupPath) && Directory.Exists(savedBackupPath))
+        {
+            FolderManager.SetBackupDirectory(savedBackupPath);
         }
 
         Localization.Initialize();

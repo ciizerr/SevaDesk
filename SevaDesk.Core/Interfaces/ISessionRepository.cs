@@ -9,4 +9,5 @@ public interface ISessionRepository
     Task PauseSessionAsync(string sessionId);
     Task ResumeSessionAsync(string sessionId);
     Task CompleteSessionAsync(string sessionId);
+    Task<IEnumerable<Session>> GetCustomerSessionsAsync(string customerId);
 }

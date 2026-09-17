@@ -115,6 +115,11 @@ public sealed partial class DocumentsPage : Page
             {
                 OrgView.Visibility = Visibility.Collapsed;
                 StudioView.Visibility = Visibility.Visible;
+
+                if (ViewModel.SelectedDocument != null && !string.IsNullOrWhiteSpace(ViewModel.SelectedDocument.FilePath))
+                {
+                    StudioView.AddSourceFile(ViewModel.SelectedDocument.FilePath);
+                }
             }
             else
             {

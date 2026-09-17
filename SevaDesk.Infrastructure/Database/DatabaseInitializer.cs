@@ -152,6 +152,16 @@ public class DatabaseInitializer
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS service_rates (
+                id TEXT PRIMARY KEY,
+                service_name TEXT NOT NULL,
+                rate REAL NOT NULL,
+                unit TEXT NOT NULL,
+                category TEXT NOT NULL,
+                glyph TEXT NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1
+            );
         ";
 
         connection.Execute(sql);
@@ -161,6 +171,12 @@ public class DatabaseInitializer
         try { connection.Execute("ALTER TABLE payments ADD COLUMN customer_name TEXT;"); } catch { }
         try { connection.Execute("ALTER TABLE payments ADD COLUMN items_summary TEXT;"); } catch { }
         try { connection.Execute("ALTER TABLE sessions ADD COLUMN duration_seconds INTEGER DEFAULT 0;"); } catch { }
+
+        // Ensure default walk-in customer exists for POS walk-in payments
+        connection.Execute(@"
+            INSERT OR IGNORE INTO customers (id, code, name, mobile, id_type, id_reference, village, notes, created_at, updated_at)
+            VALUES ('walk-in', 'CUST-0000', 'Walk-in Customer', '', '', '', '', 'Default walk-in customer for cashier POS', datetime('now'), datetime('now'));
+        ");
 
         // Pre-seed default data if tables are empty
         DatabaseSeeder.SeedAll(connection);
