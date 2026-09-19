@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using SevaDesk.Core.Models;
 using SevaDesk_App.Services;
 using SevaDesk_App.ViewModels.Pages;
 using SevaDesk_App.Views.Dialogs;
@@ -26,7 +27,7 @@ public sealed partial class CustomersPage : Page
         var result = await dialog.ShowAsync();
         if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(dialog.CustomerName))
         {
-            SevaDesk.Core.Models.Customer customer;
+            Customer customer;
             if (dialog.SelectedExistingCustomer != null)
             {
                 customer = dialog.SelectedExistingCustomer;
@@ -72,7 +73,15 @@ public sealed partial class CustomersPage : Page
         if (sender is Button btn && btn.Tag is string customerId)
         {
             await AppServices.Sessions.StartSessionAsync(customerId);
-            Frame.Navigate(typeof(DashboardPage));
+            MainWindow.Instance?.NavigateTo(typeof(DashboardPage));
+        }
+    }
+
+    private void ListView_ItemClick(object sender, ItemClickEventArgs e)
+    {
+        if (e.ClickedItem is Customer customer)
+        {
+            MainWindow.Instance?.NavigateTo(typeof(CustomerWorkspacePage), customer);
         }
     }
 }

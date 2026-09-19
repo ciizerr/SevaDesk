@@ -40,126 +40,63 @@
             </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="1" ColumnDefinitions="450,16,*">
-            <!-- Left: Customers List -->
-            <Border Grid.Column="0" CornerRadius="8"
+        <Grid Grid.Row="1">
+            <Border CornerRadius="8"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                <ListView ItemsSource="{x:Bind ViewModel.Customers, Mode=OneWay}" 
-                          SelectedItem="{x:Bind ViewModel.SelectedCustomer, Mode=TwoWay}"
-                          SelectionMode="Single">
-                    <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="models:Customer">
-                            <Grid ColumnDefinitions="Auto,*,Auto" Padding="12,12" VerticalAlignment="Center"
-                                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
-                                <PersonPicture Grid.Column="0" Width="40" Height="40"
-                                               Initials="{x:Bind Initials}" Margin="0,0,14,0" />
-
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
-                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                        <TextBlock Text="{x:Bind Name}" FontWeight="Bold" FontSize="15" />
-                                        <Border Padding="6,1" CornerRadius="4" Background="{ThemeResource SystemFillColorNeutralBackgroundBrush}">
-                                            <TextBlock Text="{x:Bind Code}" FontFamily="Consolas" FontSize="11" FontWeight="SemiBold" />
-                                        </Border>
-                                    </StackPanel>
-
-                                    <StackPanel Orientation="Horizontal" Spacing="12">
-                                        <TextBlock Text="{x:Bind Mobile}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                        <TextBlock Text="{x:Bind Village}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <Button Grid.Column="2" VerticalAlignment="Center" Tag="{x:Bind Id}" Click="StartSession_Click">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xE768;" FontSize="12" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                        <TextBlock Text="Start" />
-                                    </StackPanel>
-                                </Button>
-                            </Grid>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-            </Border>
-
-            <!-- Right: Customer Details -->
-            <Border Grid.Column="2" CornerRadius="8"
-                    Background="{ThemeResource LayerFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                 <Grid>
-                    <!-- Blank State -->
-                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16"
-                                Visibility="{x:Bind ViewModel.CustomerNotSelectedVisibility, Mode=OneWay}">
-                        <FontIcon Glyph="&#xE77B;" FontSize="48" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                        <TextBlock Text="Select a customer to view details" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    </StackPanel>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    
+                    <!-- Tabular Header -->
+                    <Grid Grid.Row="0" Padding="12,12,32,12" ColumnDefinitions="250, 150, 150, *"
+                          BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1"
+                          Background="{ThemeResource LayerFillColorAltBrush}" CornerRadius="8,8,0,0">
+                        <TextBlock Grid.Column="0" Text="Customer" FontWeight="SemiBold" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Grid.Column="1" Text="Phone" FontWeight="SemiBold" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Grid.Column="2" Text="Village/Area" FontWeight="SemiBold" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Grid.Column="3" Text="Quick Actions" FontWeight="SemiBold" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </Grid>
 
-                    <!-- Details TabView -->
-                    <TabView Visibility="{x:Bind ViewModel.CustomerSelectedVisibility, Mode=OneWay}"
-                             IsAddTabButtonVisible="False" TabWidthMode="SizeToContent" Margin="0,8,0,0">
-                        <TabView.TabItems>
-                            
-                            <!-- Tab: Documents -->
-                            <TabViewItem Header="Documents &amp; Files">
-                                <Grid Padding="24" RowDefinitions="Auto,*">
-                                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Margin="0,0,0,16">
-                                        <Button Command="{Binding ViewModel.OpenCustomerFolderCommand}" Style="{StaticResource AccentButtonStyle}">
+                    <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.Customers, Mode=OneWay}" 
+                              SelectionMode="None" IsItemClickEnabled="True" ItemClick="ListView_ItemClick"
+                              HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:Customer">
+                                <Grid ColumnDefinitions="250, 150, 150, *" Padding="12,12,0,12" VerticalAlignment="Center"
+                                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                                    
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                        <PersonPicture Width="32" Height="32" Initials="{x:Bind Initials}" />
+                                        <StackPanel VerticalAlignment="Center" Spacing="2">
+                                            <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="14" />
+                                            <TextBlock Text="{x:Bind Code}" FontFamily="Consolas" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <TextBlock Grid.Column="1" Text="{x:Bind Mobile}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="2" Text="{x:Bind Village}" VerticalAlignment="Center" />
+                                    
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <Button Tag="{x:Bind Id}" Click="StartSession_Click" Style="{StaticResource AccentButtonStyle}">
                                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                                <FontIcon Glyph="&#xED25;" FontSize="12" />
-                                                <TextBlock Text="Open in Explorer" />
+                                                <FontIcon Glyph="&#xE768;" FontSize="12" />
+                                                <TextBlock Text="Start Session" />
                                             </StackPanel>
                                         </Button>
-                                        <TextBlock Text="{Binding ViewModel.CustomerFolderStats.UnorganisedCount}" 
-                                                   VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                        <TextBlock Text="files in folder" VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                     </StackPanel>
-
-                                    <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.CustomerFolderFiles, Mode=OneWay}">
-                                        <ListView.ItemTemplate>
-                                            <DataTemplate x:DataType="models:FolderFileItem">
-                                                <StackPanel Orientation="Horizontal" Spacing="8" Padding="0,8">
-                                                    <FontIcon Glyph="{x:Bind Glyph}" FontSize="16" />
-                                                    <TextBlock Text="{x:Bind Name}" />
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ListView.ItemTemplate>
-                                    </ListView>
                                 </Grid>
-                            </TabViewItem>
-
-                            <!-- Tab: Sessions -->
-                            <TabViewItem Header="Session History">
-                                <ListView ItemsSource="{x:Bind ViewModel.CustomerSessions, Mode=OneWay}" Padding="24">
-                                    <ListView.ItemTemplate>
-                                        <DataTemplate x:DataType="models:Session">
-                                            <Grid ColumnDefinitions="150,150,*,Auto" Padding="0,12" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
-                                                <TextBlock Grid.Column="0" Text="{Binding StartedAt}" />
-                                                <TextBlock Grid.Column="1" Text="{Binding StartedAt}" />
-                                                <TextBlock Grid.Column="2" Text="{x:Bind Status}" />
-                                                <TextBlock Grid.Column="3" Text="{Binding DurationSeconds}" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ListView.ItemTemplate>
-                                </ListView>
-                            </TabViewItem>
-
-                            <!-- Tab: Payments -->
-                            <TabViewItem Header="Payments">
-                                <ListView ItemsSource="{x:Bind ViewModel.CustomerPayments, Mode=OneWay}" Padding="24">
-                                    <ListView.ItemTemplate>
-                                        <DataTemplate x:DataType="models:Payment">
-                                            <Grid ColumnDefinitions="150,120,120,*" Padding="0,12" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
-                                                <TextBlock Grid.Column="0" Text="{Binding PaymentDate}" />
-                                                <TextBlock Grid.Column="1" Text="{x:Bind InvoiceNo}" FontFamily="Consolas" />
-                                                <TextBlock Grid.Column="2" Text="{Binding Amount}" FontWeight="Bold" Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
-                                                <TextBlock Grid.Column="3" Text="{x:Bind PaymentMethod}" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ListView.ItemTemplate>
-                                </ListView>
-                            </TabViewItem>
-
-                        </TabView.TabItems>
-                    </TabView>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Padding" Value="0" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                    </ListView>
                 </Grid>
             </Border>
         </Grid>

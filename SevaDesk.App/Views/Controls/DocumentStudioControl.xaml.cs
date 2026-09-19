@@ -10,12 +10,6 @@ using System.Diagnostics;
 
 namespace SevaDesk_App.Views.Controls;
 
-public class StudioSourceFile
-{
-    public string FullPath { get; set; } = string.Empty;
-    public string FileName => System.IO.Path.GetFileName(FullPath);
-}
-
 public sealed partial class DocumentStudioControl : UserControl
 {
     private CanvasBitmap? _previewBitmap;

@@ -116,19 +116,20 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        foreach (var item in NavView.MenuItems)
+        foreach (var item in NavView.MenuItems.Concat(NavView.FooterMenuItems))
         {
             if (item is NavigationViewItem navItem)
             {
                 var matches = navItem.Tag?.ToString() switch
                 {
-                    "dashboard" => currentPageType == typeof(DashboardPage),
-                    "sessions" => currentPageType == typeof(SessionsPage),
-                    "documents" => currentPageType == typeof(DocumentsPage),
-                    "payments" => currentPageType == typeof(PaymentsPage),
+                    "dashboard"    => currentPageType == typeof(DashboardPage),
+                    "sessions"     => currentPageType == typeof(SessionsPage),
+                    "documents"    => currentPageType == typeof(DocumentsPage),
+                    "payments"     => currentPageType == typeof(PaymentsPage),
                     "applications" => currentPageType == typeof(ApplicationsPage),
-                    "resources" => currentPageType == typeof(ResourcesPage),
-                    "customers" => currentPageType == typeof(CustomersPage),
+                    "resources"    => currentPageType == typeof(ResourcesPage),
+                    "customers"    => currentPageType == typeof(CustomersPage),
+                    "about"        => currentPageType == typeof(AboutPage),
                     _ => false
                 };
 
@@ -160,14 +161,15 @@ public sealed partial class MainWindow : Window
         {
             targetType = item.Tag?.ToString() switch
             {
-                "dashboard" => typeof(DashboardPage),
-                "sessions" => typeof(SessionsPage),
-                "documents" => typeof(DocumentsPage),
-                "payments" => typeof(PaymentsPage),
+                "dashboard"    => typeof(DashboardPage),
+                "sessions"     => typeof(SessionsPage),
+                "documents"    => typeof(DocumentsPage),
+                "payments"     => typeof(PaymentsPage),
                 "applications" => typeof(ApplicationsPage),
-                "resources" => typeof(ResourcesPage),
-                "customers" => typeof(CustomersPage),
-                _ => typeof(DashboardPage)
+                "resources"    => typeof(ResourcesPage),
+                "customers"    => typeof(CustomersPage),
+                "about"        => typeof(AboutPage),
+                _              => typeof(DashboardPage)
             };
         }
 
@@ -270,6 +272,14 @@ public sealed partial class MainWindow : Window
     public void NavigateTo(Type pageType, object? parameter = null)
     {
         NavFrame.Navigate(pageType, parameter);
+    }
+
+    public void GoBack()
+    {
+        if (NavFrame.CanGoBack)
+        {
+            NavFrame.GoBack();
+        }
     }
 
     private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)

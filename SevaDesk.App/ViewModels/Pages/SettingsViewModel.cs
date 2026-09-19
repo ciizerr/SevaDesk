@@ -7,13 +7,18 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Win32;
 using SevaDesk_App.Services;
-using Windows.ApplicationModel.DataTransfer;
 using WinRT.Interop;
 
 namespace SevaDesk_App.ViewModels.Pages;
 
 public partial class SettingsViewModel : StatusViewModel
 {
+    // ==========================================
+    // Dirty / Save State
+    // ==========================================
+    [ObservableProperty]
+    private bool _hasUnsavedChanges = false;
+
     // ==========================================
     // Tab 1: Appearance, Material & Language
     // ==========================================
@@ -129,47 +134,19 @@ public partial class SettingsViewModel : StatusViewModel
     [ObservableProperty]
     private int _overlayPositionIndex = 0; // 0: Bottom-Right, 1: Top-Right, 2: Bottom-Left, 3: Top-Left
 
-    // ==========================================
-    // Tab 5: About & System (Minimal)
-    // ==========================================
-    [ObservableProperty]
-    private string _appVersionDisplay = "SevaDesk v1.0.0-preview";
-
-    [ObservableProperty]
-    private string _buildInfoDisplay = "Build 2026.09.14 · WinUI 3 (Windows App SDK 2.4) · .NET 8.0 (win-x64)";
-
-    [ObservableProperty]
-    private string _developerName = "ciizerr";
-
-    [ObservableProperty]
-    private string _githubUrl = "https://github.com/ciizerr";
-
-    [ObservableProperty]
-    private string _bugReportUrl = "https://github.com/ciizerr/SevaDesk/issues/new?template=bug_report.md";
-
-    [ObservableProperty]
-    private string _featureRequestUrl = "https://github.com/ciizerr/SevaDesk/issues/new?template=feature_request.md";
-
-    [ObservableProperty]
-    private string _communityUrl = "https://github.com/ciizerr/SevaDesk/discussions";
-
-    [ObservableProperty]
-    private string _buyMeCoffeeUrl = "https://buymeacoffee.com/ciizerr";
-
-    [ObservableProperty]
-    private string _upiId = "sevadesk.csc@upi";
-
-
     public SettingsViewModel()
     {
-        WorkingRootPath = AppServices.FolderManager.BaseDirectory;
-        BackupRootPath = AppServices.FolderManager.BackupDirectory;
-        WatchDownloads = AppServices.FileWatcher.WatchDownloads;
-        WatchDesktop = AppServices.FileWatcher.WatchDesktop;
-        WatchDocuments = AppServices.FileWatcher.WatchDocuments;
-        
+        _workingRootPath = AppServices.FolderManager.BaseDirectory;
+        _backupRootPath = AppServices.FolderManager.BackupDirectory;
+
+        // BUG FIX: Use backing-field assignment so OnWatchXxxChanged partial handlers
+        // do NOT fire during construction (which was triggering the "Watched folders updated." toast).
+        _watchDownloads = AppServices.FileWatcher.WatchDownloads;
+        _watchDesktop = AppServices.FileWatcher.WatchDesktop;
+        _watchDocuments = AppServices.FileWatcher.WatchDocuments;
+
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        DatabasePath = Path.Combine(appData, "SevaDesk", "sevadesk.db");
+        _databasePath = Path.Combine(appData, "SevaDesk", "sevadesk.db");
 
         LoadInstalledPrinters();
 
@@ -187,7 +164,7 @@ public partial class SettingsViewModel : StatusViewModel
 
         _selectedCloseBehaviorIndex = CloseActionBehavior;
 
-        // Initialize Overlay Widget Settings
+        // Use backing fields so OnXxxChanged handlers don't fire on init
         _isOverlayWidgetEnabled = IsOverlayWidgetEnabledSetting;
         _overlayPositionIndex = OverlayPositionSetting;
 
@@ -241,6 +218,10 @@ public partial class SettingsViewModel : StatusViewModel
         }
     }
 
+    // ==========================================
+    // Live-Apply Settings (no dirty flag)
+    // ==========================================
+
     partial void OnSelectedThemeIndexChanged(int value)
     {
         var theme = value switch
@@ -249,57 +230,14 @@ public partial class SettingsViewModel : StatusViewModel
             2 => ElementTheme.Dark,
             _ => ElementTheme.Default
         };
-
         MainWindow.Instance?.SetTheme(theme);
-        AutoSave("Theme applied.");
+        ShowSuccess("Theme applied.");
     }
 
     partial void OnEnableMicaBackdropChanged(bool value)
     {
         MainWindow.Instance?.SetMicaBackdrop(value);
-        AutoSave("Backdrop updated.");
-    }
-
-    partial void OnSelectedCloseBehaviorIndexChanged(int value)
-    {
-        CloseActionBehavior = value;
-        AutoSave("Close behavior updated.");
-    }
-
-    partial void OnWatchDownloadsChanged(bool value)
-    {
-        AppServices.FileWatcher.WatchDownloads = value;
-        AppServices.FileWatcher.SaveSettings();
-        AppServices.FileWatcher.RestartWatchers();
-        AutoSave("Watched folders updated.");
-    }
-
-    partial void OnWatchDesktopChanged(bool value)
-    {
-        AppServices.FileWatcher.WatchDesktop = value;
-        AppServices.FileWatcher.SaveSettings();
-        AppServices.FileWatcher.RestartWatchers();
-        AutoSave("Watched folders updated.");
-    }
-
-    partial void OnWatchDocumentsChanged(bool value)
-    {
-        AppServices.FileWatcher.WatchDocuments = value;
-        AppServices.FileWatcher.SaveSettings();
-        AppServices.FileWatcher.RestartWatchers();
-        AutoSave("Watched folders updated.");
-    }
-
-    partial void OnIsOverlayWidgetEnabledChanged(bool value)
-    {
-        IsOverlayWidgetEnabledSetting = value;
-        AutoSave("Overlay widget setting updated.");
-    }
-
-    partial void OnOverlayPositionIndexChanged(int value)
-    {
-        OverlayPositionSetting = value;
-        AutoSave("Overlay position updated.");
+        ShowSuccess("Backdrop updated.");
     }
 
     partial void OnSelectedLanguageChanged(LanguageItem? value)
@@ -307,17 +245,71 @@ public partial class SettingsViewModel : StatusViewModel
         if (value != null && !string.Equals(value.Code, AppServices.Localization.CurrentLanguageCode, StringComparison.OrdinalIgnoreCase))
         {
             AppServices.Localization.SetLanguage(value.Code);
-            AutoSave($"Language changed to {value.DisplayName}.");
+            ShowSuccess($"Language changed to {value.DisplayName}.");
         }
     }
 
-    public string Text(string key) => AppServices.Localization.GetString(key);
+    // ==========================================
+    // Dirty-Flag Settings (require explicit Save)
+    // ==========================================
 
-
-    public void AutoSave(string? message = null)
+    partial void OnSelectedCloseBehaviorIndexChanged(int value)
     {
-        ShowSuccess(message ?? "Changes saved automatically.");
+        CloseActionBehavior = value;
+        HasUnsavedChanges = true;
     }
+
+    partial void OnShopNameChanged(string value) => HasUnsavedChanges = true;
+    partial void OnOperatorNameChanged(string value) => HasUnsavedChanges = true;
+    partial void OnCscVleIdChanged(string value) => HasUnsavedChanges = true;
+    partial void OnContactNumberChanged(string value) => HasUnsavedChanges = true;
+    partial void OnShopAddressChanged(string value) => HasUnsavedChanges = true;
+    partial void OnShopUpiVpaChanged(string value) => HasUnsavedChanges = true;
+    partial void OnPayeeNameChanged(string value) => HasUnsavedChanges = true;
+    partial void OnDefaultBwPrinterChanged(string value) => HasUnsavedChanges = true;
+    partial void OnDefaultColorPrinterChanged(string value) => HasUnsavedChanges = true;
+
+    partial void OnWatchDownloadsChanged(bool value)
+    {
+        AppServices.FileWatcher.WatchDownloads = value;
+        AppServices.FileWatcher.SaveSettings();
+        AppServices.FileWatcher.RestartWatchers();
+        HasUnsavedChanges = true;
+    }
+
+    partial void OnWatchDesktopChanged(bool value)
+    {
+        AppServices.FileWatcher.WatchDesktop = value;
+        AppServices.FileWatcher.SaveSettings();
+        AppServices.FileWatcher.RestartWatchers();
+        HasUnsavedChanges = true;
+    }
+
+    partial void OnWatchDocumentsChanged(bool value)
+    {
+        AppServices.FileWatcher.WatchDocuments = value;
+        AppServices.FileWatcher.SaveSettings();
+        AppServices.FileWatcher.RestartWatchers();
+        HasUnsavedChanges = true;
+    }
+
+    partial void OnIsOverlayWidgetEnabledChanged(bool value)
+    {
+        IsOverlayWidgetEnabledSetting = value;
+        HasUnsavedChanges = true;
+    }
+
+    partial void OnOverlayPositionIndexChanged(int value)
+    {
+        OverlayPositionSetting = value;
+        HasUnsavedChanges = true;
+    }
+
+    // ==========================================
+    // Commands
+    // ==========================================
+
+    public string Text(string key) => AppServices.Localization.GetString(key);
 
     [RelayCommand]
     public async Task CheckLanguageUpdatesAsync()
@@ -341,50 +333,26 @@ public partial class SettingsViewModel : StatusViewModel
     }
 
     [RelayCommand]
-    public void OpenGitHub() => OpenUrl(GithubUrl);
-
-    [RelayCommand]
-    public void ReportBug() => OpenUrl(BugReportUrl);
-
-    [RelayCommand]
-    public void RequestFeature() => OpenUrl(FeatureRequestUrl);
-
-    [RelayCommand]
-    public void OpenCommunity() => OpenUrl(CommunityUrl);
-
-    [RelayCommand]
-    public void OpenBuyMeCoffee() => OpenUrl(BuyMeCoffeeUrl);
-
-    [RelayCommand]
-    public void CopyUpi()
+    public void SaveAllChanges()
     {
-        try
-        {
-            var dataPackage = new DataPackage();
-            dataPackage.SetText(UpiId);
-            Clipboard.SetContent(dataPackage);
-            ShowSuccess($"UPI ID copied to clipboard: {UpiId}");
-        }
-        catch (Exception ex)
-        {
-            ShowWarning($"Could not copy UPI ID: {ex.Message}");
-        }
-    }
+        // Persist café profile settings
+        AppServices.Database.SetSetting("shop_name", ShopName);
+        AppServices.Database.SetSetting("operator_name", OperatorName);
+        AppServices.Database.SetSetting("csc_vle_id", CscVleId);
+        AppServices.Database.SetSetting("contact_number", ContactNumber);
+        AppServices.Database.SetSetting("shop_address", ShopAddress);
+        AppServices.Database.SetSetting("shop_upi_vpa", ShopUpiVpa);
+        AppServices.Database.SetSetting("payee_name", PayeeName);
 
-    private void OpenUrl(string url)
-    {
-        try
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = url,
-                UseShellExecute = true
-            });
-        }
-        catch (Exception ex)
-        {
-            ShowWarning($"Could not open link: {ex.Message}");
-        }
+        // Persist hardware settings
+        AppServices.Database.SetSetting("default_bw_printer", DefaultBwPrinter);
+        AppServices.Database.SetSetting("default_color_printer", DefaultColorPrinter);
+
+        // Persist close behavior
+        AppServices.Database.SetSetting("close_behavior", SelectedCloseBehaviorIndex.ToString());
+
+        HasUnsavedChanges = false;
+        ShowSuccess("All settings saved.");
     }
 
     [RelayCommand]
@@ -405,7 +373,7 @@ public partial class SettingsViewModel : StatusViewModel
                 AppServices.FolderManager.SetBaseDirectory(folderPath);
                 AppServices.Database.SetSetting("working_root_path", folderPath);
                 AppServices.FileWatcher.RestartWatchers();
-                AutoSave("Working folder changed successfully.");
+                ShowSuccess("Working folder changed successfully.");
             }
         }
         catch (Exception ex)
@@ -425,7 +393,7 @@ public partial class SettingsViewModel : StatusViewModel
                 BackupRootPath = folderPath;
                 AppServices.FolderManager.SetBackupDirectory(folderPath);
                 AppServices.Database.SetSetting("backup_root_path", folderPath);
-                AutoSave("Archive Database folder changed successfully.");
+                ShowSuccess("Archive Database folder changed successfully.");
             }
         }
         catch (Exception ex)
@@ -447,7 +415,7 @@ public partial class SettingsViewModel : StatusViewModel
                     CustomWatchFolders.Add(folderPath);
                     AppServices.FileWatcher.SaveSettings();
                     AppServices.FileWatcher.RestartWatchers();
-                    AutoSave($"Added watched folder: {Path.GetFileName(folderPath)}");
+                    ShowSuccess($"Added watched folder: {Path.GetFileName(folderPath)}");
                 }
             }
         }
@@ -464,7 +432,7 @@ public partial class SettingsViewModel : StatusViewModel
         {
             AppServices.FileWatcher.SaveSettings();
             AppServices.FileWatcher.RestartWatchers();
-            AutoSave("Custom watched folder removed.");
+            ShowSuccess("Custom watched folder removed.");
         }
     }
 
@@ -495,12 +463,6 @@ public partial class SettingsViewModel : StatusViewModel
     }
 
     [RelayCommand]
-    public void SaveSettings()
-    {
-        ShowSuccess("All settings saved successfully.");
-    }
-
-    [RelayCommand]
     public void ResetDefaults()
     {
         SelectedThemeIndex = 0;
@@ -516,13 +478,12 @@ public partial class SettingsViewModel : StatusViewModel
         ShopUpiVpa = "sevadesk.csc@upi";
         PayeeName = "SevaDesk Cyber Center";
 
-
-
         WatchDownloads = true;
         WatchDesktop = true;
         WatchDocuments = true;
         AutoArchiveDaysIndex = 2;
 
+        HasUnsavedChanges = false;
         ShowSuccess("Defaults restored successfully.");
     }
 }

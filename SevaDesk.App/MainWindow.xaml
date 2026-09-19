@@ -105,6 +105,18 @@
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
+
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem
+                    loc:Loc.Key="Nav.About"
+                    Content="About"
+                    Tag="about">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE946;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.FooterMenuItems>
+
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
