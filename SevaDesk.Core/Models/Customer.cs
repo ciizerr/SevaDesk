@@ -32,10 +32,33 @@ public class Customer
         get
         {
             var parts = new List<string>();
-            if (!string.IsNullOrWhiteSpace(Mobile)) parts.Add(Mobile);
-            if (!string.IsNullOrWhiteSpace(Village)) parts.Add(Village);
-            if (!string.IsNullOrWhiteSpace(Code)) parts.Add(Code);
+            if (!string.IsNullOrWhiteSpace(Village)) parts.Add(Village.Trim());
+            if (!string.IsNullOrWhiteSpace(Mobile)) parts.Add($"Mob: {Mobile.Trim()}");
+
+            var maskedId = FormattedMaskedId;
+            if (!string.IsNullOrWhiteSpace(maskedId)) parts.Add(maskedId);
+
+            if (!string.IsNullOrWhiteSpace(Code)) parts.Add(Code.Trim());
             return string.Join(" · ", parts);
+        }
+    }
+
+    public string? FormattedMaskedId
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(IdReference)) return null;
+
+            var idTrimmed = IdReference.Trim();
+            var label = !string.IsNullOrWhiteSpace(IdType) ? IdType.Trim() : "ID";
+
+            if (idTrimmed.Length <= 4)
+            {
+                return $"{label}: {idTrimmed}";
+            }
+
+            var last4 = idTrimmed[^4..];
+            return $"{label}: •••• {last4}";
         }
     }
 }

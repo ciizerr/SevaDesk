@@ -1,6 +1,7 @@
 using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Navigation;
 using SevaDesk_App.ViewModels.Pages;
 using SevaDesk.Core.Models;
 using SevaDesk_App.Services;
@@ -42,6 +43,7 @@ public sealed partial class SessionsPage : Page
         };
         ViewModel.Initialize();
     }
+
 
     public static Visibility VisibleIf(bool condition) => condition ? Visibility.Visible : Visibility.Collapsed;
     public static Visibility CollapsedIf(bool condition) => condition ? Visibility.Collapsed : Visibility.Visible;

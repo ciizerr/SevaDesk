@@ -58,6 +58,7 @@ public class CustomerRepository : ICustomerRepository
                OR mobile LIKE @Pattern
                OR code LIKE @Pattern
                OR village LIKE @Pattern
+               OR id_reference LIKE @Pattern
             ORDER BY created_at DESC
             LIMIT 50";
 

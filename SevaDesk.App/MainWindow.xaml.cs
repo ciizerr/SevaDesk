@@ -55,8 +55,8 @@ public sealed partial class MainWindow : Window
             _uiSettings.ColorValuesChanged += UiSettings_ColorValuesChanged;
             NavFrame.Navigated += NavFrame_Navigated;
 
-            // Initialize Taskbar Widget & Tray Companion
-            TaskbarWidgetService.Instance.Initialize(this);
+            // Initialize Desktop Sidebar Widget
+            DesktopSidebarWidget.Instance.ShowSidebar();
             AppWindow.Closing += AppWindow_Closing;
 
             RootGrid.Loaded += (s, e) => 
@@ -285,17 +285,16 @@ public sealed partial class MainWindow : Window
     private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
         var behavior = SettingsViewModel.CloseActionBehavior;
-        if (behavior == 1) // Minimize to Tray
+        if (behavior == 1) // Hide window, keep sidebar
         {
             args.Cancel = true;
             AppWindow.Hide();
-            TaskbarWidgetService.Instance.ShowNotification("SevaDesk Running in Background", "Customer sessions remain active in the system tray. Click the tray icon to restore.");
             return;
         }
 
         if (behavior == 2) // Exit completely
         {
-            TaskbarWidgetService.Instance.Dispose();
+            DesktopSidebarWidget.Instance.Close();
             return;
         }
 
@@ -340,7 +339,6 @@ public sealed partial class MainWindow : Window
                 SettingsViewModel.CloseActionBehavior = 1;
             }
             AppWindow.Hide();
-            TaskbarWidgetService.Instance.ShowNotification("SevaDesk Running in Background", "Customer sessions remain active in the system tray. Click the tray icon to restore.");
         }
         else if (result == ContentDialogResult.Secondary)
         {
@@ -348,7 +346,7 @@ public sealed partial class MainWindow : Window
             {
                 SettingsViewModel.CloseActionBehavior = 2;
             }
-            TaskbarWidgetService.Instance.Dispose();
+            DesktopSidebarWidget.Instance.Close();
             Application.Current.Exit();
         }
     }
@@ -455,8 +453,8 @@ public sealed partial class MainWindow : Window
         {
             // No active customer sessions
             BtnTriageAction.Flyout = null;
-            TxtTriageAction.Text = AppServices.Localization.GetString("Triage.NoSession") ?? "Open Document Hub";
-            BtnTriageAction.Tag = "documents";
+            TxtTriageAction.Text = AppServices.Localization.GetString("Triage.CreateSession", "Create a new session?");
+            BtnTriageAction.Tag = "new_session";
             BtnTriageAction.Visibility = Visibility.Visible;
         }
 
@@ -473,6 +471,49 @@ public sealed partial class MainWindow : Window
         {
             GlobalTriageBar.IsOpen = false;
             NavFrame.Navigate(typeof(DocumentsPage));
+        }
+        else if (BtnTriageAction.Tag is string tag2 && tag2 == "new_session")
+        {
+            GlobalTriageBar.IsOpen = false;
+            var dialog = new SevaDesk_App.Views.Dialogs.NewCustomerDialog
+            {
+                XamlRoot = this.Content.XamlRoot
+            };
+            
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(dialog.CustomerName))
+            {
+                var customer = dialog.SelectedExistingCustomer;
+                if (customer == null)
+                {
+                    var matches = (await AppServices.Customers.SearchAsync(dialog.CustomerName)).ToList();
+                    customer = matches.FirstOrDefault(c => string.Equals(c.Name, dialog.CustomerName, StringComparison.OrdinalIgnoreCase));
+                    if (customer == null)
+                    {
+                        customer = await AppServices.Customers.CreateAsync(new Customer
+                        {
+                            Name = dialog.CustomerName,
+                            Mobile = string.IsNullOrWhiteSpace(dialog.Mobile) ? null : dialog.Mobile,
+                            Village = string.IsNullOrWhiteSpace(dialog.Village) ? null : dialog.Village,
+                            IdReference = string.IsNullOrWhiteSpace(dialog.IdRef) ? null : dialog.IdRef,
+                            Notes = string.IsNullOrWhiteSpace(dialog.Notes) ? null : dialog.Notes
+                        });
+                    }
+                }
+                var newSession = await AppServices.Sessions.StartSessionAsync(customer.Id, dialog.Notes);
+                var folder = AppServices.FolderManager.EnsureCustomerWorkingFolder(customer.Name, customer.Code);
+                newSession.FolderPath = folder;
+                newSession.Customer = customer;
+
+                if (_currentIncomingFile != null)
+                {
+                    await AppServices.FileWatcher.RouteFileToCustomerAsync(_currentIncomingFile.FilePath, folder, deleteSource: true);
+                }
+                
+                _currentIncomingFile = null;
+                NotifyIncomingFileRouted();
+                NavFrame.Navigate(typeof(SessionsPage));
+            }
         }
     }
 

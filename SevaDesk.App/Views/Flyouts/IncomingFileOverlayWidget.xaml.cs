@@ -27,6 +27,9 @@ public sealed partial class IncomingFileOverlayWidget : Window
     [DllImport("user32.dll", SetLastError = true)]
     private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
     [StructLayout(LayoutKind.Sequential)]
     private struct APPBARDATA
     {
@@ -50,6 +53,9 @@ public sealed partial class IncomingFileOverlayWidget : Window
     private const uint ABM_GETTASKBARPOS = 0x00000005;
     private const int GWL_EXSTYLE = -20;
     private const int WS_EX_TOOLWINDOW = 0x00000080;
+    
+    private const int DWMWA_BORDER_COLOR = 34;
+    private const int DWMWA_COLOR_NONE = unchecked((int)0xFFFFFFFE);
 
     [DllImport("shell32.dll")]
     private static extern IntPtr SHAppBarMessage(uint dwMessage, ref APPBARDATA pData);
@@ -73,6 +79,9 @@ public sealed partial class IncomingFileOverlayWidget : Window
         var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
         var exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
         SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW);
+
+        int colorNone = DWMWA_COLOR_NONE;
+        DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref colorNone, sizeof(int));
 
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
@@ -142,8 +151,8 @@ public sealed partial class IncomingFileOverlayWidget : Window
         else
         {
             BtnMainAction.Flyout = null;
-            TxtMainAction.Text = AppServices.Localization.GetString("Triage.NoSession") ?? "Open Document Hub";
-            BtnMainAction.Tag = "documents";
+            TxtMainAction.Text = AppServices.Localization.GetString("Triage.CreateSession", "Create a new session?");
+            BtnMainAction.Tag = "new_session";
             BtnMainAction.Visibility = Visibility.Visible;
         }
 
@@ -243,6 +252,12 @@ public sealed partial class IncomingFileOverlayWidget : Window
             HideWidget();
             MainWindow.Instance?.RestoreWindow();
             MainWindow.Instance?.NavigateTo(typeof(DocumentsPage));
+        }
+        else if (BtnMainAction.Tag is string tag2 && tag2 == "new_session")
+        {
+            HideWidget();
+            var newSessionWidget = new NewSessionWidget(_currentFile);
+            newSessionWidget.Activate();
         }
     }
 
