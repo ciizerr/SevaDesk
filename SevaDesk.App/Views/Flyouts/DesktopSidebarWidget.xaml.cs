@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics;
@@ -7,7 +8,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Input;
+using Microsoft.UI.Xaml.Media;
 using SevaDesk.Core.Models;
 using SevaDesk_App.Services;
 using SevaDesk_App.Views.Dialogs;
@@ -19,16 +20,21 @@ public sealed partial class DesktopSidebarWidget : Window
     public static DesktopSidebarWidget Instance { get; } = new DesktopSidebarWidget();
 
     private const int CollapsedWidthDip = 44;
-    private const int CollapsedHeightDip = 150;
+    private const int CollapsedHeightDip = 140;
     private const int ExpandedWidthDip = 380;
     private const int MarginDip = 12;
+    private const double AnimDurationMs = 240.0;
 
     private const uint SPI_GETWORKAREA = 0x0030;
     private const uint SWP_NOZORDER = 0x0004;
     private const uint SWP_NOACTIVATE = 0x0010;
     private const uint SWP_SHOWWINDOW = 0x0040;
+    private const uint SWP_NOCOPYBITS = 0x0100;
     private const uint WM_SYSCOMMAND = 0x0112;
     private const int SC_MINIMIZE = 0xF020;
+    private const uint WM_GETMINMAXINFO = 0x0024;
+    private const uint WM_SETCURSOR = 0x0020;
+    private const int IDC_HAND = 32649;
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern IntPtr FindWindow(string? lpClassName, string? lpWindowName);
@@ -54,6 +60,12 @@ public sealed partial class DesktopSidebarWidget : Window
 
     [DllImport("user32.dll")]
     private static extern bool SystemParametersInfo(uint uiAction, uint uiParam, ref RECT pvParam, uint fWinIni);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr LoadCursor(IntPtr hInstance, int lpCursorName);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetCursor(IntPtr hCursor);
 
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", SetLastError = true)]
     private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
@@ -94,14 +106,37 @@ public sealed partial class DesktopSidebarWidget : Window
         public int Bottom;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT
+    {
+        public int x;
+        public int y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MINMAXINFO
+    {
+        public POINT ptReserved;
+        public POINT ptMaxSize;
+        public POINT ptMaxPosition;
+        public POINT ptMinTrackSize;
+        public POINT ptMaxTrackSize;
+    }
+
     private readonly ObservableCollection<ActiveSessionItem> _sessionItems = [];
     private readonly SUBCLASSPROC _subclassDelegate;
+    private readonly Stopwatch _animStopwatch = new();
 
     private bool _isExpanded;
     private int _currentX;
     private int _currentY;
     private int _currentW;
     private int _currentH;
+
+    private int _startX;
+    private int _startY;
+    private int _startW;
+    private int _startH;
 
     private int _targetX;
     private int _targetY;
@@ -140,10 +175,10 @@ public sealed partial class DesktopSidebarWidget : Window
         ExpandedPanel.Visibility = Visibility.Collapsed;
 
         var (x, y, w, h) = GetTargetBounds(false);
-        _currentX = _targetX = x;
-        _currentY = _targetY = y;
-        _currentW = _targetW = w;
-        _currentH = _targetH = h;
+        _currentX = _targetX = _startX = x;
+        _currentY = _targetY = _startY = y;
+        _currentW = _targetW = _startW = w;
+        _currentH = _targetH = _startH = h;
 
         var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
         SetWindowPos(hwnd, IntPtr.Zero, _currentX, _currentY, _currentW, _currentH, SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
@@ -181,7 +216,7 @@ public sealed partial class DesktopSidebarWidget : Window
                 SetWindowLongPtr(hwnd, -8 /* GWLP_HWNDPARENT */, desktopTarget);
             }
 
-            // Subclass to intercept and block SC_MINIMIZE triggered by Win+D / Win+M
+            // Subclass to intercept SC_MINIMIZE, override min track size, and set cursor
             SetWindowSubclass(hwnd, _subclassDelegate, (UIntPtr)1, IntPtr.Zero);
         }
         catch { }
@@ -196,6 +231,23 @@ public sealed partial class DesktopSidebarWidget : Window
             {
                 // Suppress minimize message completely (from Win+D / Win+M)
                 return IntPtr.Zero;
+            }
+        }
+        else if (uMsg == WM_GETMINMAXINFO)
+        {
+            // Crucial: Allow window to be narrower and shorter than Windows default 136px min track size
+            MINMAXINFO mmi = Marshal.PtrToStructure<MINMAXINFO>(lParam);
+            mmi.ptMinTrackSize.x = 10;
+            mmi.ptMinTrackSize.y = 10;
+            Marshal.StructureToPtr(mmi, lParam, true);
+            return IntPtr.Zero;
+        }
+        else if (uMsg == WM_SETCURSOR)
+        {
+            if (!_isExpanded)
+            {
+                SetCursor(LoadCursor(IntPtr.Zero, IDC_HAND));
+                return new IntPtr(1);
             }
         }
 
@@ -216,6 +268,11 @@ public sealed partial class DesktopSidebarWidget : Window
         _targetW = tw;
         _targetH = th;
 
+        _startX = _currentX;
+        _startY = _currentY;
+        _startW = _currentW;
+        _startH = _currentH;
+
         StartAnimation();
     }
 
@@ -230,6 +287,11 @@ public sealed partial class DesktopSidebarWidget : Window
         _targetW = tw;
         _targetH = th;
 
+        _startX = _currentX;
+        _startY = _currentY;
+        _startW = _currentW;
+        _startH = _currentH;
+
         StartAnimation();
     }
 
@@ -239,52 +301,51 @@ public sealed partial class DesktopSidebarWidget : Window
         {
             _animTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(16) // ~60 FPS
+                Interval = TimeSpan.FromMilliseconds(15) // ~60 FPS
             };
             _animTimer.Tick += AnimTimer_Tick;
         }
 
+        _animStopwatch.Restart();
         _animTimer.Start();
     }
 
     private void AnimTimer_Tick(object? sender, object e)
     {
-        bool finished = true;
+        double elapsed = _animStopwatch.Elapsed.TotalMilliseconds;
+        double t = Math.Clamp(elapsed / AnimDurationMs, 0.0, 1.0);
 
-        _currentW = Interpolate(_currentW, _targetW, ref finished);
-        _currentH = Interpolate(_currentH, _targetH, ref finished);
-        _currentX = Interpolate(_currentX, _targetX, ref finished);
-        _currentY = Interpolate(_currentY, _targetY, ref finished);
+        // Quartic Ease-Out curve: fast start with silky deceleration
+        double progress = 1.0 - Math.Pow(1.0 - t, 4);
+
+        _currentX = (int)Math.Round(_startX + (_targetX - _startX) * progress);
+        _currentY = (int)Math.Round(_startY + (_targetY - _startY) * progress);
+        _currentW = (int)Math.Round(_startW + (_targetW - _startW) * progress);
+        _currentH = (int)Math.Round(_startH + (_targetH - _startH) * progress);
 
         var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
         if (hwnd != IntPtr.Zero)
         {
-            SetWindowPos(hwnd, IntPtr.Zero, _currentX, _currentY, _currentW, _currentH, SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+            SetWindowPos(hwnd, IntPtr.Zero, _currentX, _currentY, _currentW, _currentH,
+                SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW | SWP_NOCOPYBITS);
         }
 
-        if (finished)
+        if (t >= 1.0)
         {
             _animTimer?.Stop();
+            _animStopwatch.Stop();
+
+            _currentX = _targetX;
+            _currentY = _targetY;
+            _currentW = _targetW;
+            _currentH = _targetH;
+
             if (!_isExpanded)
             {
                 ExpandedPanel.Visibility = Visibility.Collapsed;
                 CollapsedPillPanel.Visibility = Visibility.Visible;
             }
         }
-    }
-
-    private static int Interpolate(int current, int target, ref bool finished)
-    {
-        int diff = target - current;
-        if (Math.Abs(diff) <= 2)
-        {
-            return target;
-        }
-
-        finished = false;
-        int step = (int)Math.Round(diff * 0.28);
-        if (step == 0) step = Math.Sign(diff) * 2;
-        return current + step;
     }
 
     private (int x, int y, int w, int h) GetTargetBounds(bool expanded)
@@ -295,16 +356,16 @@ public sealed partial class DesktopSidebarWidget : Window
 
         if (!expanded)
         {
-            int w = (int)(CollapsedWidthDip * scale);
-            int h = (int)(CollapsedHeightDip * scale);
+            int w = (int)Math.Round(CollapsedWidthDip * scale);
+            int h = (int)Math.Round(CollapsedHeightDip * scale);
             int x = workArea.Right - w;
             int y = workArea.Top + (workAreaH - h) / 2;
             return (x, y, w, h);
         }
         else
         {
-            int margin = (int)(MarginDip * scale);
-            int w = (int)(ExpandedWidthDip * scale);
+            int margin = (int)Math.Round(MarginDip * scale);
+            int w = (int)Math.Round(ExpandedWidthDip * scale);
             int h = workAreaH - (2 * margin);
             int x = workArea.Right - w - margin;
             int y = workArea.Top + margin;
@@ -334,6 +395,26 @@ public sealed partial class DesktopSidebarWidget : Window
     private void CollapsedPill_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
         ExpandSidebar();
+    }
+
+    private void CollapsedPill_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        CollapsedPillPanel.Background = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"];
+        PillChevronBorder.Background = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
+        if (PillChevronBorder.Child is FontIcon icon)
+        {
+            icon.Foreground = (Brush)Application.Current.Resources["TextOnAccentFillColorPrimaryBrush"];
+        }
+    }
+
+    private void CollapsedPill_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        CollapsedPillPanel.Background = (Brush)Application.Current.Resources["LayerOnAcrylicFillColorDefaultBrush"];
+        PillChevronBorder.Background = (Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
+        if (PillChevronBorder.Child is FontIcon icon)
+        {
+            icon.Foreground = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"];
+        }
     }
 
     private void CollapseButton_Click(object sender, RoutedEventArgs e)
@@ -366,6 +447,19 @@ public sealed partial class DesktopSidebarWidget : Window
             TxtCollapsedActiveCount.Text = count.ToString();
             EmptyStatePanel.Visibility = count == 0 ? Visibility.Visible : Visibility.Collapsed;
             SessionsListView.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+            if (count > 0)
+            {
+                CollapsedActiveBadge.Background = (Brush)Application.Current.Resources["SystemFillColorSuccessBackgroundBrush"];
+                CollapsedActiveBadge.BorderBrush = (Brush)Application.Current.Resources["SystemFillColorSuccessBrush"];
+                TxtCollapsedActiveCount.Foreground = (Brush)Application.Current.Resources["SystemFillColorSuccessBrush"];
+            }
+            else
+            {
+                CollapsedActiveBadge.Background = (Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
+                CollapsedActiveBadge.BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"];
+                TxtCollapsedActiveCount.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+            }
         });
     }
 
