@@ -241,4 +241,16 @@ public sealed partial class PaymentsPage : Page
     {
         await ViewModel.CompletePaymentAsync("UPI");
     }
+
+    private void CopyUpi_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            dataPackage.SetText(ViewModel.ShopUpiId);
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+            ViewModel.ShowSuccess($"UPI ID copied: {ViewModel.ShopUpiId}");
+        }
+        catch { }
+    }
 }

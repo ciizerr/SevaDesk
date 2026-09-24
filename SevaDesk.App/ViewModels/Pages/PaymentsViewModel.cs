@@ -78,6 +78,9 @@ public partial class PaymentsViewModel : StatusViewModel
     private string _shopUpiId = "sevadesk.csc@upi";
 
     [ObservableProperty]
+    private string _payeeName = "SevaDesk Cyber Cafe";
+
+    [ObservableProperty]
     private string _customerName = "Walk-in Customer";
 
     [ObservableProperty]
@@ -193,11 +196,9 @@ public partial class PaymentsViewModel : StatusViewModel
     // --- Constructor ---
     public PaymentsViewModel()
     {
-        var savedUpi = AppServices.Database.GetSetting("shop_upi_id");
-        if (!string.IsNullOrWhiteSpace(savedUpi))
-        {
-            ShopUpiId = savedUpi;
-        }
+        RefreshShopSettings();
+
+        AppServices.Database.SettingChanged += OnSettingChanged;
 
         var currentYear = DateTime.Today.Year;
         for (int y = currentYear - 2; y <= currentYear + 1; y++)
@@ -210,8 +211,36 @@ public partial class PaymentsViewModel : StatusViewModel
         UpdateCartTotals();
     }
 
+    private void OnSettingChanged(string key, string value)
+    {
+        if (key is "shop_upi_vpa" or "shop_upi_id" or "payee_name" or "shop_name")
+        {
+            RefreshShopSettings();
+        }
+    }
+
+    public void RefreshShopSettings()
+    {
+        var upi = AppServices.Database.GetSetting("shop_upi_vpa")
+                  ?? AppServices.Database.GetSetting("shop_upi_id", "sevadesk.csc@upi");
+        if (!string.IsNullOrWhiteSpace(upi))
+        {
+            ShopUpiId = upi;
+        }
+
+        var payee = AppServices.Database.GetSetting("payee_name")
+                    ?? AppServices.Database.GetSetting("shop_name", "SevaDesk Cyber Cafe");
+        if (!string.IsNullOrWhiteSpace(payee))
+        {
+            PayeeName = payee;
+        }
+
+        UpdateCartTotals();
+    }
+
     public async Task InitializeAsync()
     {
+        RefreshShopSettings();
         await LoadRatesAsync();
         await LoadPaymentsDataAsync();
     }
@@ -412,7 +441,7 @@ public partial class PaymentsViewModel : StatusViewModel
     {
         GrandTotal = CartItems.Sum(c => c.Total);
         OnPropertyChanged(nameof(HasCartItems));
-        var encName = Uri.EscapeDataString("SevaDesk Cyber Cafe");
+        var encName = Uri.EscapeDataString(string.IsNullOrWhiteSpace(PayeeName) ? "SevaDesk Cyber Cafe" : PayeeName);
         UpiDeepLink = $"upi://pay?pa={ShopUpiId}&pn={encName}&am={GrandTotal}&cu=INR";
     }
 

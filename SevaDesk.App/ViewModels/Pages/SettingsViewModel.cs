@@ -29,7 +29,15 @@ public partial class SettingsViewModel : StatusViewModel
     private bool _enableMicaBackdrop = true;
 
     // Window close behavior: 0 = Always Prompt, 1 = Minimize to Tray, 2 = Exit App
-    public static int CloseActionBehavior { get; set; } = 0;
+    public static int CloseActionBehavior
+    {
+        get
+        {
+            var val = AppServices.Database.GetSetting("close_behavior", "0");
+            return int.TryParse(val, out var b) ? b : 0;
+        }
+        set => AppServices.Database.SetSetting("close_behavior", value.ToString());
+    }
 
     [ObservableProperty]
     private int _selectedCloseBehaviorIndex;
@@ -136,6 +144,21 @@ public partial class SettingsViewModel : StatusViewModel
 
     public SettingsViewModel()
     {
+        // Load café business profile settings from DB (use backing fields to avoid premature dirty flag)
+        _shopName = AppServices.Database.GetSetting("shop_name", _shopName) ?? _shopName;
+        _operatorName = AppServices.Database.GetSetting("operator_name", _operatorName) ?? _operatorName;
+        _cscVleId = AppServices.Database.GetSetting("csc_vle_id", _cscVleId) ?? _cscVleId;
+        _contactNumber = AppServices.Database.GetSetting("contact_number", _contactNumber) ?? _contactNumber;
+        _shopAddress = AppServices.Database.GetSetting("shop_address", _shopAddress) ?? _shopAddress;
+        _shopUpiVpa = AppServices.Database.GetSetting("shop_upi_vpa")
+                      ?? AppServices.Database.GetSetting("shop_upi_id", _shopUpiVpa)
+                      ?? _shopUpiVpa;
+        _payeeName = AppServices.Database.GetSetting("payee_name", _payeeName) ?? _payeeName;
+
+        // Load printer preferences from DB
+        _defaultBwPrinter = AppServices.Database.GetSetting("default_bw_printer", _defaultBwPrinter) ?? _defaultBwPrinter;
+        _defaultColorPrinter = AppServices.Database.GetSetting("default_color_printer", _defaultColorPrinter) ?? _defaultColorPrinter;
+
         _workingRootPath = AppServices.FolderManager.BaseDirectory;
         _backupRootPath = AppServices.FolderManager.BackupDirectory;
 
@@ -342,6 +365,7 @@ public partial class SettingsViewModel : StatusViewModel
         AppServices.Database.SetSetting("contact_number", ContactNumber);
         AppServices.Database.SetSetting("shop_address", ShopAddress);
         AppServices.Database.SetSetting("shop_upi_vpa", ShopUpiVpa);
+        AppServices.Database.SetSetting("shop_upi_id", ShopUpiVpa); // Keep both keys synchronized
         AppServices.Database.SetSetting("payee_name", PayeeName);
 
         // Persist hardware settings
@@ -483,7 +507,7 @@ public partial class SettingsViewModel : StatusViewModel
         WatchDocuments = true;
         AutoArchiveDaysIndex = 2;
 
-        HasUnsavedChanges = false;
+        SaveAllChanges();
         ShowSuccess("Defaults restored successfully.");
     }
 }

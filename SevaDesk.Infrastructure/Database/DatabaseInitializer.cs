@@ -198,6 +198,8 @@ public class DatabaseInitializer
         }
     }
 
+    public event Action<string, string>? SettingChanged;
+
     public void SetSetting(string key, string value)
     {
         try
@@ -208,6 +210,8 @@ public class DatabaseInitializer
                 INSERT INTO settings (key, value) VALUES (@Key, @Value)
                 ON CONFLICT(key) DO UPDATE SET value = @Value",
                 new { Key = key, Value = value });
+
+            SettingChanged?.Invoke(key, value);
         }
         catch { }
     }

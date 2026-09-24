@@ -164,6 +164,9 @@ public sealed partial class DesktopSidebarWidget : Window
         {
             AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Collapsed;
         }
+
+        LoadShopAndUpiSettings();
+        AppServices.Database.SettingChanged += OnSettingChanged;
     }
 
     public async void ShowSidebar()
@@ -184,6 +187,7 @@ public sealed partial class DesktopSidebarWidget : Window
         SetWindowPos(hwnd, IntPtr.Zero, _currentX, _currentY, _currentW, _currentH, SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
 
         AppWindow.Show();
+        LoadShopAndUpiSettings();
         await LoadSessionsAsync();
     }
 
@@ -603,12 +607,47 @@ public sealed partial class DesktopSidebarWidget : Window
             : Visibility.Visible;
     }
 
+    private void OnSettingChanged(string key, string value)
+    {
+        if (key is "shop_name" or "shop_upi_vpa" or "shop_upi_id" or "payee_name")
+        {
+            DispatcherQueue?.TryEnqueue(LoadShopAndUpiSettings);
+        }
+    }
+
+    private void LoadShopAndUpiSettings()
+    {
+        var shopName = AppServices.Database.GetSetting("shop_name", "SevaDesk");
+        var upiVpa = AppServices.Database.GetSetting("shop_upi_vpa")
+                     ?? AppServices.Database.GetSetting("shop_upi_id", "sevadesk.csc@upi");
+        var payeeName = AppServices.Database.GetSetting("payee_name", "SevaDesk Cyber Center");
+
+        if (TxtShopName != null)
+        {
+            TxtShopName.Text = string.IsNullOrWhiteSpace(shopName) ? "SevaDesk" : shopName;
+        }
+        if (TxtUpiVpa != null)
+        {
+            TxtUpiVpa.Text = string.IsNullOrWhiteSpace(upiVpa) ? "sevadesk.csc@upi" : upiVpa;
+        }
+        if (TxtPayeeName != null)
+        {
+            TxtPayeeName.Text = string.IsNullOrWhiteSpace(payeeName) ? "SevaDesk Cyber Center" : payeeName;
+        }
+    }
+
     private void CopyUpi_Click(object sender, RoutedEventArgs e)
     {
         try
         {
+            var text = TxtUpiVpa?.Text;
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                text = AppServices.Database.GetSetting("shop_upi_vpa")
+                       ?? AppServices.Database.GetSetting("shop_upi_id", "sevadesk.csc@upi");
+            }
             var dataPackage = new DataPackage();
-            dataPackage.SetText(TxtUpiVpa.Text);
+            dataPackage.SetText(text);
             Clipboard.SetContent(dataPackage);
         }
         catch { }
