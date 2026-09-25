@@ -100,15 +100,51 @@ public class FolderManager : IFolderManager
         return newPath;
     }
 
-    public async Task SyncToWorkingAsync(string customerName, string customerCode)
+    public string GetCustomerBackupFolderPath(string customerName, string customerCode)
     {
-        if (string.IsNullOrWhiteSpace(_backupDirectory)) return;
+        if (string.IsNullOrWhiteSpace(_backupDirectory)) return string.Empty;
 
         var folderName = GetCustomerFolderName(customerName, customerCode);
-        var backupPath = Path.Combine(_backupDirectory, folderName);
+        var newPath = Path.Combine(_backupDirectory, folderName);
+
+        // Backward compatibility: If older legacy folder with CUST- prefix exists, return it
+        var legacyName = $"{SanitizeFolderName(customerName)}_{customerCode}";
+        var legacyPath = Path.Combine(_backupDirectory, legacyName);
+        if (!Directory.Exists(newPath) && Directory.Exists(legacyPath))
+        {
+            return legacyPath;
+        }
+
+        return newPath;
+    }
+
+    public string GetEffectiveCustomerFolderPath(string customerName, string customerCode, out bool isBackup)
+    {
+        var workingPath = GetCustomerFolderPath(customerName, customerCode);
+        if (Directory.Exists(workingPath))
+        {
+            isBackup = false;
+            return workingPath;
+        }
+
+        var backupPath = GetCustomerBackupFolderPath(customerName, customerCode);
+        if (!string.IsNullOrWhiteSpace(backupPath) && Directory.Exists(backupPath))
+        {
+            isBackup = true;
+            return backupPath;
+        }
+
+        // Neither exists: default to working path so new files/sessions can target it
+        isBackup = false;
+        return workingPath;
+    }
+
+    public async Task SyncToWorkingAsync(string customerName, string customerCode)
+    {
+        var backupPath = GetCustomerBackupFolderPath(customerName, customerCode);
         var workingPath = GetCustomerFolderPath(customerName, customerCode);
 
-        if (Directory.Exists(backupPath))
+        if (!string.IsNullOrWhiteSpace(backupPath) && Directory.Exists(backupPath))
         {
             await CopyDirectoryAsync(backupPath, workingPath);
         }
@@ -116,13 +152,10 @@ public class FolderManager : IFolderManager
 
     public async Task SyncToBackupAsync(string customerName, string customerCode)
     {
-        if (string.IsNullOrWhiteSpace(_backupDirectory)) return;
-
-        var folderName = GetCustomerFolderName(customerName, customerCode);
-        var backupPath = Path.Combine(_backupDirectory, folderName);
+        var backupPath = GetCustomerBackupFolderPath(customerName, customerCode);
         var workingPath = GetCustomerFolderPath(customerName, customerCode);
 
-        if (Directory.Exists(workingPath))
+        if (!string.IsNullOrWhiteSpace(backupPath) && Directory.Exists(workingPath))
         {
             await CopyDirectoryAsync(workingPath, backupPath);
         }
@@ -301,6 +334,66 @@ public class FolderManager : IFolderManager
         }
     }
 
+    public IEnumerable<FolderGroup> GetFolderFilesGrouped(string customerFolderPath)
+    {
+        if (!Directory.Exists(customerFolderPath))
+            return Enumerable.Empty<FolderGroup>();
+
+        var groups = new List<FolderGroup>();
+
+        // 1. Unorganised (root loose files)
+        var rootFiles = GetFolderFiles(customerFolderPath).ToList();
+        if (rootFiles.Count > 0)
+        {
+            groups.Add(new FolderGroup
+            {
+                FolderName = "Unorganised Files",
+                FolderPath = customerFolderPath,
+                Glyph = "\uE8B7",
+                AccentColor = "#F59E0B",
+                Files = rootFiles
+            });
+        }
+
+        // 2. Shared Docs
+        var sharedPath = Path.Combine(customerFolderPath, "Shared Docs");
+        if (Directory.Exists(sharedPath))
+        {
+            var sharedFiles = GetFolderFiles(sharedPath).ToList();
+            if (sharedFiles.Count > 0)
+            {
+                groups.Add(new FolderGroup
+                {
+                    FolderName = "Shared Docs",
+                    FolderPath = sharedPath,
+                    Glyph = "\uE8A5",
+                    AccentColor = "#0284C7",
+                    Files = sharedFiles
+                });
+            }
+        }
+
+        // 3. Application subfolders
+        foreach (var subName in GetApplicationSubfolders(customerFolderPath))
+        {
+            var subPath = Path.Combine(customerFolderPath, subName);
+            var subFiles = GetFolderFiles(subPath).ToList();
+            if (subFiles.Count > 0)
+            {
+                groups.Add(new FolderGroup
+                {
+                    FolderName = subName,
+                    FolderPath = subPath,
+                    Glyph = "\uED25",
+                    AccentColor = "#9333EA",
+                    Files = subFiles
+                });
+            }
+        }
+
+        return groups;
+    }
+
     public bool RenameFile(string oldFullPath, string newFileName, out string newFullPath, out string errorMessage)
     {
         newFullPath = oldFullPath;
@@ -403,6 +496,26 @@ public class FolderManager : IFolderManager
             }
             catch { }
         }
+    }
+
+    public bool CleanUpEmptyCustomerWorkingFolder(string customerName, string customerCode)
+    {
+        var workingFolder = GetCustomerFolderPath(customerName, customerCode);
+        if (string.IsNullOrWhiteSpace(workingFolder) || !Directory.Exists(workingFolder))
+            return false;
+
+        try
+        {
+            var allFiles = Directory.GetFiles(workingFolder, "*", SearchOption.AllDirectories);
+            if (allFiles.Length == 0)
+            {
+                Directory.Delete(workingFolder, recursive: true);
+                return true;
+            }
+        }
+        catch { }
+
+        return false;
     }
 }
 

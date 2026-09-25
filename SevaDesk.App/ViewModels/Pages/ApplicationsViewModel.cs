@@ -13,7 +13,7 @@ public partial class ApplicationsViewModel : StatusViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCatalogTab))]
     [NotifyPropertyChangedFor(nameof(IsSubmissionsTab))]
-    private int _selectedTabIndex = 0; // 0 = Scheme & Form Catalog, 1 = Citizen Submissions Ledger
+    private int _selectedTabIndex = 0; // 0 = Scheme & Form Catalog, 1 = Submissions Ledger
 
     public bool IsCatalogTab => SelectedTabIndex == 0;
     public bool IsSubmissionsTab => SelectedTabIndex == 1;
@@ -34,7 +34,7 @@ public partial class ApplicationsViewModel : StatusViewModel
     [ObservableProperty]
     private string _templateSearchQuery = string.Empty;
 
-    // --- Tab 2: Citizen Submissions Ledger ---
+    // --- Tab 2: Submissions Ledger ---
     [ObservableProperty]
     private ObservableCollection<ApplicationItem> _applications = [];
 

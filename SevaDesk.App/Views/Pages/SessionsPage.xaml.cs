@@ -28,13 +28,13 @@ public sealed partial class SessionsPage : Page
             if (e.PropertyName == nameof(ViewModel.SelectedSession))
             {
                 ViewModel.SelectedSession?.UpdateElapsed();
-                WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty);
+                WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty, ViewModel.SelectedSession?.Customer);
             }
         };
         Loaded += (s, e) =>
         {
             ViewModel.SelectedSession?.UpdateElapsed();
-            WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty);
+            WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty, ViewModel.SelectedSession?.Customer);
             _elapsedTimer.Start();
         };
         Unloaded += (s, e) =>
@@ -67,7 +67,7 @@ public sealed partial class SessionsPage : Page
     {
         await ViewModel.LoadSessionsAsync();
         ViewModel.SelectedSession?.UpdateElapsed();
-        WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty);
+        WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty, ViewModel.SelectedSession?.Customer);
     }
 
     private async void NewSession_Click(object sender, RoutedEventArgs e)
@@ -138,6 +138,46 @@ public sealed partial class SessionsPage : Page
         }
     }
 
+    private async void DeleteSession_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedSession == null) return;
+        var current = ViewModel.SelectedSession;
+        var custName = current.Customer?.Name ?? "this customer";
+
+        var confirm = await AppServices.Dialogs.ShowConfirmationAsync(
+            "Delete Session",
+            $"Are you sure you want to delete this session for '{custName}'? This action cannot be undone.",
+            "Delete",
+            "Cancel");
+
+        if (confirm == ContentDialogResult.Primary)
+        {
+            await ViewModel.DeleteSessionCommand.ExecuteAsync(current);
+            MainWindow.Instance?.ShowToast(
+                AppServices.Localization.GetString("Toast.DeleteSuccess", "Session deleted"),
+                InfoBarSeverity.Success);
+        }
+    }
+
+    private async void RemoveApplication_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.ActiveApplication == null) return;
+        var app = ViewModel.ActiveApplication;
+        var title = app.Title;
+
+        var confirm = await AppServices.Dialogs.ShowConfirmationAsync(
+            "Remove Linked Application",
+            $"Are you sure you want to remove '{title}' from this customer? Any registered progress for this form will be cleared.",
+            "Remove",
+            "Cancel");
+
+        if (confirm == ContentDialogResult.Primary)
+        {
+            await ViewModel.RemoveApplicationCommand.ExecuteAsync(app);
+            MainWindow.Instance?.ShowToast("Application removed", InfoBarSeverity.Informational);
+        }
+    }
+
     private async void ToggleStatus_Click(object sender, RoutedEventArgs e)
     {
         if (ViewModel.SelectedSession != null)
@@ -172,7 +212,7 @@ public sealed partial class SessionsPage : Page
                 }
             }
 
-            // Prepare handover request if an active citizen application exists
+            // Prepare handover request if an active application exists
             BillingHandoverRequest? handover = null;
             if (ViewModel.ActiveApplication != null)
             {

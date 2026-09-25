@@ -10,7 +10,7 @@ namespace SevaDesk_App.ViewModels.Pages;
 public partial class CustomersViewModel : StatusViewModel
 {
     [ObservableProperty]
-    private ObservableCollection<Customer> _customers = [];
+    private ObservableCollection<CustomerRowModel> _customers = [];
 
     [ObservableProperty]
     private string _searchQuery = string.Empty;
@@ -40,7 +40,7 @@ public partial class CustomersViewModel : StatusViewModel
             Customers.Clear();
             foreach (var c in list)
             {
-                Customers.Add(c);
+                Customers.Add(new CustomerRowModel(c));
             }
             TotalCustomersCount = Customers.Count;
         }
@@ -67,9 +67,8 @@ public partial class CustomersViewModel : StatusViewModel
         };
 
         var created = await AppServices.Customers.CreateAsync(customer);
-        Customers.Insert(0, created);
+        Customers.Insert(0, new CustomerRowModel(created));
         TotalCustomersCount = Customers.Count;
         return created;
     }
-
 }

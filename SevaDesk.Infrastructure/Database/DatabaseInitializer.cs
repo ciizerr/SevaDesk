@@ -54,6 +54,7 @@ public class DatabaseInitializer
                 id_reference TEXT,
                 village TEXT,
                 notes TEXT,
+                photo_path TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             );
@@ -128,6 +129,8 @@ public class DatabaseInitializer
                 file_path TEXT,
                 glyph TEXT NOT NULL,
                 is_favorite INTEGER NOT NULL DEFAULT 0,
+                required_docs TEXT,
+                notes TEXT,
                 last_modified TEXT NOT NULL
             );
 
@@ -166,11 +169,16 @@ public class DatabaseInitializer
 
         connection.Execute(sql);
 
-        // Safe column migration for payments and sessions if table existed earlier
+        // Safe column migration for payments, sessions, and resources if table existed earlier
         try { connection.Execute("ALTER TABLE payments ADD COLUMN invoice_no TEXT;"); } catch { }
         try { connection.Execute("ALTER TABLE payments ADD COLUMN customer_name TEXT;"); } catch { }
         try { connection.Execute("ALTER TABLE payments ADD COLUMN items_summary TEXT;"); } catch { }
         try { connection.Execute("ALTER TABLE sessions ADD COLUMN duration_seconds INTEGER DEFAULT 0;"); } catch { }
+        try { connection.Execute("ALTER TABLE sessions ADD COLUMN working_folder_path TEXT;"); } catch { }
+        try { connection.Execute("ALTER TABLE sessions ADD COLUMN backup_synced_at TEXT;"); } catch { }
+        try { connection.Execute("ALTER TABLE resources ADD COLUMN required_docs TEXT;"); } catch { }
+        try { connection.Execute("ALTER TABLE resources ADD COLUMN notes TEXT;"); } catch { }
+        try { connection.Execute("ALTER TABLE customers ADD COLUMN photo_path TEXT;"); } catch { }
 
         // Ensure default walk-in customer exists for POS walk-in payments
         connection.Execute(@"

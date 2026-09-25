@@ -1,5 +1,7 @@
+using System.IO;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using SevaDesk.Core.Models;
 using SevaDesk_App.Services;
 using SevaDesk_App.ViewModels.Pages;
@@ -68,6 +70,23 @@ public sealed partial class CustomersPage : Page
         }
     }
 
+    private void OpenFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is Customer customer)
+        {
+            var folderPath = AppServices.FolderManager.GetEffectiveCustomerFolderPath(
+                customer.Name, customer.Code, out _);
+
+            if (!Directory.Exists(folderPath))
+            {
+                folderPath = AppServices.FolderManager.EnsureCustomerWorkingFolder(
+                    customer.Name, customer.Code);
+            }
+
+            AppServices.FolderManager.OpenFolderInExplorer(folderPath);
+        }
+    }
+
     private async void StartSession_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button btn && btn.Tag is string customerId)
@@ -79,9 +98,17 @@ public sealed partial class CustomersPage : Page
 
     private void ListView_ItemClick(object sender, ItemClickEventArgs e)
     {
-        if (e.ClickedItem is Customer customer)
+        if (e.ClickedItem is CustomerRowModel row)
         {
-            MainWindow.Instance?.NavigateTo(typeof(CustomerWorkspacePage), customer);
+            MainWindow.Instance?.NavigateTo(typeof(CustomerWorkspacePage), row.Customer);
+        }
+    }
+
+    private void Row_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is FrameworkElement el && el.DataContext is CustomerRowModel row)
+        {
+            _ = row.LoadStatsAsync();
         }
     }
 }

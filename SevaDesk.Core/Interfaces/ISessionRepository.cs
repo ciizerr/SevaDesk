@@ -6,8 +6,9 @@ public interface ISessionRepository
 {
     Task<IEnumerable<ActiveSessionItem>> GetActiveSessionsAsync();
     Task<ActiveSessionItem> StartSessionAsync(string customerId, string? notes = null);
-    Task PauseSessionAsync(string sessionId);
+    Task PauseSessionAsync(string sessionId, int? knownDurationSeconds = null);
     Task ResumeSessionAsync(string sessionId);
     Task CompleteSessionAsync(string sessionId);
+    Task DeleteSessionAsync(string sessionId);
     Task<IEnumerable<Session>> GetCustomerSessionsAsync(string customerId);
 }

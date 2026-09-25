@@ -47,7 +47,7 @@
         <Border Grid.Row="1" BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" Padding="0,0,0,6">
             <SelectorBar x:Name="AppTabSelector" SelectionChanged="AppTabSelector_SelectionChanged">
                 <SelectorBarItem x:Name="TabCatalog" loc:Loc.Key="Applications.TabCatalog" Text="Scheme &amp; Form Catalog" />
-                <SelectorBarItem x:Name="TabSubmissions" loc:Loc.Key="Applications.TabSubmissions" Text="Citizen Submissions Ledger" />
+                <SelectorBarItem x:Name="TabSubmissions" loc:Loc.Key="Applications.TabSubmissions" Text="Submissions Ledger" />
             </SelectorBar>
         </Border>
 
@@ -87,8 +87,8 @@
                             <ComboBoxItem Content="Jobs &amp; Exams" />
                             <ComboBoxItem Content="Identity &amp; Tax" />
                             <ComboBoxItem Content="Scholarships" />
-                            <ComboBoxItem Content="Citizen Schemes" />
-                            <ComboBoxItem Content="Citizen Services" />
+                            <ComboBoxItem Content="Govt Schemes" />
+                            <ComboBoxItem Content="Online Services" />
                         </ComboBox>
                     </Grid>
 
@@ -246,7 +246,7 @@
             </ScrollViewer>
         </Grid>
 
-        <!-- 3B. TAB 1: CITIZEN SUBMISSIONS LEDGER -->
+        <!-- 3B. TAB 1: SUBMISSIONS LEDGER -->
         <Grid Grid.Row="3" ColumnDefinitions="440,*" ColumnSpacing="16"
               Visibility="{x:Bind local:ApplicationsPage.VisibleIf(ViewModel.IsSubmissionsTab), Mode=OneWay}">
             <!-- Left: Applications List -->
@@ -255,7 +255,7 @@
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                 <Grid RowDefinitions="Auto,*">
                     <Border Grid.Row="0" Padding="14,12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
-                        <TextBlock loc:Loc.Key="Applications.OngoingTitle" Text="Ongoing Citizen Applications" FontWeight="SemiBold" />
+                        <TextBlock loc:Loc.Key="Applications.OngoingTitle" Text="Ongoing Applications" FontWeight="SemiBold" />
                     </Border>
 
                     <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.Applications, Mode=OneWay}"
@@ -311,8 +311,8 @@
                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Spacing="6" HorizontalAlignment="Center">
-                                <TextBlock Text="No Citizen Application Selected" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" />
-                                <TextBlock Text="Select an ongoing application from the list or serve a citizen in Counter Sessions."
+                                <TextBlock Text="No Application Selected" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" />
+                                <TextBlock Text="Select an ongoing application from the list or start a session in Counter Sessions."
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="13" TextAlignment="Center" MaxWidth="360" TextWrapping="Wrap" />
                             </StackPanel>
                         </StackPanel>

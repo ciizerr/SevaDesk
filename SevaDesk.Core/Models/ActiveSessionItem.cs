@@ -61,14 +61,13 @@ public partial class ActiveSessionItem : ObservableObject
             return;
         }
 
-        var started = Session.StartedAt;
-        if (started.Kind == DateTimeKind.Unspecified)
-        {
-            started = DateTime.SpecifyKind(started, DateTimeKind.Utc);
-        }
+        var startedUtc = Session.StartedAt.Kind == DateTimeKind.Utc
+            ? Session.StartedAt
+            : (Session.StartedAt.Kind == DateTimeKind.Unspecified
+                ? DateTime.SpecifyKind(Session.StartedAt, DateTimeKind.Utc)
+                : Session.StartedAt.ToUniversalTime());
 
-        var now = started.Kind == DateTimeKind.Utc ? DateTime.UtcNow : DateTime.Now;
-        var diff = TimeSpan.FromSeconds(Math.Max(0, Session.DurationSeconds)) + (now - started);
+        var diff = TimeSpan.FromSeconds(Math.Max(0, Session.DurationSeconds)) + (DateTime.UtcNow - startedUtc);
         if (diff.TotalSeconds < 0) diff = TimeSpan.Zero;
 
         if (diff.TotalHours >= 1)

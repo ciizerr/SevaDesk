@@ -2,8 +2,11 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using SevaDesk_App.ViewModels.Pages;
+using Microsoft.UI.Xaml.Navigation;
 using SevaDesk.Core.Models;
+using SevaDesk_App.Services;
+using SevaDesk_App.ViewModels.Pages;
+using Windows.UI;
 
 namespace SevaDesk_App.Views.Pages;
 
@@ -14,40 +17,305 @@ public sealed partial class ResourcesPage : Page
     public ResourcesPage()
     {
         InitializeComponent();
+
+        ViewModel.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(ResourcesViewModel.SelectedResource))
+            {
+                DispatcherQueue.TryEnqueue(UpdateRequiredDocsChips);
+            }
+        };
     }
 
-    public static SolidColorBrush FavoriteBrush(bool isFav) =>
-        isFav ? new SolidColorBrush(ColorHelper.FromArgb(255, 245, 158, 11)) : new SolidColorBrush(ColorHelper.FromArgb(120, 128, 128, 128));
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        DispatcherQueue.TryEnqueue(UpdateRequiredDocsChips);
+    }
 
-    public static bool HasStatus(string status) => !string.IsNullOrWhiteSpace(status);
+    // --- UI Helper Converters ---
+    public static Visibility VisibleIf(bool condition) => condition ? Visibility.Visible : Visibility.Collapsed;
+    public static Visibility CollapsedIf(bool condition) => condition ? Visibility.Collapsed : Visibility.Visible;
+    public static Visibility VisibleIfHasResource(ResourceItem? item) => item != null ? Visibility.Visible : Visibility.Collapsed;
 
+    public Style? FilterButtonStyle(string activeCategory, string currentCategory)
+    {
+        if (string.Equals(activeCategory, currentCategory, StringComparison.OrdinalIgnoreCase))
+        {
+            return (Style)Application.Current.Resources["AccentButtonStyle"];
+        }
+        return null;
+    }
+
+    public static Brush FileStatusBadgeBackground(bool hasFile) =>
+        hasFile
+            ? new SolidColorBrush(Color.FromArgb(35, 16, 185, 129)) // Emerald green tint
+            : new SolidColorBrush(Color.FromArgb(35, 245, 158, 11)); // Amber tint
+
+    public static Brush FileStatusBadgeForeground(bool hasFile) =>
+        hasFile
+            ? new SolidColorBrush(Color.FromArgb(255, 16, 185, 129))
+            : new SolidColorBrush(Color.FromArgb(255, 245, 158, 11));
+
+    public static string FileStatusBadgeGlyph(bool hasFile) => hasFile ? "\uE73E" : "\uE7BA";
+
+    // --- Filter Buttons Handlers ---
+    private void CategoryAll_Click(object sender, RoutedEventArgs e) => ViewModel.SetCategoryCommand.Execute("All");
+    private void CategoryAffidavits_Click(object sender, RoutedEventArgs e) => ViewModel.SetCategoryCommand.Execute("Affidavits");
+    private void CategoryForms_Click(object sender, RoutedEventArgs e) => ViewModel.SetCategoryCommand.Execute("Blank Forms");
+    private void CategoryGuidelines_Click(object sender, RoutedEventArgs e) => ViewModel.SetCategoryCommand.Execute("Guidelines");
+
+    // --- Selection and Text Change Handlers ---
+    private void ListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdateRequiredDocsChips();
+    }
+
+    private void RequiredDocs_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        UpdateRequiredDocsChips();
+    }
+
+    private void UpdateRequiredDocsChips()
+    {
+        if (RequiredDocsChipsPanel == null) return;
+        RequiredDocsChipsPanel.Children.Clear();
+
+        var docs = ViewModel.SelectedResource?.RequiredDocsList?.ToList();
+        if (docs == null || docs.Count == 0)
+        {
+            RequiredDocsChipsPanel.Children.Add(new TextBlock
+            {
+                Text = "No supporting documents specified",
+                FontSize = 11,
+                Foreground = (Brush)Application.Current.Resources["TextFillColorTertiaryBrush"],
+                FontStyle = Windows.UI.Text.FontStyle.Italic,
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            return;
+        }
+
+        foreach (var doc in docs)
+        {
+            var border = new Border
+            {
+                Background = (Brush)Application.Current.Resources["LayerFillColorAltBrush"],
+                BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(10, 4, 10, 4)
+            };
+
+            var sp = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 5
+            };
+
+            sp.Children.Add(new FontIcon
+            {
+                Glyph = "\uE73E",
+                FontSize = 10,
+                Foreground = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"],
+                VerticalAlignment = VerticalAlignment.Center
+            });
+
+            sp.Children.Add(new TextBlock
+            {
+                Text = doc,
+                FontSize = 11,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                VerticalAlignment = VerticalAlignment.Center
+            });
+
+            border.Child = sp;
+            RequiredDocsChipsPanel.Children.Add(border);
+        }
+    }
+
+    // --- Actions Handlers ---
+    private async void ToggleFavorite_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is ResourceItem item)
+        {
+            await ViewModel.ToggleFavoriteAsync(item);
+        }
+    }
+
+    private void ListItemOpen_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is ResourceItem item)
+        {
+            ViewModel.OpenDocument(item);
+        }
+    }
+
+    private void QuickPrint_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is ResourceItem item)
+        {
+            ViewModel.QuickPrint(item);
+        }
+    }
+
+    private void InspectorOpen_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OpenDocument(ViewModel.SelectedResource);
+    }
+
+    private void InspectorOpenFileLocation_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.OpenFileLocation(ViewModel.SelectedResource);
+    }
+
+    private async void InspectorAttachFile_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedResource == null) return;
+
+        try
+        {
+            var path = await AppServices.Pickers.PickFileAsync(new[] { ".pdf", ".docx", ".doc", ".xlsx", ".xls", ".txt", ".jpg", ".png" });
+            if (!string.IsNullOrWhiteSpace(path))
+            {
+                await ViewModel.AttachFileToResourceAsync(ViewModel.SelectedResource, path);
+            }
+        }
+        catch (Exception ex)
+        {
+            ViewModel.ShowError($"File picker error: {ex.Message}");
+        }
+    }
+
+    private void InspectorPrint_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.QuickPrint(ViewModel.SelectedResource);
+    }
+
+    private async void InspectorCopyToFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedResource != null)
+        {
+            await ViewModel.CopyToActiveSessionAsync(ViewModel.SelectedResource);
+        }
+    }
+
+    private async void SaveDetails_Click(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.SaveSelectedResourceAsync();
+        UpdateRequiredDocsChips();
+    }
+
+    // --- Add New Resource Dialog with File Picker & Hierarchy ---
     private async void AddNewResource_Click(object sender, RoutedEventArgs e)
     {
-        var txtTitle = new TextBox { PlaceholderText = "e.g. Domicile Affidavit 2026", Margin = new Thickness(0, 4, 0, 8) };
+        string? selectedSourcePath = null;
+
+        var btnPickFile = new Button
+        {
+            Content = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 6,
+                Children =
+                {
+                    new FontIcon { Glyph = "\uED25", FontSize = 13 },
+                    new TextBlock { Text = "Choose Document File (PDF / DOCX / Image)...", FontSize = 12 }
+                }
+            },
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Margin = new Thickness(0, 4, 0, 4)
+        };
+
+        var lblChosenFile = new TextBlock
+        {
+            Text = "No file chosen yet (you can also attach one later)",
+            FontSize = 11,
+            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            Margin = new Thickness(0, 0, 0, 8)
+        };
+
+        var txtTitle = new TextBox
+        {
+            PlaceholderText = "e.g. Income Declaration Affidavit 2026",
+            Margin = new Thickness(0, 4, 0, 8)
+        };
+
         var cmbCategory = new ComboBox
         {
-            ItemsSource = new[] { "Affidavits", "Blank Forms", "Guidelines" },
+            ItemsSource = new[] { "Blank Forms", "Affidavits", "Guidelines", "Rate Cards", "Identity & Tax", "Certificates" },
             SelectedIndex = 0,
+            IsEditable = true,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Margin = new Thickness(0, 4, 0, 8)
         };
-        var txtFileType = new TextBox { Text = "DOCX", Margin = new Thickness(0, 4, 0, 0) };
+
+        var txtRequiredDocs = new TextBox
+        {
+            PlaceholderText = "e.g. Aadhaar Card, Passport Photo, Marksheet",
+            Margin = new Thickness(0, 4, 0, 8)
+        };
+
+        var txtNotes = new TextBox
+        {
+            PlaceholderText = "e.g. Must be on ₹10 stamp paper, notarization required...",
+            TextWrapping = TextWrapping.Wrap,
+            AcceptsReturn = true,
+            Height = 56,
+            Margin = new Thickness(0, 4, 0, 0)
+        };
+
+        btnPickFile.Click += async (s, args) =>
+        {
+            try
+            {
+                var picked = await AppServices.Pickers.PickFileAsync(new[] { ".pdf", ".docx", ".doc", ".xlsx", ".xls", ".txt", ".jpg", ".png" });
+                if (!string.IsNullOrWhiteSpace(picked))
+                {
+                    selectedSourcePath = picked;
+                    lblChosenFile.Text = $"Selected: {System.IO.Path.GetFileName(picked)}";
+                    lblChosenFile.Foreground = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"];
+
+                    if (string.IsNullOrWhiteSpace(txtTitle.Text))
+                    {
+                        txtTitle.Text = System.IO.Path.GetFileNameWithoutExtension(picked);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ViewModel.ShowError($"File selection error: {ex.Message}");
+            }
+        };
 
         var dialog = new ContentDialog
         {
             XamlRoot = this.XamlRoot,
             Title = "Add Offline Template or Form",
-            Content = new StackPanel
+            Content = new ScrollViewer
             {
-                Spacing = 4,
-                Children =
+                Content = new StackPanel
                 {
-                    new TextBlock { Text = "Template / Form Title *", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
-                    txtTitle,
-                    new TextBlock { Text = "Category", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
-                    cmbCategory,
-                    new TextBlock { Text = "File Type (e.g. PDF, DOCX)", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
-                    txtFileType
+                    Spacing = 2,
+                    Width = 420,
+                    Children =
+                    {
+                        new TextBlock { Text = "Document File", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12 },
+                        btnPickFile,
+                        lblChosenFile,
+
+                        new TextBlock { Text = "Template / Form Title *", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12 },
+                        txtTitle,
+
+                        new TextBlock { Text = "Category *", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12 },
+                        cmbCategory,
+
+                        new TextBlock { Text = "Required Supporting Documents (comma-separated)", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12 },
+                        txtRequiredDocs,
+
+                        new TextBlock { Text = "Operator Guidelines & Notes (Optional)", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12 },
+                        txtNotes
+                    }
                 }
             },
             PrimaryButtonText = "Add to Catalog",
@@ -58,59 +326,43 @@ public sealed partial class ResourcesPage : Page
         var res = await dialog.ShowAsync();
         if (res == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(txtTitle.Text))
         {
-            var category = cmbCategory.SelectedItem?.ToString() ?? "Affidavits";
-            var fileType = string.IsNullOrWhiteSpace(txtFileType.Text) ? "PDF" : txtFileType.Text.Trim().ToUpperInvariant();
-            var glyph = fileType == "PDF" ? "\uE8A5" : "\uE8C1";
+            var category = !string.IsNullOrWhiteSpace(cmbCategory.Text) ? cmbCategory.Text.Trim() : (cmbCategory.SelectedItem?.ToString() ?? "Blank Forms");
+            string? storedPath = null;
+            string fileType = "PDF";
+            string fileSize = "—";
+
+            if (!string.IsNullOrWhiteSpace(selectedSourcePath) && System.IO.File.Exists(selectedSourcePath))
+            {
+                try
+                {
+                    storedPath = SevaDesk.Infrastructure.FileManager.TemplateStorageHelper.StoreTemplateFile(
+                        selectedSourcePath, category, txtTitle.Text.Trim());
+                    fileType = System.IO.Path.GetExtension(storedPath).TrimStart('.').ToUpperInvariant();
+                    var fi = new System.IO.FileInfo(storedPath);
+                    fileSize = SevaDesk.Infrastructure.FileManager.TemplateStorageHelper.FormatFileSize(fi.Length);
+                }
+                catch (Exception ex)
+                {
+                    ViewModel.ShowError($"Could not store template file: {ex.Message}");
+                }
+            }
 
             var newResource = new ResourceItem
             {
                 Title = txtTitle.Text.Trim(),
                 Category = category,
                 FileType = fileType,
-                FileSize = "50 KB",
-                Glyph = glyph,
+                FileSize = fileSize,
+                FilePath = storedPath,
+                RequiredDocs = txtRequiredDocs.Text.Trim(),
+                Notes = txtNotes.Text.Trim(),
+                Glyph = fileType == "PDF" ? "\uE8A5" : "\uE8C1",
                 IsFavorite = false,
                 LastModified = DateTime.UtcNow
             };
 
             await ViewModel.AddResourceAsync(newResource);
-        }
-    }
-
-    private void CategoryAll_Click(object sender, RoutedEventArgs e) => ViewModel.SetCategoryCommand.Execute("All");
-    private void CategoryAffidavits_Click(object sender, RoutedEventArgs e) => ViewModel.SetCategoryCommand.Execute("Affidavits");
-    private void CategoryForms_Click(object sender, RoutedEventArgs e) => ViewModel.SetCategoryCommand.Execute("Blank Forms");
-    private void CategoryGuidelines_Click(object sender, RoutedEventArgs e) => ViewModel.SetCategoryCommand.Execute("Guidelines");
-
-    private async void ToggleFavorite_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button btn && btn.Tag is ResourceItem item)
-        {
-            await ViewModel.ToggleFavoriteAsync(item);
-        }
-    }
-
-    private void QuickPrint_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button btn && btn.Tag is ResourceItem item)
-        {
-            ViewModel.QuickPrintCommand.Execute(item);
-        }
-    }
-
-    private void InspectorPrint_Click(object sender, RoutedEventArgs e)
-    {
-        if (ViewModel.SelectedResource != null)
-        {
-            ViewModel.QuickPrintCommand.Execute(ViewModel.SelectedResource);
-        }
-    }
-
-    private async void InspectorCopyToFolder_Click(object sender, RoutedEventArgs e)
-    {
-        if (ViewModel.SelectedResource != null)
-        {
-            await ViewModel.CopyToActiveSessionAsync(ViewModel.SelectedResource);
+            UpdateRequiredDocsChips();
         }
     }
 }

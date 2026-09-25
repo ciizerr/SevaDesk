@@ -9,22 +9,30 @@ namespace SevaDesk_App.ViewModels.Pages;
 
 public partial class PaymentsViewModel : StatusViewModel
 {
-    // --- View Switching (POS vs Earnings Report) ---
+    // --- View Switching (POS vs Service Rates vs Earnings Report) ---
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsPosView))]
+    [NotifyPropertyChangedFor(nameof(IsRatesView))]
     [NotifyPropertyChangedFor(nameof(IsEarningsView))]
     private int _selectedViewIndex = 0;
 
     public bool IsPosView => SelectedViewIndex == 0;
-    public bool IsEarningsView => SelectedViewIndex == 1;
+    public bool IsRatesView => SelectedViewIndex == 1;
+    public bool IsEarningsView => SelectedViewIndex == 2;
 
     partial void OnSelectedViewIndexChanged(int value)
     {
-        if (value == 1)
+        if (value == 2)
         {
             _ = LoadEarningsAsync();
         }
     }
+
+    [RelayCommand]
+    public void SwitchToRatesView() => SelectedViewIndex = 1;
+
+    [RelayCommand]
+    public void SwitchToPosView() => SelectedViewIndex = 0;
 
     // --- POS: Collapsible Expander States ---
     [ObservableProperty]
@@ -39,6 +47,91 @@ public partial class PaymentsViewModel : StatusViewModel
     // --- POS: Rate Card & Cart ---
     [ObservableProperty]
     private ObservableCollection<ServiceRateItem> _rateCard = [];
+
+    [ObservableProperty]
+    private ObservableCollection<ServiceRateItem> _filteredRateCard = [];
+
+    [ObservableProperty]
+    private ObservableCollection<string> _serviceCategories = [];
+
+    [ObservableProperty]
+    private string _selectedCategory = "All";
+
+    [ObservableProperty]
+    private string _rateCardSearchQuery = string.Empty;
+
+    partial void OnSelectedCategoryChanged(string value) => ApplyRateCardFilter();
+    partial void OnRateCardSearchQueryChanged(string value) => ApplyRateCardFilter();
+
+    // --- Service Rates Catalog Tab Properties ---
+    [ObservableProperty]
+    private ObservableCollection<ServiceRateItem> _catalogFilteredRates = [];
+
+    [ObservableProperty]
+    private string _catalogSearchQuery = string.Empty;
+
+    [ObservableProperty]
+    private string _catalogSelectedCategory = "All";
+
+    partial void OnCatalogSearchQueryChanged(string value) => ApplyRateCardFilter();
+    partial void OnCatalogSelectedCategoryChanged(string value) => ApplyRateCardFilter();
+
+    public string CatalogRatesSummary => $"{RateCard.Count} Total Services";
+
+    public ObservableCollection<string> PresetCategories { get; } =
+    [
+        "Printing",
+        "Scanning",
+        "Finishing",
+        "Cards",
+        "Services",
+        "Blank Forms",
+        "Affidavits",
+        "Computer / Online"
+    ];
+
+    public ObservableCollection<string> PresetUnits { get; } =
+    [
+        "page",
+        "copy",
+        "doc",
+        "card",
+        "sheet",
+        "application",
+        "form",
+        "photo",
+        "hour",
+        "item"
+    ];
+
+    // --- Service Rates Form State ---
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsEditingExistingRate))]
+    [NotifyPropertyChangedFor(nameof(FormHeaderTitle))]
+    [NotifyPropertyChangedFor(nameof(FormHeaderSubtitle))]
+    [NotifyPropertyChangedFor(nameof(FormSaveButtonText))]
+    private string? _editingRateId;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FormHeaderSubtitle))]
+    private string _formServiceName = string.Empty;
+
+    [ObservableProperty]
+    private string _formCategory = "Printing";
+
+    [ObservableProperty]
+    private double _formRate = 10;
+
+    [ObservableProperty]
+    private string _formUnit = "page";
+
+    [ObservableProperty]
+    private string _formGlyph = "\uE749";
+
+    public bool IsEditingExistingRate => !string.IsNullOrEmpty(EditingRateId);
+    public string FormHeaderTitle => IsEditingExistingRate ? "Edit Service Rate" : "Add New Service";
+    public string FormHeaderSubtitle => IsEditingExistingRate ? $"Updating '{FormServiceName}'" : "Configure pricing, category, and unit";
+    public string FormSaveButtonText => IsEditingExistingRate ? "Update Rate" : "Save Service";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasCartItems))]
@@ -84,7 +177,19 @@ public partial class PaymentsViewModel : StatusViewModel
     private string _customerName = "Walk-in Customer";
 
     [ObservableProperty]
+    private string? _currentCustomerId;
+
+    [ObservableProperty]
+    private string? _currentSessionId;
+
+    [ObservableProperty]
     private string _upiDeepLink = string.Empty;
+
+    [ObservableProperty]
+    private Microsoft.UI.Xaml.Media.ImageSource? _qrCodeBitmap;
+
+    [ObservableProperty]
+    private bool _isGeneratingQr;
 
     [ObservableProperty]
     private bool _isEditMode;
@@ -245,7 +350,7 @@ public partial class PaymentsViewModel : StatusViewModel
         await LoadPaymentsDataAsync();
     }
 
-    private async Task LoadRatesAsync()
+    public async Task LoadRatesAsync()
     {
         var rates = await AppServices.ServiceRates.GetAllActiveRatesAsync();
         RateCard.Clear();
@@ -253,41 +358,188 @@ public partial class PaymentsViewModel : StatusViewModel
         {
             RateCard.Add(rate);
         }
-    }
 
-    [RelayCommand]
-    public void AddNewService()
-    {
-        RateCard.Add(new ServiceRateItem 
-        { 
-            ServiceName = "New Service", 
-            Rate = 10, 
-            Category = "Custom",
-            IsEditMode = IsEditMode
-        });
-    }
-
-    [RelayCommand]
-    public async Task SaveRatesAsync()
-    {
-        var existingRates = (await AppServices.ServiceRates.GetAllRatesAsync()).ToList();
-        
-        foreach (var rate in RateCard)
+        // Rebuild unique category list starting with "All"
+        ServiceCategories.Clear();
+        ServiceCategories.Add("All");
+        var distinctCategories = RateCard.Select(r => r.Category)
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+        foreach (var cat in distinctCategories)
         {
-            var exists = existingRates.Any(r => r.Id == rate.Id);
-            if (exists)
+            ServiceCategories.Add(cat);
+        }
+
+        ApplyRateCardFilter();
+    }
+
+    [RelayCommand]
+    public void SelectCategory(string category)
+    {
+        SelectedCategory = category;
+    }
+
+    public void ApplyRateCardFilter()
+    {
+        // 1. POS Filter
+        var posQuery = RateCardSearchQuery?.Trim();
+        var posSelected = SelectedCategory ?? "All";
+
+        var posFiltered = RateCard.AsEnumerable();
+        if (!string.Equals(posSelected, "All", StringComparison.OrdinalIgnoreCase))
+        {
+            posFiltered = posFiltered.Where(r => string.Equals(r.Category, posSelected, StringComparison.OrdinalIgnoreCase));
+        }
+        if (!string.IsNullOrWhiteSpace(posQuery))
+        {
+            posFiltered = posFiltered.Where(r =>
+                r.ServiceName.Contains(posQuery, StringComparison.OrdinalIgnoreCase) ||
+                r.Category.Contains(posQuery, StringComparison.OrdinalIgnoreCase));
+        }
+
+        FilteredRateCard.Clear();
+        foreach (var item in posFiltered)
+        {
+            FilteredRateCard.Add(item);
+        }
+
+        // 2. Catalog Tab Filter
+        var catQuery = CatalogSearchQuery?.Trim();
+        var catSelected = CatalogSelectedCategory ?? "All";
+
+        var catFiltered = RateCard.AsEnumerable();
+        if (!string.Equals(catSelected, "All", StringComparison.OrdinalIgnoreCase))
+        {
+            catFiltered = catFiltered.Where(r => string.Equals(r.Category, catSelected, StringComparison.OrdinalIgnoreCase));
+        }
+        if (!string.IsNullOrWhiteSpace(catQuery))
+        {
+            catFiltered = catFiltered.Where(r =>
+                r.ServiceName.Contains(catQuery, StringComparison.OrdinalIgnoreCase) ||
+                r.Category.Contains(catQuery, StringComparison.OrdinalIgnoreCase));
+        }
+
+        CatalogFilteredRates.Clear();
+        foreach (var item in catFiltered)
+        {
+            CatalogFilteredRates.Add(item);
+        }
+
+        OnPropertyChanged(nameof(CatalogRatesSummary));
+    }
+
+    [RelayCommand]
+    public void SelectCatalogCategory(string category)
+    {
+        CatalogSelectedCategory = category;
+    }
+
+    [RelayCommand]
+    public void EditRateItem(ServiceRateItem item)
+    {
+        EditingRateId = item.Id;
+        FormServiceName = item.ServiceName;
+        FormCategory = item.Category;
+        FormRate = (double)item.Rate;
+        FormUnit = item.Unit;
+        FormGlyph = item.Glyph;
+    }
+
+    [RelayCommand]
+    public void ResetRateForm()
+    {
+        EditingRateId = null;
+        FormServiceName = string.Empty;
+        FormCategory = "Printing";
+        FormRate = 10;
+        FormUnit = "page";
+        FormGlyph = "\uE749";
+    }
+
+    [RelayCommand]
+    public async Task SaveRateFormAsync()
+    {
+        var name = FormServiceName?.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            ShowWarning("Please enter a valid service name.");
+            return;
+        }
+
+        if (FormRate < 0)
+        {
+            ShowWarning("Service rate cannot be negative.");
+            return;
+        }
+
+        var category = string.IsNullOrWhiteSpace(FormCategory) ? "General" : FormCategory.Trim();
+        var unit = string.IsNullOrWhiteSpace(FormUnit) ? "page" : FormUnit.Trim();
+        var glyph = string.IsNullOrWhiteSpace(FormGlyph) ? "\uE749" : FormGlyph;
+
+        try
+        {
+            if (!string.IsNullOrEmpty(EditingRateId))
             {
-                await AppServices.ServiceRates.UpdateRateAsync(rate);
+                var existing = RateCard.FirstOrDefault(r => r.Id == EditingRateId);
+                if (existing != null)
+                {
+                    existing.ServiceName = name;
+                    existing.Rate = (decimal)FormRate;
+                    existing.Category = category;
+                    existing.Unit = unit;
+                    existing.Glyph = glyph;
+
+                    await AppServices.ServiceRates.UpdateRateAsync(existing);
+                    ShowSuccess($"Rate for \"{name}\" updated successfully.");
+                }
             }
             else
             {
-                await AppServices.ServiceRates.AddRateAsync(rate);
+                var newRate = new ServiceRateItem
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ServiceName = name,
+                    Rate = (decimal)FormRate,
+                    Category = category,
+                    Unit = unit,
+                    Glyph = glyph,
+                    IsActive = true
+                };
+
+                await AppServices.ServiceRates.AddRateAsync(newRate);
+                RateCard.Add(newRate);
+                ShowSuccess($"New service \"{name}\" added to catalog.");
             }
+
+            ResetRateForm();
+            await LoadRatesAsync();
         }
-        
-        IsEditMode = false;
-        await LoadRatesAsync();
-        ShowSuccess("Rate card updated successfully.");
+        catch (Exception ex)
+        {
+            ShowError($"Error saving service rate: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    public async Task DeleteRateItemAsync(ServiceRateItem item)
+    {
+        try
+        {
+            await AppServices.ServiceRates.DeleteRateAsync(item.Id);
+            RateCard.Remove(item);
+
+            if (EditingRateId == item.Id)
+            {
+                ResetRateForm();
+            }
+
+            await LoadRatesAsync();
+            ShowSuccess($"\"{item.ServiceName}\" removed from catalog.");
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error deleting service: {ex.Message}");
+        }
     }
 
     public async Task LoadPaymentsDataAsync()
@@ -378,6 +630,9 @@ public partial class PaymentsViewModel : StatusViewModel
     {
         CartItems.Clear();
         UpdateCartTotals();
+        CustomerName = "Walk-in Customer";
+        CurrentCustomerId = null;
+        CurrentSessionId = null;
         ShowInfo("Current bill cleared.");
     }
 
@@ -393,7 +648,9 @@ public partial class PaymentsViewModel : StatusViewModel
         var payment = new Payment
         {
             InvoiceNo = invoiceNo,
+            CustomerId = CurrentCustomerId,
             CustomerName = custName,
+            SessionId = CurrentSessionId,
             Amount = GrandTotal,
             PaymentMethod = paymentMode,
             PaymentDate = DateTime.UtcNow,
@@ -429,6 +686,8 @@ public partial class PaymentsViewModel : StatusViewModel
         CartItems.Clear();
         UpdateCartTotals();
         CustomerName = "Walk-in Customer";
+        CurrentCustomerId = null;
+        CurrentSessionId = null;
 
         // Refresh earnings if tab is open
         if (IsEarningsView)
@@ -441,8 +700,22 @@ public partial class PaymentsViewModel : StatusViewModel
     {
         GrandTotal = CartItems.Sum(c => c.Total);
         OnPropertyChanged(nameof(HasCartItems));
-        var encName = Uri.EscapeDataString(string.IsNullOrWhiteSpace(PayeeName) ? "SevaDesk Cyber Cafe" : PayeeName);
-        UpiDeepLink = $"upi://pay?pa={ShopUpiId}&pn={encName}&am={GrandTotal}&cu=INR";
+        UpiDeepLink = AppServices.QrCode.BuildUpiPayload(ShopUpiId, PayeeName, GrandTotal > 0 ? GrandTotal : null, "Cyber Cafe Bill");
+        RegenerateQrCode();
+    }
+
+    public void RegenerateQrCode()
+    {
+        try
+        {
+            IsGeneratingQr = false;
+            var bmp = AppServices.QrCode.GenerateQrBitmap(UpiDeepLink, pixelsPerModule: 8);
+            if (bmp != null)
+            {
+                QrCodeBitmap = bmp;
+            }
+        }
+        catch { }
     }
 
     public void ApplyBillingHandover(BillingHandoverRequest handover)
@@ -453,6 +726,9 @@ public partial class PaymentsViewModel : StatusViewModel
         {
             CustomerName = handover.CustomerName;
         }
+
+        CurrentCustomerId = handover.CustomerId;
+        CurrentSessionId = handover.SessionId;
 
         CartItems.Clear();
         foreach (var item in handover.Items)

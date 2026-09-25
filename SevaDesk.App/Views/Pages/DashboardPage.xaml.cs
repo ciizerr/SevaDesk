@@ -27,14 +27,14 @@ public sealed partial class DashboardPage : Page
             if (e.PropertyName == nameof(ViewModel.SelectedSession))
             {
                 ViewModel.SelectedSession?.UpdateElapsed();
-                WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty);
+                WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty, ViewModel.SelectedSession?.Customer);
             }
         };
         Loaded += async (s, e) =>
         {
             await ViewModel.InitializeAsync();
             ViewModel.SelectedSession?.UpdateElapsed();
-            WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty);
+            WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty, ViewModel.SelectedSession?.Customer);
             _elapsedTimer.Start();
         };
         Unloaded += (s, e) =>
@@ -46,7 +46,7 @@ public sealed partial class DashboardPage : Page
     private async void Refresh_Click(object sender, RoutedEventArgs e)
     {
         await ViewModel.LoadActiveSessionsAsync();
-        WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty);
+        WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty, ViewModel.SelectedSession?.Customer);
     }
 
     private async void NewCustomerSession_Click(object sender, RoutedEventArgs e)
@@ -142,6 +142,27 @@ public sealed partial class DashboardPage : Page
             }
 
             await ViewModel.CompleteSessionAsync(ViewModel.SelectedSession.Session.Id);
+        }
+    }
+
+    private async void DeleteSession_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedSession == null) return;
+        var current = ViewModel.SelectedSession;
+        var custName = current.Customer?.Name ?? "this customer";
+
+        var confirm = await AppServices.Dialogs.ShowConfirmationAsync(
+            "Delete Session",
+            $"Are you sure you want to delete this session for '{custName}'? This action cannot be undone.",
+            "Delete",
+            "Cancel");
+
+        if (confirm == ContentDialogResult.Primary)
+        {
+            await ViewModel.DeleteSessionCommand.ExecuteAsync(current);
+            MainWindow.Instance?.ShowToast(
+                AppServices.Localization.GetString("Toast.DeleteSuccess", "Session deleted"),
+                InfoBarSeverity.Success);
         }
     }
 }

@@ -22,6 +22,7 @@ public sealed partial class NewCustomerDialog : ContentDialog
     public NewCustomerDialog()
     {
         InitializeComponent();
+        this.EnableLightDismiss(() => string.IsNullOrWhiteSpace(CustomerName) && string.IsNullOrWhiteSpace(Mobile) && string.IsNullOrWhiteSpace(Notes));
         Closing += OnDialogClosing;
     }
 

@@ -8,7 +8,7 @@
     xmlns:loc="using:SevaDesk_App.Services"
     xmlns:models="using:SevaDesk.Core.Models"
     loc:Loc.Key="Dialog.LinkApp.Title"
-    Title="Link Citizen Application"
+    Title="Link Application"
     loc:Loc.PrimaryButtonKey="Dialog.LinkApp.PrimaryBtn"
     PrimaryButtonText="Link Application"
     loc:Loc.CloseButtonKey="Common.Cancel"
@@ -104,7 +104,7 @@
         <!-- Optional Registration / Ack Number -->
         <TextBox x:Name="TxtAppNumber"
                  loc:Loc.HeaderKey="Dialog.LinkApp.AppNoHeader"
-                 Header="Citizen Reg / Ack Number (Optional)"
+                 Header="Reg / Ack Number (Optional)"
                  loc:Loc.PlaceholderKey="Dialog.LinkApp.AppNoPlaceholder"
                  PlaceholderText="e.g. SSC-2026-89412 or leave blank" />
 

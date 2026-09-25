@@ -71,19 +71,19 @@ public static class DatabaseSeeder
 
         var seedResources = new[]
         {
-            new { Id = Guid.NewGuid().ToString(), Title = "Form 49A — New PAN Card Physical Form", Category = "Blank Forms", FileType = "PDF", FileSize = "1.2 MB", FilePath = "", Glyph = "\uE8A5", IsFavorite = 1, LastModified = DateTime.Now.ToString("o") },
-            new { Id = Guid.NewGuid().ToString(), Title = "Income Declaration Affidavit (Standard Format ₹10/₹100 Stamp)", Category = "Affidavits", FileType = "DOCX", FileSize = "45 KB", FilePath = "", Glyph = "\uE8C1", IsFavorite = 1, LastModified = DateTime.Now.ToString("o") },
-            new { Id = Guid.NewGuid().ToString(), Title = "Educational Gap Year Affidavit (College/Job)", Category = "Affidavits", FileType = "DOCX", FileSize = "38 KB", FilePath = "", Glyph = "\uE8C1", IsFavorite = 1, LastModified = DateTime.Now.ToString("o") },
-            new { Id = Guid.NewGuid().ToString(), Title = "Name Correction / Alias Affidavit (Govt Gazette)", Category = "Affidavits", FileType = "DOCX", FileSize = "52 KB", FilePath = "", Glyph = "\uE8C1", IsFavorite = 0, LastModified = DateTime.Now.ToString("o") },
-            new { Id = Guid.NewGuid().ToString(), Title = "Caste Certificate Application Form (State Standard)", Category = "Blank Forms", FileType = "PDF", FileSize = "890 KB", FilePath = "", Glyph = "\uE8A5", IsFavorite = 0, LastModified = DateTime.Now.ToString("o") },
-            new { Id = Guid.NewGuid().ToString(), Title = "Lost Marksheet / Certificate Police Intimation Format", Category = "Affidavits", FileType = "DOCX", FileSize = "34 KB", FilePath = "", Glyph = "\uE8C1", IsFavorite = 0, LastModified = DateTime.Now.ToString("o") },
-            new { Id = Guid.NewGuid().ToString(), Title = "Domicile / Residence Certificate Proforma", Category = "Blank Forms", FileType = "PDF", FileSize = "620 KB", FilePath = "", Glyph = "\uE8A5", IsFavorite = 0, LastModified = DateTime.Now.ToString("o") },
-            new { Id = Guid.NewGuid().ToString(), Title = "Character Certificate Proforma (Gazetted Officer)", Category = "Blank Forms", FileType = "DOCX", FileSize = "28 KB", FilePath = "", Glyph = "\uE8C1", IsFavorite = 0, LastModified = DateTime.Now.ToString("o") }
+            new { Id = Guid.NewGuid().ToString(), Title = "Form 49A — New PAN Card Physical Form", Category = "Blank Forms", FileType = "PDF", FileSize = "1.2 MB", FilePath = "", Glyph = "\uE8A5", IsFavorite = 1, RequiredDocs = "Aadhaar Card, 2 Passport Photos, Signature", Notes = "Standard physical application form for NSDL/UTIITSL PAN center submission.", LastModified = DateTime.Now.ToString("o") },
+            new { Id = Guid.NewGuid().ToString(), Title = "Income Declaration Affidavit (Standard Format ₹10/₹100 Stamp)", Category = "Affidavits", FileType = "DOCX", FileSize = "45 KB", FilePath = "", Glyph = "\uE8C1", IsFavorite = 1, RequiredDocs = "Aadhaar Card, Ration Card / Parivar Register, Land / Salary Slip", Notes = "Must be executed on ₹10 or ₹100 non-judicial stamp paper and notarized.", LastModified = DateTime.Now.ToString("o") },
+            new { Id = Guid.NewGuid().ToString(), Title = "Educational Gap Year Affidavit (College/Job)", Category = "Affidavits", FileType = "DOCX", FileSize = "38 KB", FilePath = "", Glyph = "\uE8C1", IsFavorite = 1, RequiredDocs = "Last Qualification Marksheet, Aadhaar Card", Notes = "Required for university, college, and government job document verification.", LastModified = DateTime.Now.ToString("o") },
+            new { Id = Guid.NewGuid().ToString(), Title = "Name Correction / Alias Affidavit (Govt Gazette)", Category = "Affidavits", FileType = "DOCX", FileSize = "52 KB", FilePath = "", Glyph = "\uE8C1", IsFavorite = 0, RequiredDocs = "High School Certificate, Aadhaar Card, ID with Old Name", Notes = "Standard format for newspaper advertisement and state gazette notification.", LastModified = DateTime.Now.ToString("o") },
+            new { Id = Guid.NewGuid().ToString(), Title = "Caste Certificate Application Form (State Standard)", Category = "Blank Forms", FileType = "PDF", FileSize = "890 KB", FilePath = "", Glyph = "\uE8A5", IsFavorite = 0, RequiredDocs = "Aadhaar Card, Father's Caste Proof / Land Record, Ration Card", Notes = "Verification form submitted to Lekhpal / Revenue Inspector.", LastModified = DateTime.Now.ToString("o") },
+            new { Id = Guid.NewGuid().ToString(), Title = "Lost Marksheet / Certificate Police Intimation Format", Category = "Affidavits", FileType = "DOCX", FileSize = "34 KB", FilePath = "", Glyph = "\uE8C1", IsFavorite = 0, RequiredDocs = "Marksheet Copy / Roll Number, Aadhaar Card", Notes = "Police DDR application format before applying for duplicate marksheet.", LastModified = DateTime.Now.ToString("o") },
+            new { Id = Guid.NewGuid().ToString(), Title = "Domicile / Residence Certificate Proforma", Category = "Blank Forms", FileType = "PDF", FileSize = "620 KB", FilePath = "", Glyph = "\uE8A5", IsFavorite = 0, RequiredDocs = "Electricity Bill, Voter ID / Aadhaar, 3 Years Residence Proof", Notes = "Submitted to Tehsildar office for resident certificate issuance.", LastModified = DateTime.Now.ToString("o") },
+            new { Id = Guid.NewGuid().ToString(), Title = "Character Certificate Proforma (Gazetted Officer)", Category = "Blank Forms", FileType = "DOCX", FileSize = "28 KB", FilePath = "", Glyph = "\uE8C1", IsFavorite = 0, RequiredDocs = "Aadhaar Card, Passport Photo", Notes = "To be signed by a Gazetted Officer, Principal, or Village Pradhan.", LastModified = DateTime.Now.ToString("o") }
         };
 
         const string insertSeedSql = @"
-            INSERT INTO resources (id, title, category, file_type, file_size, file_path, glyph, is_favorite, last_modified)
-            VALUES (@Id, @Title, @Category, @FileType, @FileSize, @FilePath, @Glyph, @IsFavorite, @LastModified);";
+            INSERT INTO resources (id, title, category, file_type, file_size, file_path, glyph, is_favorite, required_docs, notes, last_modified)
+            VALUES (@Id, @Title, @Category, @FileType, @FileSize, @FilePath, @Glyph, @IsFavorite, @RequiredDocs, @Notes, @LastModified);";
 
         connection.Execute(insertSeedSql, seedResources);
     }
@@ -137,7 +137,7 @@ public static class DatabaseSeeder
             new {
                 Id = Guid.NewGuid().ToString(),
                 Title = "PM Kisan Samman Nidhi (E-KYC / New Registration)",
-                Category = "Citizen Schemes",
+                Category = "Govt Schemes",
                 PortalUrl = "https://pmkisan.gov.in",
                 DefaultServiceFee = 50.0,
                 DefaultGovtFee = 0.0,
@@ -163,7 +163,7 @@ public static class DatabaseSeeder
             new {
                 Id = Guid.NewGuid().ToString(),
                 Title = "Passport Seva Online",
-                Category = "Citizen Services",
+                Category = "Online Services",
                 PortalUrl = "https://www.passportindia.gov.in",
                 DefaultServiceFee = 200.0,
                 DefaultGovtFee = 1500.0,

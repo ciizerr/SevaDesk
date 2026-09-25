@@ -136,7 +136,7 @@ public sealed partial class ApplicationsPage : Page
 
         var dialog = new ContentDialog
         {
-            Title = "Register New Citizen Application",
+            Title = "Register New Application",
             Content = new ScrollViewer
             {
                 MaxHeight = 450,
@@ -147,7 +147,7 @@ public sealed partial class ApplicationsPage : Page
                     {
                         new TextBlock { Text = "Scheme / Exam Title *", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                         txtTitle,
-                        new TextBlock { Text = "Citizen Name *", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                        new TextBlock { Text = "Customer Name *", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                         txtCustomer,
                         new TextBlock { Text = "Portal URL / Name", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                         txtPortal,
@@ -173,7 +173,7 @@ public sealed partial class ApplicationsPage : Page
             var newApp = new ApplicationItem
             {
                 Title = txtTitle.Text.Trim(),
-                CustomerName = string.IsNullOrWhiteSpace(txtCustomer.Text) ? "Walk-in Citizen" : txtCustomer.Text.Trim(),
+                CustomerName = string.IsNullOrWhiteSpace(txtCustomer.Text) ? "Walk-in Customer" : txtCustomer.Text.Trim(),
                 PortalName = string.IsNullOrWhiteSpace(txtPortal.Text) ? "gov.in" : txtPortal.Text.Trim(),
                 ApplicationNumber = string.IsNullOrWhiteSpace(txtAppNo.Text) ? $"APP-{DateTime.Now:yyyyMMdd}-{DateTime.Now.Millisecond}" : txtAppNo.Text.Trim(),
                 ServiceCharge = (decimal)(double.IsNaN(txtServiceFee.Value) ? 100 : txtServiceFee.Value),

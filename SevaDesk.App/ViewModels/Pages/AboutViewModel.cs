@@ -3,7 +3,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml.Controls;
 using SevaDesk_App.Services;
-using Windows.ApplicationModel.DataTransfer;
 
 namespace SevaDesk_App.ViewModels.Pages;
 
@@ -19,7 +18,7 @@ public partial class AboutViewModel : StatusViewModel
     private string _developerName = "ciizerr";
 
     [ObservableProperty]
-    private string _githubUrl = "https://github.com/ciizerr";
+    private string _githubUrl = "https://github.com/ciizerr/SevaDesk";
 
     [ObservableProperty]
     private string _bugReportUrl = "https://github.com/ciizerr/SevaDesk/issues/new?template=bug_report.md";
@@ -29,12 +28,6 @@ public partial class AboutViewModel : StatusViewModel
 
     [ObservableProperty]
     private string _communityUrl = "https://github.com/ciizerr/SevaDesk/discussions";
-
-    [ObservableProperty]
-    private string _buyMeCoffeeUrl = "https://buymeacoffee.com/ciizerr";
-
-    [ObservableProperty]
-    private string _upiId = "sevadesk.csc@upi";
 
     [RelayCommand]
     public void OpenGitHub() => OpenUrl(GithubUrl);
@@ -49,22 +42,19 @@ public partial class AboutViewModel : StatusViewModel
     public void OpenCommunity() => OpenUrl(CommunityUrl);
 
     [RelayCommand]
-    public void OpenBuyMeCoffee() => OpenUrl(BuyMeCoffeeUrl);
-
-    [RelayCommand]
-    public void CopyUpi()
+    public async Task ResetDefaultsAsync()
     {
-        try
-        {
-            var dataPackage = new DataPackage();
-            dataPackage.SetText(UpiId);
-            Clipboard.SetContent(dataPackage);
-            ShowSuccess($"UPI ID copied to clipboard: {UpiId}");
-        }
-        catch (Exception ex)
-        {
-            ShowWarning($"Could not copy UPI ID: {ex.Message}");
-        }
+        var confirm = await AppServices.Dialogs.ShowConfirmationAsync(
+            title: "Restore Default Settings",
+            content: "This will restore all application settings, rates, and theme preferences to initial defaults.\n\nYour customer database, sessions, and documents will not be affected.\n\nDo you want to proceed?",
+            primaryButtonText: "Restore Defaults",
+            secondaryButtonText: "Cancel");
+
+        if (confirm != ContentDialogResult.Primary) return;
+
+        var settingsVm = new SettingsViewModel();
+        settingsVm.ResetDefaults();
+        ShowSuccess("Default settings restored successfully.");
     }
 
     [RelayCommand]

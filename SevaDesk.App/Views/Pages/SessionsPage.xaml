@@ -37,7 +37,7 @@
                     </Border>
                 </StackPanel>
                 <TextBlock loc:Loc.Key="Sessions.Subtitle"
-                           Text="Simultaneously manage multiple citizens at the desk with isolated working folders"
+                           Text="Manage multiple customers at the desk with isolated working folders"
                            Style="{StaticResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
@@ -76,6 +76,7 @@
                             <DataTemplate x:DataType="models:ActiveSessionItem">
                                 <Grid ColumnDefinitions="Auto,*,Auto" Padding="8,10" VerticalAlignment="Center">
                                     <PersonPicture Grid.Column="0" Width="36" Height="36"
+                                                   ProfilePicture="{x:Bind loc:CustomerAvatarHelper.GetProfilePicture(Customer.PhotoPath), Mode=OneWay}"
                                                    Initials="{x:Bind Customer.Initials}" Margin="0,0,10,0" />
 
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
@@ -167,6 +168,7 @@
                                     </Grid.ColumnDefinitions>
 
                                     <PersonPicture Grid.Column="0" Width="52" Height="52"
+                                                   ProfilePicture="{x:Bind loc:CustomerAvatarHelper.GetProfilePicture(ViewModel.SelectedSession.Customer.PhotoPath), Mode=OneWay}"
                                                    Initials="{x:Bind ViewModel.SelectedSession.Customer.Initials, Mode=OneWay}"
                                                    Margin="0,0,16,0" />
 
@@ -207,6 +209,13 @@
 
                                     <!-- Action Buttons: Dynamic Pause/Resume & Finish -->
                                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <Button Click="DeleteSession_Click" ToolTipService.ToolTip="Delete accidental session"
+                                                Background="Transparent" BorderBrush="Transparent" Padding="8,6">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <FontIcon Glyph="&#xE74D;" FontSize="13" Foreground="#EF4444" />
+                                                <TextBlock Text="Delete" Foreground="#EF4444" FontSize="12" />
+                                            </StackPanel>
+                                        </Button>
                                         <Button Click="ToggleStatus_Click"
                                                 ToolTipService.ToolTip="{x:Bind ViewModel.SelectedSession.ToggleActionText, Mode=OneWay}">
                                             <StackPanel Orientation="Horizontal" Spacing="6">
@@ -235,7 +244,7 @@
                             </Grid>
                         </Border>
 
-                        <!-- 2. Active Citizen Application Card -->
+                        <!-- 2. Active Application Card -->
                         <!-- State B: No application linked to current session -->
                         <Border Visibility="{x:Bind local:SessionsPage.CollapsedIf(ViewModel.HasActiveApplication), Mode=OneWay}"
                                 Padding="16" CornerRadius="8"
@@ -248,7 +257,7 @@
                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock loc:Loc.Key="Sessions.NoApplicationLinked" Text="No Citizen Application linked to this visit" FontWeight="SemiBold" FontSize="13" />
+                                    <TextBlock loc:Loc.Key="Sessions.NoApplicationLinked" Text="No application linked to this visit" FontWeight="SemiBold" FontSize="13" />
                                     <TextBlock loc:Loc.Key="Sessions.NoApplicationLinkedDesc" Text="Link or register a government scheme, exam form, or certificate request for this customer."
                                                FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 </StackPanel>
@@ -293,7 +302,7 @@
                                         </StackPanel>
                                     </StackPanel>
 
-                                    <!-- Action Buttons: Add More, Open Portal, and Expand/Collapse Toggle -->
+                                    <!-- Action Buttons: Add More, Open Portal, Remove, and Expand/Collapse Toggle -->
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                         <Button Click="LinkApplication_Click" ToolTipService.ToolTip="Link another application for this customer">
                                             <StackPanel Orientation="Horizontal" Spacing="6">
@@ -305,6 +314,13 @@
                                             <StackPanel Orientation="Horizontal" Spacing="6">
                                                 <FontIcon Glyph="&#xE8A7;" FontSize="13" />
                                                 <TextBlock loc:Loc.Key="Sessions.PortalBtn" Text="Open Portal" FontSize="12" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Click="RemoveApplication_Click" ToolTipService.ToolTip="Remove this linked application"
+                                                Background="Transparent" BorderBrush="Transparent" Padding="6">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <FontIcon Glyph="&#xE74D;" FontSize="12" Foreground="#EF4444" />
+                                                <TextBlock Text="Remove" FontSize="12" Foreground="#EF4444" />
                                             </StackPanel>
                                         </Button>
                                         <Button Click="ToggleAppCollapse_Click" Padding="6" Background="Transparent" BorderBrush="Transparent"

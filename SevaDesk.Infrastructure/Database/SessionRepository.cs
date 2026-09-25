@@ -121,21 +121,35 @@ public class SessionRepository : ISessionRepository
         };
     }
 
-    public async Task PauseSessionAsync(string sessionId)
+    public async Task PauseSessionAsync(string sessionId, int? knownDurationSeconds = null)
     {
         using var connection = _db.CreateConnection();
         await connection.OpenAsync();
 
-        var existing = await connection.QuerySingleOrDefaultAsync<Session>(
-            "SELECT id, started_at as StartedAt, duration_seconds as DurationSeconds, status FROM sessions WHERE id = @Id", new { Id = sessionId });
-
-        if (existing != null && existing.Status == "Active")
+        if (knownDurationSeconds.HasValue)
         {
-            var started = existing.StartedAt.Kind == DateTimeKind.Unspecified
-                ? DateTime.SpecifyKind(existing.StartedAt, DateTimeKind.Utc)
-                : existing.StartedAt;
-            var activeSec = Math.Max(0, (int)(DateTime.UtcNow - started).TotalSeconds);
-            var totalDuration = existing.DurationSeconds + activeSec;
+            await connection.ExecuteAsync(
+                "UPDATE sessions SET status = 'Paused', duration_seconds = @Duration WHERE id = @Id",
+                new { Id = sessionId, Duration = knownDurationSeconds.Value });
+            return;
+        }
+
+        var row = await connection.QuerySingleOrDefaultAsync<(string? id, string? started_at, int? duration_seconds, string? status)>(
+            "SELECT id, started_at, duration_seconds, status FROM sessions WHERE id = @Id", new { Id = sessionId });
+
+        if (row != default && row.status == "Active")
+        {
+            DateTime startedUtc = DateTime.UtcNow;
+            if (!string.IsNullOrEmpty(row.started_at) && DateTime.TryParse(row.started_at, null, System.Globalization.DateTimeStyles.RoundtripKind, out var parsedDt))
+            {
+                startedUtc = parsedDt.Kind == DateTimeKind.Utc 
+                    ? parsedDt 
+                    : (parsedDt.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(parsedDt, DateTimeKind.Utc) : parsedDt.ToUniversalTime());
+            }
+
+            int existingDuration = row.duration_seconds ?? 0;
+            var activeSec = Math.Max(0, (int)(DateTime.UtcNow - startedUtc).TotalSeconds);
+            var totalDuration = existingDuration + activeSec;
 
             await connection.ExecuteAsync(
                 "UPDATE sessions SET status = 'Paused', duration_seconds = @Duration WHERE id = @Id",
@@ -162,8 +176,12 @@ public class SessionRepository : ISessionRepository
         using var connection = _db.CreateConnection();
         await connection.OpenAsync();
 
+        // Include customer_id in initial SELECT to avoid a second round-trip
         var existing = await connection.QuerySingleOrDefaultAsync<Session>(
-            "SELECT id, started_at as StartedAt, duration_seconds as DurationSeconds, status FROM sessions WHERE id = @Id", new { Id = sessionId });
+            @"SELECT id, customer_id as CustomerId, started_at as StartedAt,
+                     duration_seconds as DurationSeconds, status
+              FROM sessions WHERE id = @Id",
+            new { Id = sessionId });
 
         var endedAt = DateTime.UtcNow;
         int durationSec = 0;
@@ -172,10 +190,12 @@ public class SessionRepository : ISessionRepository
             durationSec = existing.DurationSeconds;
             if (existing.Status == "Active")
             {
-                var started = existing.StartedAt.Kind == DateTimeKind.Unspecified
-                    ? DateTime.SpecifyKind(existing.StartedAt, DateTimeKind.Utc)
-                    : existing.StartedAt;
-                durationSec += Math.Max(0, (int)(endedAt - started).TotalSeconds);
+                var startedUtc = existing.StartedAt.Kind == DateTimeKind.Utc
+                    ? existing.StartedAt
+                    : (existing.StartedAt.Kind == DateTimeKind.Unspecified
+                        ? DateTime.SpecifyKind(existing.StartedAt, DateTimeKind.Utc)
+                        : existing.StartedAt.ToUniversalTime());
+                durationSec += Math.Max(0, (int)(endedAt - startedUtc).TotalSeconds);
             }
         }
 
@@ -184,18 +204,68 @@ public class SessionRepository : ISessionRepository
             new { Id = sessionId, EndedAt = endedAt.ToString("o"), Duration = durationSec }
         );
 
-        if (existing != null)
+        // Sync to backup and record the working folder path + sync timestamp
+        if (existing != null && !string.IsNullOrEmpty(existing.CustomerId))
         {
-            var customerIdStr = connection.QuerySingleOrDefault<string>("SELECT customer_id FROM sessions WHERE id = @Id", new { Id = sessionId });
-            if (!string.IsNullOrEmpty(customerIdStr))
+            var customer = await _customerRepo.GetByIdAsync(existing.CustomerId);
+            if (customer != null)
             {
-                var customer = await _customerRepo.GetByIdAsync(customerIdStr);
-                if (customer != null)
+                var workingFolder = _folderManager.GetCustomerFolderPath(customer.Name, customer.Code);
+                bool syncSuccess = false;
+                try
                 {
                     await _folderManager.SyncToBackupAsync(customer.Name, customer.Code);
+                    syncSuccess = true;
+                }
+                catch { /* swallow — sync is best-effort */ }
+
+                if (syncSuccess)
+                {
+                    var syncedAt = DateTime.UtcNow.ToString("o");
+                    // Record path + sync timestamp so startup cleanup can prune old working folders
+                    await connection.ExecuteAsync(
+                        @"UPDATE sessions
+                          SET working_folder_path = @FolderPath,
+                              backup_synced_at    = @SyncedAt
+                          WHERE id = @Id",
+                        new { Id = sessionId, FolderPath = workingFolder, SyncedAt = syncedAt }
+                    );
+                }
+                else if (!string.IsNullOrEmpty(_folderManager.BackupDirectory))
+                {
+                    // Backup directory is set but sync failed — warn on next startup
+                    // Still record the working folder path so admin can retry manually
+                    await connection.ExecuteAsync(
+                        "UPDATE sessions SET working_folder_path = @FolderPath WHERE id = @Id",
+                        new { Id = sessionId, FolderPath = workingFolder }
+                    );
                 }
             }
         }
+    }
+
+    public async Task DeleteSessionAsync(string sessionId)
+    {
+        using var connection = _db.CreateConnection();
+        await connection.OpenAsync();
+
+        // 1. Unlink any payments referencing this session
+        await connection.ExecuteAsync(
+            "UPDATE payments SET session_id = NULL WHERE session_id = @Id",
+            new { Id = sessionId }
+        );
+
+        // 2. Remove charges linked to this session
+        await connection.ExecuteAsync(
+            "DELETE FROM charges WHERE session_id = @Id",
+            new { Id = sessionId }
+        );
+
+        // 3. Delete the session
+        await connection.ExecuteAsync(
+            "DELETE FROM sessions WHERE id = @Id",
+            new { Id = sessionId }
+        );
     }
 
     public async Task<IEnumerable<Session>> GetCustomerSessionsAsync(string customerId)

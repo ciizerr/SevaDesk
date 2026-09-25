@@ -22,6 +22,8 @@ public sealed partial class WorkingFolderBrowserControl : UserControl
 
     public string CustomerFolderPath { get; private set; } = string.Empty;
     public string SelectedSubfolderRelative { get; private set; } = string.Empty;
+    public Customer? CurrentCustomer { get; private set; }
+    public event Action<string>? CustomerPhotoUpdated;
 
     public string CurrentSubfolderFullPath => string.IsNullOrEmpty(SelectedSubfolderRelative)
         ? CustomerFolderPath
@@ -97,8 +99,9 @@ public sealed partial class WorkingFolderBrowserControl : UserControl
         });
     }
 
-    public void LoadCustomerFolder(string folderPath)
+    public void LoadCustomerFolder(string folderPath, Customer? customer = null)
     {
+        CurrentCustomer = customer;
         CustomerFolderPath = folderPath ?? string.Empty;
         if (string.IsNullOrWhiteSpace(CustomerFolderPath) || !Directory.Exists(CustomerFolderPath))
         {
@@ -471,6 +474,74 @@ public sealed partial class WorkingFolderBrowserControl : UserControl
                     await AppServices.Dialogs.ShowAlertAsync("Delete Failed", err);
                 }
             }
+        }
+    }
+
+    private void SmartTagButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is FolderFileItem item)
+        {
+            var flyout = SmartTagHelper.CreateTagFlyout(item, async (tag) =>
+            {
+                await ApplySmartTagAsync(item, tag);
+            });
+            flyout.ShowAt(btn);
+        }
+    }
+
+    private async Task ApplySmartTagAsync(FolderFileItem item, string tag)
+    {
+        string? targetTag = tag;
+        if (tag == "custom")
+        {
+            targetTag = await SmartTagHelper.PromptCustomTagAsync(XamlRoot);
+            if (string.IsNullOrWhiteSpace(targetTag)) return;
+        }
+
+        var dir = Path.GetDirectoryName(item.FullPath) ?? string.Empty;
+        var ext = Path.GetExtension(item.FullPath).ToLowerInvariant();
+        var uniqueName = SmartTagHelper.GenerateUniqueFileName(dir, targetTag, ext);
+
+        if (AppServices.FolderManager.RenameFile(item.FullPath, uniqueName, out string newFullPath, out string error))
+        {
+            item.FullPath = newFullPath;
+            item.Name = Path.GetFileName(newFullPath);
+            item.EditName = item.Name;
+            item.Extension = Path.GetExtension(newFullPath).ToLowerInvariant();
+            item.IsRenaming = false;
+
+            // If tagged as photo and is an image, set as customer profile photo
+            if (tag == "photo" && item.IsImage)
+            {
+                await SetCustomerPhotoAsync(newFullPath);
+            }
+        }
+        else
+        {
+            await AppServices.Dialogs.ShowAlertAsync("Tagging Failed", error);
+        }
+    }
+
+    private async Task SetCustomerPhotoAsync(string photoPath)
+    {
+        var customer = CurrentCustomer;
+        if (customer == null && !string.IsNullOrWhiteSpace(CustomerFolderPath))
+        {
+            var folderName = Path.GetFileName(CustomerFolderPath);
+            var match = System.Text.RegularExpressions.Regex.Match(folderName, @"\((CUST-\d+)\)");
+            if (match.Success)
+            {
+                var code = match.Groups[1].Value;
+                var found = await AppServices.Customers.SearchAsync(code);
+                customer = found.FirstOrDefault();
+            }
+        }
+
+        if (customer != null)
+        {
+            customer.PhotoPath = photoPath;
+            await AppServices.Customers.UpdatePhotoAsync(customer.Id, photoPath);
+            CustomerPhotoUpdated?.Invoke(photoPath);
         }
     }
 }

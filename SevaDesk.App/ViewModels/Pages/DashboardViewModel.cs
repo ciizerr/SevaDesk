@@ -109,4 +109,16 @@ public partial class DashboardViewModel : StatusViewModel
         await AppServices.Sessions.CompleteSessionAsync(sessionId);
         await LoadActiveSessionsAsync();
     }
+
+    [RelayCommand]
+    public async Task DeleteSessionAsync(ActiveSessionItem item)
+    {
+        if (item == null) return;
+        await AppServices.Sessions.DeleteSessionAsync(item.Session.Id);
+        if (item.Customer != null)
+        {
+            AppServices.FolderManager.CleanUpEmptyCustomerWorkingFolder(item.Customer.Name, item.Customer.Code);
+        }
+        await LoadActiveSessionsAsync();
+    }
 }

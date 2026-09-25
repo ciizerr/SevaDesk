@@ -602,9 +602,12 @@ public sealed partial class DesktopSidebarWidget : Window
 
     private void ToggleUpiCard_Click(object sender, RoutedEventArgs e)
     {
-        UpiCardPanel.Visibility = UpiCardPanel.Visibility == Visibility.Visible
-            ? Visibility.Collapsed
-            : Visibility.Visible;
+        var isOpening = UpiCardPanel.Visibility != Visibility.Visible;
+        UpiCardPanel.Visibility = isOpening ? Visibility.Visible : Visibility.Collapsed;
+        if (isOpening)
+        {
+            LoadShopAndUpiSettings();
+        }
     }
 
     private void OnSettingChanged(string key, string value)
@@ -633,6 +636,28 @@ public sealed partial class DesktopSidebarWidget : Window
         if (TxtPayeeName != null)
         {
             TxtPayeeName.Text = string.IsNullOrWhiteSpace(payeeName) ? "SevaDesk Cyber Center" : payeeName;
+        }
+
+        if (ImgWidgetQrCode != null)
+        {
+            try
+            {
+                var payload = AppServices.QrCode.BuildUpiPayload(upiVpa ?? "sevadesk.csc@upi", payeeName ?? "SevaDesk Cyber Center", null, "Cyber Cafe Services");
+                var bmp = AppServices.QrCode.GenerateQrBitmap(payload, pixelsPerModule: 8);
+                if (bmp != null)
+                {
+                    ImgWidgetQrCode.Source = bmp;
+                }
+            }
+            catch { }
+            finally
+            {
+                if (WidgetQrLoadingRing != null)
+                {
+                    WidgetQrLoadingRing.IsActive = false;
+                    WidgetQrLoadingRing.Visibility = Visibility.Collapsed;
+                }
+            }
         }
     }
 

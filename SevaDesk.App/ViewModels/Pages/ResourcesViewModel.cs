@@ -61,16 +61,146 @@ public partial class ResourcesViewModel : StatusViewModel
     }
 
     [RelayCommand]
-    public void QuickPrint(ResourceItem item)
+    public void OpenDocument(ResourceItem? item)
     {
-        if (item == null) return;
-        ShowSuccess($"Sent '{item.Title}' to default printer queue.");
+        var target = item ?? SelectedResource;
+        if (target == null) return;
+
+        if (!target.HasFile)
+        {
+            ShowWarning($"No document file is attached yet for \"{target.Title}\". Click \"Attach File\" to link a PDF or Word document.");
+            return;
+        }
+
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = target.FilePath!,
+                UseShellExecute = true
+            };
+            System.Diagnostics.Process.Start(psi);
+            ShowSuccess($"Opened \"{target.Title}\" in default viewer.");
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Could not open document: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    public void OpenFileLocation(ResourceItem? item)
+    {
+        var target = item ?? SelectedResource;
+        if (target == null) return;
+
+        if (!target.HasFile)
+        {
+            ShowWarning($"No document file is linked yet for \"{target.Title}\". Click \"Attach File\" to link a file.");
+            return;
+        }
+
+        try
+        {
+            var fullPath = Path.GetFullPath(target.FilePath!);
+            System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{fullPath}\"");
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Could not open folder location: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    public void QuickPrint(ResourceItem? item)
+    {
+        var target = item ?? SelectedResource;
+        if (target == null) return;
+
+        if (!target.HasFile)
+        {
+            ShowWarning($"No document file is attached to print for \"{target.Title}\". Click \"Attach File\" to link a document.");
+            return;
+        }
+
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = target.FilePath!,
+                Verb = "print",
+                CreateNoWindow = true,
+                WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
+                UseShellExecute = true
+            };
+            System.Diagnostics.Process.Start(psi);
+            ShowSuccess($"Sent \"{target.Title}\" to default counter printer.");
+        }
+        catch
+        {
+            // If direct print verb is not registered for the file type, open default app for printing
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(target.FilePath!) { UseShellExecute = true });
+                ShowSuccess($"Opened \"{target.Title}\" for printing.");
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Failed to print: {ex.Message}");
+            }
+        }
+    }
+
+    [RelayCommand]
+    public async Task SaveSelectedResourceAsync()
+    {
+        if (SelectedResource == null) return;
+
+        try
+        {
+            await AppServices.Resources.UpdateResourceAsync(SelectedResource);
+            ShowSuccess($"Changes for \"{SelectedResource.Title}\" saved successfully.");
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Failed to save template details: {ex.Message}");
+        }
+    }
+
+    public async Task AttachFileToResourceAsync(ResourceItem item, string sourceFilePath)
+    {
+        if (item == null || string.IsNullOrWhiteSpace(sourceFilePath)) return;
+
+        try
+        {
+            var targetPath = SevaDesk.Infrastructure.FileManager.TemplateStorageHelper.StoreTemplateFile(
+                sourceFilePath, item.Category, item.Title);
+
+            var fi = new FileInfo(targetPath);
+            item.FilePath = targetPath;
+            item.FileSize = SevaDesk.Infrastructure.FileManager.TemplateStorageHelper.FormatFileSize(fi.Length);
+            item.FileType = Path.GetExtension(targetPath).TrimStart('.').ToUpperInvariant();
+            item.Glyph = item.FileType == "PDF" ? "\uE8A5" : "\uE8C1";
+
+            await AppServices.Resources.UpdateResourceAsync(item);
+            ShowSuccess($"Document file linked to \"{item.Title}\" successfully.");
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Could not attach document: {ex.Message}");
+        }
     }
 
     [RelayCommand]
     public async Task CopyToActiveSessionAsync(ResourceItem item)
     {
         if (item == null) return;
+
+        if (!item.HasFile)
+        {
+            ShowWarning($"No document file is attached yet for \"{item.Title}\". Attach a file first before copying to session.");
+            return;
+        }
 
         var activeSessions = (await AppServices.Sessions.GetActiveSessionsAsync()).ToList();
         var current = activeSessions.FirstOrDefault();
@@ -86,19 +216,15 @@ public partial class ResourcesViewModel : StatusViewModel
             Directory.CreateDirectory(destFolder);
 
             var safeTitle = string.Join("_", item.Title.Split(Path.GetInvalidFileNameChars()));
-            var ext = item.FileType.ToLowerInvariant() == "pdf" ? ".pdf" : ".docx";
+            var ext = Path.GetExtension(item.FilePath);
+            if (string.IsNullOrWhiteSpace(ext))
+            {
+                ext = item.FileType.ToLowerInvariant() == "pdf" ? ".pdf" : ".docx";
+            }
             var destPath = Path.Combine(destFolder, $"{safeTitle}{ext}");
 
-            if (item.FilePath != null && File.Exists(item.FilePath))
-            {
-                File.Copy(item.FilePath, destPath, overwrite: true);
-            }
-            else
-            {
-                File.WriteAllText(destPath, $"[SevaDesk Resource Template: {item.Title}]\nCategory: {item.Category}\nCreated: {DateTime.Now}\n");
-            }
-
-            ShowSuccess($"Copied '{item.Title}' to {current.Customer.Name}'s Shared Docs folder.");
+            File.Copy(item.FilePath!, destPath, overwrite: true);
+            ShowSuccess($"Copied \"{item.Title}\" to {current.Customer.Name}'s Shared Docs folder.");
         }
         catch (Exception ex)
         {
@@ -113,7 +239,8 @@ public partial class ResourcesViewModel : StatusViewModel
         var created = await AppServices.Resources.AddCustomResourceAsync(item);
         AllResources.Insert(0, created);
         ApplyFilter();
-        ShowSuccess($"Added resource '{created.Title}' to catalog.");
+        SelectedResource = created;
+        ShowSuccess($"Added \"{created.Title}\" to template catalog.");
     }
 
     private void ApplyFilter()
@@ -132,7 +259,10 @@ public partial class ResourcesViewModel : StatusViewModel
         }
 
         FilteredResources = new ObservableCollection<ResourceItem>(filtered);
-        SelectedResource = FilteredResources.FirstOrDefault();
+        if (SelectedResource == null || !FilteredResources.Contains(SelectedResource))
+        {
+            SelectedResource = FilteredResources.FirstOrDefault();
+        }
     }
 }
 

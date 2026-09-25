@@ -8,5 +8,6 @@ public interface ICustomerRepository
     Task<IEnumerable<Customer>> SearchAsync(string query);
     Task<Customer> CreateAsync(Customer customer);
     Task UpdateAsync(Customer customer);
+    Task UpdatePhotoAsync(string customerId, string? photoPath);
     Task<string> GenerateNextCodeAsync();
 }

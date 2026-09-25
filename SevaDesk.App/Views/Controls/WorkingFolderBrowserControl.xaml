@@ -213,6 +213,13 @@
                                         <FontIcon Glyph="&#xE8A7;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                                     </Button>
 
+                                    <!-- Smart Tag & Rename Button -->
+                                    <Button Click="SmartTagButton_Click" Tag="{x:Bind}" Padding="6"
+                                            Background="Transparent" BorderBrush="Transparent"
+                                            ToolTipService.ToolTip="Quick Tag &amp; Smart Rename">
+                                        <FontIcon Glyph="&#xE8EC;" FontSize="13" Foreground="#F59E0B" />
+                                    </Button>
+
                                     <!-- Rename Button -->
                                     <Button Click="StartRename_Click" Tag="{x:Bind}" Padding="6"
                                             Background="Transparent" BorderBrush="Transparent"

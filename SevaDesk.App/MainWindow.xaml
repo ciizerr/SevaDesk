@@ -80,7 +80,7 @@
 
                 <NavigationViewItem
                     loc:Loc.Key="Nav.Applications"
-                    Content="Citizen Applications"
+                    Content="Online Forms"
                     Tag="applications">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE7C3;" />
@@ -89,7 +89,7 @@
 
                 <NavigationViewItem
                     loc:Loc.Key="Nav.Resources"
-                    Content="Quick Resources"
+                    Content="Offline Forms"
                     Tag="resources">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE8F1;" />

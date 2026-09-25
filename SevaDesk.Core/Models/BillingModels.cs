@@ -18,13 +18,21 @@ public partial class ServiceRateItem : ObservableObject
         set => Rate = (decimal)value;
     }
 
+    public string FormattedRate => $"₹{Rate:N0}/{Unit}";
+
     partial void OnRateChanged(decimal value)
     {
         OnPropertyChanged(nameof(RateDouble));
+        OnPropertyChanged(nameof(FormattedRate));
     }
 
     [ObservableProperty]
     private string _unit = "page"; // page, form, doc
+
+    partial void OnUnitChanged(string value)
+    {
+        OnPropertyChanged(nameof(FormattedRate));
+    }
 
     [ObservableProperty]
     private string _glyph = "\uE749"; // Print/Card glyph

@@ -1,6 +1,8 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace SevaDesk.Core.Models;
 
-public class Customer
+public partial class Customer : ObservableObject
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Code { get; set; } = string.Empty; // e.g. CUST-0001
@@ -10,6 +12,10 @@ public class Customer
     public string? IdReference { get; set; }
     public string? Village { get; set; }
     public string? Notes { get; set; }
+
+    [ObservableProperty]
+    private string? _photoPath;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

@@ -109,6 +109,7 @@
                                 <DataTemplate x:DataType="models:ActiveSessionItem">
                                     <Grid ColumnDefinitions="Auto,*,Auto" Padding="8,10" VerticalAlignment="Center">
                                         <PersonPicture Grid.Column="0" Width="36" Height="36"
+                                                       ProfilePicture="{x:Bind loc:CustomerAvatarHelper.GetProfilePicture(Customer.PhotoPath), Mode=OneWay}"
                                                        Initials="{x:Bind Customer.Initials}" Margin="0,0,10,0" />
 
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
@@ -167,8 +168,15 @@
                                            FontSize="12" FontFamily="Consolas" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             </StackPanel>
 
-                            <!-- Session Finish Action -->
+                            <!-- Session Actions -->
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <Button Click="DeleteSession_Click" ToolTipService.ToolTip="Delete accidental session"
+                                        Background="Transparent" BorderBrush="Transparent" Padding="8,6">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE74D;" FontSize="13" Foreground="#EF4444" />
+                                        <TextBlock Text="Delete" Foreground="#EF4444" FontSize="12" />
+                                    </StackPanel>
+                                </Button>
                                 <Button Style="{StaticResource AccentButtonStyle}" Click="FinishSession_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <FontIcon Glyph="&#xE73E;" FontSize="14" />

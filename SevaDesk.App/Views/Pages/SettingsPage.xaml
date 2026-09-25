@@ -338,6 +338,27 @@
                         </Button>
                     </ctk:SettingsCard>
 
+                    <!-- Auto-delete Working Folders after backup sync -->
+                    <ctk:SettingsCard
+                        Header="Auto-Delete Desktop Working Folders"
+                        Description="After a successful backup sync, delete the customer's Desktop working folder on next startup. Set 0 to delete immediately on next startup.">
+                        <ctk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE74D;" />
+                        </ctk:SettingsCard.HeaderIcon>
+                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <NumberBox
+                                Value="{x:Bind ViewModel.WorkingFolderTtlHours, Mode=TwoWay}"
+                                Minimum="0"
+                                Maximum="720"
+                                SmallChange="1"
+                                LargeChange="24"
+                                SpinButtonPlacementMode="Inline"
+                                Width="140" />
+                            <TextBlock Text="hours after sync" VerticalAlignment="Center"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </ctk:SettingsCard>
+
                     <!-- Watched Ingestion Folders (Expander) -->
                     <ctk:SettingsExpander
                         Header="Auto-Detect Incoming Files"

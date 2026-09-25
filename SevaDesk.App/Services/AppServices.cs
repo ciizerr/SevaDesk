@@ -20,6 +20,7 @@ public static class AppServices
     public static IPickerService Pickers { get; } = new PickerService();
     public static IImageProcessingService ImageProcessing { get; } = new ImageProcessingService();
     public static IPdfGenerationService PdfGeneration { get; } = new PdfGenerationService();
+    public static QrCodeService QrCode { get; } = new();
 
     public static void Initialize()
     {
@@ -38,7 +39,12 @@ public static class AppServices
             FolderManager.SetBackupDirectory(savedBackupPath);
         }
 
+        TemplateStorageHelper.Initialize(() => FolderManager.BackupDirectory);
+
         Localization.Initialize();
         FileWatcher.Initialize();
+
+        // Kick off background cleanup of expired working folders (fire-and-forget)
+        _ = SevaDesk_App.Services.Maintenance.WorkingFolderCleanupService.RunAsync();
     }
 }

@@ -16,6 +16,7 @@ public sealed partial class CompleteSessionDialog : ContentDialog
     {
         _customer = customer;
         InitializeComponent();
+        this.EnableLightDismiss();
 
         var template = AppServices.Localization.GetString("Dialog.CompleteSession.Subtitle");
         if (string.IsNullOrWhiteSpace(template) || template == "Dialog.CompleteSession.Subtitle")

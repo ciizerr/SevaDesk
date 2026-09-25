@@ -556,5 +556,17 @@ public sealed partial class MainWindow : Window
         _currentIncomingFile = null;
     }
 
+    public void ShowToast(string message, InfoBarSeverity severity = InfoBarSeverity.Informational)
+    {
+        var toastSev = severity switch
+        {
+            InfoBarSeverity.Success => ToastSeverity.Success,
+            InfoBarSeverity.Warning => ToastSeverity.Warning,
+            InfoBarSeverity.Error => ToastSeverity.Error,
+            _ => ToastSeverity.Info
+        };
+        ToastService.Instance.Show(message, toastSev);
+    }
+
     #endregion
 }

@@ -32,7 +32,7 @@ public partial class SessionsViewModel : StatusViewModel
     [ObservableProperty]
     private bool _hasPendingIncomingFile;
 
-    // --- Citizen Application Integration ---
+    // --- Application Integration ---
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasActiveApplication))]
     private ApplicationItem? _activeApplication;
@@ -262,14 +262,16 @@ public partial class SessionsViewModel : StatusViewModel
         if (item == null) return;
         if (item.Session.Status == "Active")
         {
-            var started = item.Session.StartedAt.Kind == DateTimeKind.Unspecified
-                ? DateTime.SpecifyKind(item.Session.StartedAt, DateTimeKind.Utc)
-                : item.Session.StartedAt;
-            var activeSec = Math.Max(0, (int)(DateTime.UtcNow - started).TotalSeconds);
+            var startedUtc = item.Session.StartedAt.Kind == DateTimeKind.Utc
+                ? item.Session.StartedAt
+                : (item.Session.StartedAt.Kind == DateTimeKind.Unspecified
+                    ? DateTime.SpecifyKind(item.Session.StartedAt, DateTimeKind.Utc)
+                    : item.Session.StartedAt.ToUniversalTime());
+            var activeSec = Math.Max(0, (int)(DateTime.UtcNow - startedUtc).TotalSeconds);
             item.Session.DurationSeconds += activeSec;
             item.Session.Status = "Paused";
 
-            await AppServices.Sessions.PauseSessionAsync(item.Session.Id);
+            await AppServices.Sessions.PauseSessionAsync(item.Session.Id, item.Session.DurationSeconds);
         }
         else
         {
@@ -299,5 +301,36 @@ public partial class SessionsViewModel : StatusViewModel
         {
             SelectedSession = Sessions.FirstOrDefault();
         }
+    }
+
+    [RelayCommand]
+    public async Task DeleteSessionAsync(ActiveSessionItem item)
+    {
+        if (item == null) return;
+        await AppServices.Sessions.DeleteSessionAsync(item.Session.Id);
+
+        if (item.Customer != null)
+        {
+            AppServices.FolderManager.CleanUpEmptyCustomerWorkingFolder(item.Customer.Name, item.Customer.Code);
+        }
+
+        Sessions.Remove(item);
+        ActiveCount = Sessions.Count(s => s.Session.Status == "Active");
+        PausedCount = Sessions.Count(s => s.Session.Status == "Paused");
+        if (SelectedSession == item)
+        {
+            SelectedSession = Sessions.FirstOrDefault();
+        }
+    }
+
+    [RelayCommand]
+    public async Task RemoveApplicationAsync(ApplicationItem app)
+    {
+        if (app == null) return;
+        await AppServices.Applications.DeleteAsync(app.Id);
+        CustomerApplications.Remove(app);
+        ActiveApplication = CustomerApplications.FirstOrDefault();
+        OnPropertyChanged(nameof(HasMultipleApplications));
+        UpdateActiveChecklist();
     }
 }

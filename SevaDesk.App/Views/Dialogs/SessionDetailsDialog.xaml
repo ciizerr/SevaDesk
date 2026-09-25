@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="SevaDesk_App.Views.Dialogs.SessionDetailsDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="Visit &amp; Billing Details"
+    CloseButtonText="Close"
+    DefaultButton="Close"
+    mc:Ignorable="d">
+
+    <StackPanel Spacing="16" Margin="0,0,16,0" MinWidth="420" MaxWidth="480">
+        <!-- Visit Overview Header Card -->
+        <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                CornerRadius="8" Padding="14,12">
+            <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
+                <!-- Date, Status -->
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock x:Name="TxtFormattedDate" FontWeight="Bold" FontSize="15" />
+                        <TextBlock x:Name="TxtTimeRange" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                    <Border Grid.Column="1" CornerRadius="4" Padding="8,3"
+                            Background="{ThemeResource SubtleFillColorSecondaryBrush}" VerticalAlignment="Top">
+                        <TextBlock x:Name="TxtStatus" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                    </Border>
+                </Grid>
+
+                <!-- Duration Pill -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <FontIcon Glyph="&#xE916;" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock x:Name="TxtDuration" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Session Notes (if present) -->
+        <StackPanel x:Name="PnlNotes" Spacing="4" Visibility="Collapsed">
+            <TextBlock Text="Session Notes" FontWeight="SemiBold" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="6" Padding="10,8">
+                <TextBlock x:Name="TxtNotes" FontSize="12" TextWrapping="Wrap" />
+            </Border>
+        </StackPanel>
+
+        <!-- Linked Payment Card (State A: Paid) -->
+        <StackPanel x:Name="PnlPaymentDetails" Spacing="10" Visibility="Collapsed">
+            <TextBlock Text="Billing &amp; Payment Details" FontWeight="SemiBold" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                    CornerRadius="8" Padding="14">
+                <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="10">
+                    <!-- Amount & Invoice -->
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock x:Name="TxtInvoiceNo" FontFamily="Consolas" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <TextBlock x:Name="TxtAmount" FontWeight="Bold" FontSize="20" Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                        </StackPanel>
+                        <Border Grid.Column="1" CornerRadius="6" Padding="10,4"
+                                Background="{ThemeResource SubtleFillColorSecondaryBrush}" VerticalAlignment="Center">
+                            <TextBlock x:Name="TxtPaymentMethod" FontWeight="Bold" FontSize="12" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                        </Border>
+                    </Grid>
+
+                    <Border Grid.Row="1" Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                    <!-- Services / Work Done Items -->
+                    <StackPanel Grid.Row="2" Spacing="4">
+                        <TextBlock Text="Work Done / Items Billed:" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock x:Name="TxtItemsSummary" FontSize="13" TextWrapping="Wrap" FontWeight="Medium" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </StackPanel>
+
+        <!-- State B: Unbilled Session Banner -->
+        <Border x:Name="PnlUnbilled" Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                CornerRadius="8" Padding="14" Visibility="Collapsed">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="No Payment Recorded" FontWeight="SemiBold" FontSize="13" />
+                    <TextBlock Text="This session was completed without recording a bill in Cashier."
+                               FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                </StackPanel>
+                <Button Grid.Column="1" Click="BillThisSession_Click" Style="{StaticResource AccentButtonStyle}" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE8C7;" FontSize="12" />
+                        <TextBlock Text="Bill This Session" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Delete Session Section -->
+        <StackPanel Spacing="8">
+            <Button x:Name="BtnDeletePrompt" Click="DeletePrompt_Click" Background="Transparent" BorderBrush="Transparent" Padding="8,4" HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon Glyph="&#xE74D;" FontSize="12" Foreground="#EF4444" />
+                    <TextBlock Text="Delete This Session" FontSize="12" Foreground="#EF4444" />
+                </StackPanel>
+            </Button>
+
+            <!-- Inline Confirmation Panel -->
+            <Border x:Name="PnlDeleteConfirm" Visibility="Collapsed" Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                    BorderBrush="#EF4444" BorderThickness="1" CornerRadius="8" Padding="12">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Permanently delete this session from history?" FontSize="12" FontWeight="SemiBold" Foreground="#EF4444" TextWrapping="Wrap" />
+                    <TextBlock Text="This cannot be undone. Any payment records linked to this session will be preserved." FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                        <Button Click="ConfirmDelete_Click" Style="{StaticResource AccentButtonStyle}" Background="#DC2626" Foreground="White" Padding="12,4">
+                            <TextBlock Text="Confirm Delete" FontWeight="SemiBold" FontSize="12" />
+                        </Button>
+                        <Button Click="CancelDelete_Click" Padding="12,4">
+                            <TextBlock Text="Cancel" FontSize="12" />
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </StackPanel>
+</ContentDialog>

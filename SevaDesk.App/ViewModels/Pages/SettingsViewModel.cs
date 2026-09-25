@@ -97,6 +97,9 @@ public partial class SettingsViewModel : StatusViewModel
     private string _backupRootPath = string.Empty;
 
     [ObservableProperty]
+    private double _workingFolderTtlHours = 24;
+
+    [ObservableProperty]
     private bool _watchDownloads = true;
 
     [ObservableProperty]
@@ -161,6 +164,7 @@ public partial class SettingsViewModel : StatusViewModel
 
         _workingRootPath = AppServices.FolderManager.BaseDirectory;
         _backupRootPath = AppServices.FolderManager.BackupDirectory;
+        _workingFolderTtlHours = SevaDesk_App.Services.Maintenance.WorkingFolderCleanupService.GetTtlHours();
 
         // BUG FIX: Use backing-field assignment so OnWatchXxxChanged partial handlers
         // do NOT fire during construction (which was triggering the "Watched folders updated." toast).
@@ -270,6 +274,13 @@ public partial class SettingsViewModel : StatusViewModel
             AppServices.Localization.SetLanguage(value.Code);
             ShowSuccess($"Language changed to {value.DisplayName}.");
         }
+    }
+
+    partial void OnWorkingFolderTtlHoursChanged(double value)
+    {
+        var hours = Math.Max(0, (int)Math.Round(value));
+        SevaDesk_App.Services.Maintenance.WorkingFolderCleanupService.SetTtlHours(hours);
+        ShowSuccess($"Working folder TTL set to {hours}h after backup sync.");
     }
 
     // ==========================================

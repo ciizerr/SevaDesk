@@ -277,10 +277,49 @@ public class PaymentRepository : IPaymentRepository
         await connection.OpenAsync();
         
         const string sql = @"
-            SELECT * FROM payments 
+            SELECT 
+                id AS Id,
+                invoice_no AS InvoiceNo,
+                customer_id AS CustomerId,
+                customer_name AS CustomerName,
+                session_id AS SessionId,
+                amount AS Amount,
+                payment_method AS PaymentMethod,
+                reference_number AS ReferenceNumber,
+                payment_date AS PaymentDate,
+                items_summary AS ItemsSummary,
+                notes AS Notes
+            FROM payments 
             WHERE customer_id = @CustomerId 
             ORDER BY payment_date DESC";
 
-        return await connection.QueryAsync<Payment>(sql, new { CustomerId = customerId });
+        var rows = await connection.QueryAsync(sql, new { CustomerId = customerId });
+        var list = new List<Payment>();
+
+        foreach (var r in rows)
+        {
+            var p = new Payment
+            {
+                Id = r.Id,
+                InvoiceNo = r.InvoiceNo ?? string.Empty,
+                CustomerId = r.CustomerId,
+                CustomerName = string.IsNullOrWhiteSpace((string?)r.CustomerName) ? "Walk-in Customer" : (string)r.CustomerName,
+                SessionId = r.SessionId,
+                Amount = (decimal)(double)r.Amount,
+                PaymentMethod = r.PaymentMethod ?? "Cash",
+                ReferenceNumber = r.ReferenceNumber,
+                ItemsSummary = r.ItemsSummary,
+                Notes = r.Notes
+            };
+
+            if (DateTime.TryParse((string?)r.PaymentDate, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt))
+            {
+                p.PaymentDate = dt.ToLocalTime();
+            }
+
+            list.Add(p);
+        }
+
+        return list;
     }
 }

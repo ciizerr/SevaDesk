@@ -20,6 +20,7 @@ public sealed partial class FilePreviewDialog : ContentDialog
     public FilePreviewDialog(FolderFileItem fileItem)
     {
         InitializeComponent();
+        this.EnableLightDismiss();
         _fileItem = fileItem;
 
         TxtFileName.Text = _fileItem.Name;

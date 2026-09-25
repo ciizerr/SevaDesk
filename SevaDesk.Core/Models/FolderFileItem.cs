@@ -48,3 +48,13 @@ public partial class SubfolderItem : ObservableObject
     [ObservableProperty]
     private bool _isSelected;
 }
+
+public class FolderGroup
+{
+    public string FolderName { get; set; } = string.Empty;
+    public string FolderPath { get; set; } = string.Empty;
+    public string Glyph { get; set; } = "\uE8B7";
+    public string AccentColor { get; set; } = "#F59E0B";
+    public List<FolderFileItem> Files { get; set; } = new();
+    public int FileCount => Files.Count;
+}

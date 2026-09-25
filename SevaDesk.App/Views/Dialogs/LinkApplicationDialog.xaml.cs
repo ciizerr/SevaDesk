@@ -19,6 +19,7 @@ public sealed partial class LinkApplicationDialog : ContentDialog
     public LinkApplicationDialog(string customerName, string customerId)
     {
         InitializeComponent();
+        this.EnableLightDismiss();
         _customerName = customerName;
         _customerId = customerId;
         TxtCustomerBanner.Text = $"Applying for: {customerName}";
@@ -157,7 +158,7 @@ public sealed partial class LinkApplicationDialog : ContentDialog
             };
         }
 
-        var fallbackTitle = string.IsNullOrWhiteSpace(SearchSuggestBox.Text) ? "Citizen Application" : SearchSuggestBox.Text.Trim();
+        var fallbackTitle = string.IsNullOrWhiteSpace(SearchSuggestBox.Text) ? "Online Form" : SearchSuggestBox.Text.Trim();
         return new ApplicationItem
         {
             CustomerId = _customerId,

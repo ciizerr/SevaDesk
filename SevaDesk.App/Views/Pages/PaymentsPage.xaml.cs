@@ -4,9 +4,11 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using SevaDesk.Core.Models;
+using SevaDesk_App.Services;
 using SevaDesk_App.ViewModels.Pages;
 using Windows.Foundation;
 using Windows.UI;
+using SevaDesk_App.Views.Dialogs;
 
 namespace SevaDesk_App.Views.Pages;
 
@@ -25,12 +27,70 @@ public sealed partial class PaymentsPage : Page
                 EarningsCanvas?.Invalidate();
             });
         };
+
+        ViewModel.ServiceCategories.CollectionChanged += (s, e) =>
+        {
+            DispatcherQueue.TryEnqueue(RenderCategoryChips);
+        };
+
+        ViewModel.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(PaymentsViewModel.QrCodeBitmap))
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (InlineQrImage != null)
+                    {
+                        InlineQrImage.Source = ViewModel.QrCodeBitmap;
+                    }
+                });
+            }
+            else if (e.PropertyName == nameof(PaymentsViewModel.SelectedCategory))
+            {
+                DispatcherQueue.TryEnqueue(UpdateCategoryChipStyles);
+            }
+            else if (e.PropertyName == nameof(PaymentsViewModel.CatalogSelectedCategory))
+            {
+                DispatcherQueue.TryEnqueue(UpdateCatalogCategoryChipStyles);
+            }
+            else if (e.PropertyName == nameof(PaymentsViewModel.FormGlyph))
+            {
+                DispatcherQueue.TryEnqueue(UpdateCatalogIconPicker);
+            }
+            else if (e.PropertyName == nameof(PaymentsViewModel.SelectedViewIndex))
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    if (ViewSelector != null)
+                    {
+                        ViewSelector.SelectedItem = ViewModel.SelectedViewIndex switch
+                        {
+                            0 => PosTab,
+                            1 => RatesTab,
+                            2 => EarningsTab,
+                            _ => PosTab
+                        };
+                    }
+
+                    if (ViewModel.SelectedViewIndex == 1)
+                    {
+                        RenderCatalogCategoryChips();
+                        UpdateCatalogIconPicker();
+                    }
+                });
+            }
+        };
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        _ = ViewModel.InitializeAsync();
+        _ = InitializePageAsync();
+
+        if (InlineQrImage != null)
+        {
+            InlineQrImage.Source = ViewModel.QrCodeBitmap;
+        }
 
         if (ViewSelector != null && PosTab != null)
         {
@@ -43,22 +103,31 @@ public sealed partial class PaymentsPage : Page
         }
     }
 
+    private async Task InitializePageAsync()
+    {
+        await ViewModel.InitializeAsync();
+        RenderCategoryChips();
+        RenderCatalogCategoryChips();
+        UpdateCatalogIconPicker();
+    }
+
     // --- UI Helper Converters ---
     public static string FormatRupee(decimal amount) => $"₹{amount:N0}";
     public static string FormatAmount(decimal amount) => $"₹{amount:N0}";
+    public static string FormatUnitSuffix(string? unit) => string.IsNullOrWhiteSpace(unit) ? string.Empty : $"/ {unit}";
     public static bool HasStatus(string status) => !string.IsNullOrWhiteSpace(status);
     public static Visibility VisibleIf(bool condition) => condition ? Visibility.Visible : Visibility.Collapsed;
     public static Visibility CollapsedIf(bool condition) => condition ? Visibility.Collapsed : Visibility.Visible;
     public static Visibility CollapsedIf(int count) => count > 0 ? Visibility.Collapsed : Visibility.Visible;
     public static bool CollapsedIfBool(bool condition) => !condition;
 
-    public Style FilterButtonStyle(string activeFilter, string currentFilter)
+    public Style? FilterButtonStyle(string activeFilter, string currentFilter)
     {
         if (string.Equals(activeFilter, currentFilter, StringComparison.OrdinalIgnoreCase))
         {
             return (Style)Application.Current.Resources["AccentButtonStyle"];
         }
-        return (Style)Application.Current.Resources["DefaultButtonStyle"];
+        return null;
     }
 
     // --- Navigation & Filter Handlers ---
@@ -66,11 +135,26 @@ public sealed partial class PaymentsPage : Page
     {
         if (sender.SelectedItem == PosTab)
         {
-            ViewModel.SelectedViewIndex = 0;
+            if (ViewModel.SelectedViewIndex != 0)
+            {
+                ViewModel.SelectedViewIndex = 0;
+            }
+        }
+        else if (sender.SelectedItem == RatesTab)
+        {
+            if (ViewModel.SelectedViewIndex != 1)
+            {
+                ViewModel.SelectedViewIndex = 1;
+            }
+            RenderCatalogCategoryChips();
+            UpdateCatalogIconPicker();
         }
         else if (sender.SelectedItem == EarningsTab)
         {
-            ViewModel.SelectedViewIndex = 1;
+            if (ViewModel.SelectedViewIndex != 2)
+            {
+                ViewModel.SelectedViewIndex = 2;
+            }
             EarningsCanvas?.Invalidate();
         }
     }
@@ -193,10 +277,154 @@ public sealed partial class PaymentsPage : Page
         }
     }
 
+    // --- Category Filter Chips Handlers ---
+    private void CategoryFilter_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string category)
+        {
+            ViewModel.SelectCategory(category);
+            UpdateCategoryChipStyles();
+        }
+    }
+
+    private void UpdateCategoryChipStyles()
+    {
+        if (CategoryChipsPanel == null) return;
+        foreach (var child in CategoryChipsPanel.Children)
+        {
+            if (child is Button b && b.Tag is string cat)
+            {
+                bool isSelected = string.Equals(ViewModel.SelectedCategory, cat, StringComparison.OrdinalIgnoreCase);
+                b.Style = isSelected ? (Style)Application.Current.Resources["AccentButtonStyle"] : null;
+            }
+        }
+    }
+
+    public void RenderCategoryChips()
+    {
+        if (CategoryChipsPanel == null) return;
+        CategoryChipsPanel.Children.Clear();
+
+        foreach (var category in ViewModel.ServiceCategories)
+        {
+            var isSelected = string.Equals(ViewModel.SelectedCategory, category, StringComparison.OrdinalIgnoreCase);
+            var btn = new Button
+            {
+                Content = category,
+                Tag = category,
+                Style = isSelected ? (Style)Application.Current.Resources["AccentButtonStyle"] : null,
+                CornerRadius = new CornerRadius(14),
+                Padding = new Thickness(14, 5, 14, 5),
+                FontSize = 12
+            };
+            btn.Click += CategoryFilter_Click;
+            CategoryChipsPanel.Children.Add(btn);
+        }
+    }
+
+    private void ClearCategoryFilter_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.SelectedCategory = "All";
+        ViewModel.RateCardSearchQuery = string.Empty;
+        UpdateCategoryChipStyles();
+    }
+
+    // --- Catalog Category Filter Chips Handlers ---
+    private void CatalogCategoryFilter_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string category)
+        {
+            ViewModel.SelectCatalogCategory(category);
+            UpdateCatalogCategoryChipStyles();
+        }
+    }
+
+    private void UpdateCatalogCategoryChipStyles()
+    {
+        if (CatalogCategoryChipsPanel == null) return;
+        foreach (var child in CatalogCategoryChipsPanel.Children)
+        {
+            if (child is Button b && b.Tag is string cat)
+            {
+                bool isSelected = string.Equals(ViewModel.CatalogSelectedCategory, cat, StringComparison.OrdinalIgnoreCase);
+                b.Style = isSelected ? (Style)Application.Current.Resources["AccentButtonStyle"] : null;
+            }
+        }
+    }
+
+    public void RenderCatalogCategoryChips()
+    {
+        if (CatalogCategoryChipsPanel == null) return;
+        CatalogCategoryChipsPanel.Children.Clear();
+
+        foreach (var category in ViewModel.ServiceCategories)
+        {
+            var isSelected = string.Equals(ViewModel.CatalogSelectedCategory, category, StringComparison.OrdinalIgnoreCase);
+            var btn = new Button
+            {
+                Content = category,
+                Tag = category,
+                Style = isSelected ? (Style)Application.Current.Resources["AccentButtonStyle"] : null,
+                CornerRadius = new CornerRadius(14),
+                Padding = new Thickness(14, 5, 14, 5),
+                FontSize = 12
+            };
+            btn.Click += CatalogCategoryFilter_Click;
+            CatalogCategoryChipsPanel.Children.Add(btn);
+        }
+    }
+
+    // --- Catalog Icon Picker Handlers ---
+    private void CatalogGlyph_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string glyph)
+        {
+            ViewModel.FormGlyph = glyph;
+            UpdateCatalogIconPicker();
+        }
+    }
+
+    private void UpdateCatalogIconPicker()
+    {
+        if (CatalogIconPickerGrid == null) return;
+        foreach (var child in CatalogIconPickerGrid.Children)
+        {
+            if (child is Button b && b.Tag is string glyph)
+            {
+                bool isSelected = string.Equals(ViewModel.FormGlyph, glyph, StringComparison.OrdinalIgnoreCase);
+                b.Style = isSelected ? (Style)Application.Current.Resources["AccentButtonStyle"] : null;
+            }
+        }
+    }
+
+    // --- Catalog List Item Actions ---
+    private void CatalogEdit_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is ServiceRateItem item)
+        {
+            ViewModel.EditRateItem(item);
+            UpdateCatalogIconPicker();
+        }
+    }
+
+    private async void ConfirmCatalogDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is ServiceRateItem item)
+        {
+            await ViewModel.DeleteRateItemAsync(item);
+            RenderCategoryChips();
+            RenderCatalogCategoryChips();
+        }
+    }
+
+    private void ManageRates_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.SwitchToRatesView();
+    }
+
     // --- POS Cart & Payment Handlers ---
     private void RateCard_ItemClick(object sender, ItemClickEventArgs e)
     {
-        if (ViewModel.IsEditMode) return;
         if (e.ClickedItem is ServiceRateItem service)
         {
             ViewModel.AddToCartCommand.Execute(service);
@@ -239,7 +467,30 @@ public sealed partial class PaymentsPage : Page
 
     private async void PayUpi_Click(object sender, RoutedEventArgs e)
     {
-        await ViewModel.CompletePaymentAsync("UPI");
+        if (ViewModel.GrandTotal <= 0)
+        {
+            ViewModel.ShowWarning("Please add at least one service item to the bill first.");
+            return;
+        }
+
+        var dialog = new UpiQrDialog(ViewModel.ShopUpiId, ViewModel.PayeeName, ViewModel.GrandTotal, ViewModel.CustomerName);
+        dialog.XamlRoot = this.XamlRoot;
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            await ViewModel.CompletePaymentAsync("UPI");
+        }
+    }
+
+    private async void ShowQrDialog_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new UpiQrDialog(ViewModel.ShopUpiId, ViewModel.PayeeName, ViewModel.GrandTotal, ViewModel.CustomerName);
+        dialog.XamlRoot = this.XamlRoot;
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary && ViewModel.GrandTotal > 0)
+        {
+            await ViewModel.CompletePaymentAsync("UPI");
+        }
     }
 
     private void CopyUpi_Click(object sender, RoutedEventArgs e)
@@ -252,5 +503,33 @@ public sealed partial class PaymentsPage : Page
             ViewModel.ShowSuccess($"UPI ID copied: {ViewModel.ShopUpiId}");
         }
         catch { }
+    }
+
+    private async void CustomerAutoSuggest_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    {
+        if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput)
+        {
+            var query = sender.Text.Trim();
+            if (query.Length >= 1)
+            {
+                var customers = await AppServices.Customers.SearchAsync(query);
+                sender.ItemsSource = customers.Take(8).ToList();
+            }
+            else
+            {
+                sender.ItemsSource = null;
+                ViewModel.CurrentCustomerId = null;
+            }
+        }
+    }
+
+    private void CustomerAutoSuggest_SuggestionChosen(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)
+    {
+        if (args.SelectedItem is Customer customer)
+        {
+            sender.Text = customer.Name;
+            ViewModel.CustomerName = customer.Name;
+            ViewModel.CurrentCustomerId = customer.Id;
+        }
     }
 }

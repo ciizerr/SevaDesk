@@ -79,8 +79,8 @@ public class CustomerRepository : ICustomerRepository
         await connection.OpenAsync();
 
         const string sql = @"
-            INSERT INTO customers (id, code, name, mobile, id_type, id_reference, village, notes, created_at, updated_at)
-            VALUES (@Id, @Code, @Name, @Mobile, @IdType, @IdReference, @Village, @Notes, @CreatedAt, @UpdatedAt)";
+            INSERT INTO customers (id, code, name, mobile, id_type, id_reference, village, notes, photo_path, created_at, updated_at)
+            VALUES (@Id, @Code, @Name, @Mobile, @IdType, @IdReference, @Village, @Notes, @PhotoPath, @CreatedAt, @UpdatedAt)";
 
         await connection.ExecuteAsync(sql, new
         {
@@ -92,6 +92,7 @@ public class CustomerRepository : ICustomerRepository
             customer.IdReference,
             customer.Village,
             customer.Notes,
+            customer.PhotoPath,
             CreatedAt = customer.CreatedAt.ToString("o"),
             UpdatedAt = customer.UpdatedAt.ToString("o")
         });
@@ -114,6 +115,7 @@ public class CustomerRepository : ICustomerRepository
                 id_reference = @IdReference,
                 village = @Village,
                 notes = @Notes,
+                photo_path = @PhotoPath,
                 updated_at = @UpdatedAt
             WHERE id = @Id";
 
@@ -126,7 +128,27 @@ public class CustomerRepository : ICustomerRepository
             customer.IdReference,
             customer.Village,
             customer.Notes,
+            customer.PhotoPath,
             UpdatedAt = customer.UpdatedAt.ToString("o")
+        });
+    }
+
+    public async Task UpdatePhotoAsync(string customerId, string? photoPath)
+    {
+        using var connection = _db.CreateConnection();
+        await connection.OpenAsync();
+
+        const string sql = @"
+            UPDATE customers
+            SET photo_path = @PhotoPath,
+                updated_at = @UpdatedAt
+            WHERE id = @Id";
+
+        await connection.ExecuteAsync(sql, new
+        {
+            Id = customerId,
+            PhotoPath = photoPath,
+            UpdatedAt = DateTime.UtcNow.ToString("o")
         });
     }
 }

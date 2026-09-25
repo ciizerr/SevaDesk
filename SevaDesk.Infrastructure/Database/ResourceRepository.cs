@@ -29,6 +29,8 @@ public class ResourceRepository : IResourceRepository
                 file_path AS FilePath,
                 glyph AS Glyph,
                 is_favorite AS IsFavorite,
+                required_docs AS RequiredDocs,
+                notes AS Notes,
                 last_modified AS LastModified
             FROM resources
             ORDER BY is_favorite DESC, title ASC;";
@@ -42,12 +44,14 @@ public class ResourceRepository : IResourceRepository
             {
                 Id = r.Id,
                 Title = r.Title ?? string.Empty,
-                Category = r.Category ?? "Forms",
+                Category = r.Category ?? "Blank Forms",
                 FileType = r.FileType ?? "PDF",
                 FileSize = r.FileSize ?? "1.0 MB",
                 FilePath = r.FilePath,
                 Glyph = r.Glyph ?? "\uE8A5",
-                IsFavorite = r.IsFavorite == 1
+                IsFavorite = r.IsFavorite == 1,
+                RequiredDocs = r.RequiredDocs,
+                Notes = r.Notes
             };
 
             if (DateTime.TryParse((string?)r.LastModified, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt))
@@ -83,8 +87,8 @@ public class ResourceRepository : IResourceRepository
         await connection.OpenAsync();
 
         const string sql = @"
-            INSERT INTO resources (id, title, category, file_type, file_size, file_path, glyph, is_favorite, last_modified)
-            VALUES (@Id, @Title, @Category, @FileType, @FileSize, @FilePath, @Glyph, @IsFavorite, @LastModified);";
+            INSERT INTO resources (id, title, category, file_type, file_size, file_path, glyph, is_favorite, required_docs, notes, last_modified)
+            VALUES (@Id, @Title, @Category, @FileType, @FileSize, @FilePath, @Glyph, @IsFavorite, @RequiredDocs, @Notes, @LastModified);";
 
         await connection.ExecuteAsync(sql, new
         {
@@ -96,10 +100,47 @@ public class ResourceRepository : IResourceRepository
             item.FilePath,
             item.Glyph,
             IsFavorite = item.IsFavorite ? 1 : 0,
+            item.RequiredDocs,
+            item.Notes,
             LastModified = item.LastModified.ToString("o")
         });
 
         return item;
+    }
+
+    public async Task UpdateResourceAsync(ResourceItem item)
+    {
+        using var connection = _db.CreateConnection();
+        await connection.OpenAsync();
+
+        const string sql = @"
+            UPDATE resources SET
+                title = @Title,
+                category = @Category,
+                file_type = @FileType,
+                file_size = @FileSize,
+                file_path = @FilePath,
+                glyph = @Glyph,
+                is_favorite = @IsFavorite,
+                required_docs = @RequiredDocs,
+                notes = @Notes,
+                last_modified = @LastModified
+            WHERE id = @Id;";
+
+        await connection.ExecuteAsync(sql, new
+        {
+            item.Id,
+            item.Title,
+            item.Category,
+            item.FileType,
+            item.FileSize,
+            item.FilePath,
+            item.Glyph,
+            IsFavorite = item.IsFavorite ? 1 : 0,
+            item.RequiredDocs,
+            item.Notes,
+            LastModified = DateTime.UtcNow.ToString("o")
+        });
     }
 
     public async Task DeleteAsync(string id)
