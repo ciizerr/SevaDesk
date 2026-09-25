@@ -18,6 +18,7 @@ public sealed class ToastService
     public static ToastService Instance => _instance ??= new ToastService();
 
     public event Action<string, ToastSeverity, int>? ToastRequested;
+    public event Action<string, ToastSeverity, int, string?, Action?>? ToastWithActionRequested;
 
     private CancellationTokenSource? _dismissCts;
 
@@ -36,6 +37,18 @@ public sealed class ToastService
         MainWindow.Instance?.DispatcherQueue.TryEnqueue(() =>
         {
             ToastRequested?.Invoke(message, severity, durationMs);
+        });
+    }
+
+    public void ShowWithAction(string message, string actionLabel, Action onAction, ToastSeverity severity = ToastSeverity.Info, int durationMs = 6000)
+    {
+        _dismissCts?.Cancel();
+        _dismissCts?.Dispose();
+        _dismissCts = new CancellationTokenSource();
+
+        MainWindow.Instance?.DispatcherQueue.TryEnqueue(() =>
+        {
+            ToastWithActionRequested?.Invoke(message, severity, durationMs, actionLabel, onAction);
         });
     }
 

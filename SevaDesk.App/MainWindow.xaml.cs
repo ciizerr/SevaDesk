@@ -10,7 +10,6 @@ using SevaDesk_App.ViewModels.Pages;
 using SevaDesk_App.Views.Pages;
 using SevaDesk.Core.Models;
 using System.IO;
-
 using SevaDesk_App.Views.Flyouts;
 
 namespace SevaDesk_App;
@@ -55,8 +54,9 @@ public sealed partial class MainWindow : Window
             _uiSettings.ColorValuesChanged += UiSettings_ColorValuesChanged;
             NavFrame.Navigated += NavFrame_Navigated;
 
-            // Initialize Desktop Sidebar Widget
+            // Initialize Desktop Sidebar Widget and System Tray
             DesktopSidebarWidget.Instance.ShowSidebar();
+            SystemTrayService.Instance.Initialize(this);
             AppWindow.Closing += AppWindow_Closing;
 
             RootGrid.Loaded += (s, e) => 
@@ -262,11 +262,32 @@ public sealed partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern bool BringWindowToTop(IntPtr hWnd);
+
     public void RestoreWindow()
     {
+        if (AppWindow.Presenter is OverlappedPresenter presenter)
+        {
+            if (presenter.State == OverlappedPresenterState.Minimized)
+            {
+                presenter.Restore();
+            }
+        }
+
         AppWindow.Show();
+        AppWindow.MoveInZOrderAtTop();
+
         var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
-        SetForegroundWindow(hwnd);
+        if (hwnd != IntPtr.Zero)
+        {
+            ShowWindow(hwnd, 9 /* SW_RESTORE */);
+            BringWindowToTop(hwnd);
+            SetForegroundWindow(hwnd);
+        }
     }
 
     public void NavigateTo(Type pageType, object? parameter = null)
@@ -285,16 +306,21 @@ public sealed partial class MainWindow : Window
     private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
         var behavior = SettingsViewModel.CloseActionBehavior;
-        if (behavior == 1) // Hide window, keep sidebar
+        if (behavior == 1) // Minimize to tray
         {
             args.Cancel = true;
             AppWindow.Hide();
+            SystemTrayService.Instance.ShowBalloonNotification(
+                AppServices.Localization.GetString("Tray.BalloonTitle") ?? "SevaDesk is running in the background",
+                AppServices.Localization.GetString("Tray.BalloonMessage") ?? "Active customer sessions and file triage remain active. Click the tray icon to reopen.");
             return;
         }
 
         if (behavior == 2) // Exit completely
         {
+            SystemTrayService.Instance.RemoveTrayIcon();
             DesktopSidebarWidget.Instance.Close();
+            IncomingFileOverlayWidget.Instance.HideWidget();
             return;
         }
 
@@ -339,6 +365,9 @@ public sealed partial class MainWindow : Window
                 SettingsViewModel.CloseActionBehavior = 1;
             }
             AppWindow.Hide();
+            SystemTrayService.Instance.ShowBalloonNotification(
+                AppServices.Localization.GetString("Tray.BalloonTitle") ?? "SevaDesk is running in the background",
+                AppServices.Localization.GetString("Tray.BalloonMessage") ?? "Active customer sessions and file triage remain active. Click the tray icon to reopen.");
         }
         else if (result == ContentDialogResult.Secondary)
         {
@@ -346,7 +375,9 @@ public sealed partial class MainWindow : Window
             {
                 SettingsViewModel.CloseActionBehavior = 2;
             }
+            SystemTrayService.Instance.RemoveTrayIcon();
             DesktopSidebarWidget.Instance.Close();
+            IncomingFileOverlayWidget.Instance.HideWidget();
             Application.Current.Exit();
         }
     }
@@ -364,11 +395,69 @@ public sealed partial class MainWindow : Window
     {
         DispatcherQueue.TryEnqueue(async () =>
         {
-            var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
-            bool isMinimized = IsIconic(hwnd);
-            bool isBackground = GetForegroundWindow() != hwnd;
+            // Auto-move check: Is there an active auto-routing session?
+            if (!string.IsNullOrWhiteSpace(AppServices.FileWatcher.AutoRouteSessionId))
+            {
+                var activeSessions = (await AppServices.Sessions.GetActiveSessionsAsync()).ToList();
+                var targetSession = activeSessions.FirstOrDefault(s => s.Session.Id == AppServices.FileWatcher.AutoRouteSessionId);
 
-            if ((isMinimized || isBackground) && SettingsViewModel.IsOverlayWidgetEnabledSetting)
+                if (targetSession != null)
+                {
+                    var (success, destPath) = await AppServices.FileWatcher.RouteFileToSessionWithUndoTrackingAsync(
+                        item.FilePath, targetSession.FolderPath, targetSession.Customer.Name, targetSession.Session.Id);
+
+                    if (success)
+                    {
+                        NotifyIncomingFileRouted();
+
+                        var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
+                        bool isMinimized = IsIconic(hwnd);
+                        bool isBackground = GetForegroundWindow() != hwnd;
+
+                        if ((isMinimized || isBackground) && SettingsViewModel.IsOverlayWidgetEnabledSetting)
+                        {
+                            IncomingFileOverlayWidget.Instance.ShowAutoMovedToast(
+                                item.FileName,
+                                targetSession.Customer.Name,
+                                destPath,
+                                item.FilePath);
+                        }
+                        else
+                        {
+                            ToastService.Instance.ShowWithAction(
+                                $"Auto-moved '{item.FileName}' to {targetSession.Customer.Name}'s folder.",
+                                "Undo",
+                                async () =>
+                                {
+                                    var (undoSuccess, restoredPath) = await AppServices.FileWatcher.UndoLastAutoMoveAsync();
+                                    if (undoSuccess)
+                                    {
+                                        NotifyIncomingFileRouted();
+                                        ToastService.Instance.ShowSuccess("File moved back to original folder. Auto-move stopped.");
+                                    }
+                                    else
+                                    {
+                                        ToastService.Instance.ShowError("Could not undo file move.");
+                                    }
+                                },
+                                ToastSeverity.Success,
+                                6000);
+                        }
+                        return;
+                    }
+                }
+                else
+                {
+                    // Target session is no longer active, clean up auto route
+                    AppServices.FileWatcher.ClearAutoRoute();
+                }
+            }
+
+            var hwndWin = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
+            bool isMin = IsIconic(hwndWin);
+            bool isBg = GetForegroundWindow() != hwndWin;
+
+            if ((isMin || isBg) && SettingsViewModel.IsOverlayWidgetEnabledSetting)
             {
                 IncomingFileOverlayWidget.Instance.ShowForFile(item);
             }
@@ -475,45 +564,51 @@ public sealed partial class MainWindow : Window
         else if (BtnTriageAction.Tag is string tag2 && tag2 == "new_session")
         {
             GlobalTriageBar.IsOpen = false;
-            var dialog = new SevaDesk_App.Views.Dialogs.NewCustomerDialog
+            await OpenNewSessionDialogAsync();
+        }
+    }
+
+    public async Task OpenNewSessionDialogAsync()
+    {
+        RestoreWindow();
+        var dialog = new SevaDesk_App.Views.Dialogs.NewCustomerDialog
+        {
+            XamlRoot = this.Content.XamlRoot
+        };
+        
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(dialog.CustomerName))
+        {
+            var customer = dialog.SelectedExistingCustomer;
+            if (customer == null)
             {
-                XamlRoot = this.Content.XamlRoot
-            };
-            
-            var result = await dialog.ShowAsync();
-            if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(dialog.CustomerName))
-            {
-                var customer = dialog.SelectedExistingCustomer;
+                var matches = (await AppServices.Customers.SearchAsync(dialog.CustomerName)).ToList();
+                customer = matches.FirstOrDefault(c => string.Equals(c.Name, dialog.CustomerName, StringComparison.OrdinalIgnoreCase));
                 if (customer == null)
                 {
-                    var matches = (await AppServices.Customers.SearchAsync(dialog.CustomerName)).ToList();
-                    customer = matches.FirstOrDefault(c => string.Equals(c.Name, dialog.CustomerName, StringComparison.OrdinalIgnoreCase));
-                    if (customer == null)
+                    customer = await AppServices.Customers.CreateAsync(new Customer
                     {
-                        customer = await AppServices.Customers.CreateAsync(new Customer
-                        {
-                            Name = dialog.CustomerName,
-                            Mobile = string.IsNullOrWhiteSpace(dialog.Mobile) ? null : dialog.Mobile,
-                            Village = string.IsNullOrWhiteSpace(dialog.Village) ? null : dialog.Village,
-                            IdReference = string.IsNullOrWhiteSpace(dialog.IdRef) ? null : dialog.IdRef,
-                            Notes = string.IsNullOrWhiteSpace(dialog.Notes) ? null : dialog.Notes
-                        });
-                    }
+                        Name = dialog.CustomerName,
+                        Mobile = string.IsNullOrWhiteSpace(dialog.Mobile) ? null : dialog.Mobile,
+                        Village = string.IsNullOrWhiteSpace(dialog.Village) ? null : dialog.Village,
+                        IdReference = string.IsNullOrWhiteSpace(dialog.IdRef) ? null : dialog.IdRef,
+                        Notes = string.IsNullOrWhiteSpace(dialog.Notes) ? null : dialog.Notes
+                    });
                 }
-                var newSession = await AppServices.Sessions.StartSessionAsync(customer.Id, dialog.Notes);
-                var folder = AppServices.FolderManager.EnsureCustomerWorkingFolder(customer.Name, customer.Code);
-                newSession.FolderPath = folder;
-                newSession.Customer = customer;
-
-                if (_currentIncomingFile != null)
-                {
-                    await AppServices.FileWatcher.RouteFileToCustomerAsync(_currentIncomingFile.FilePath, folder, deleteSource: true);
-                }
-                
-                _currentIncomingFile = null;
-                NotifyIncomingFileRouted();
-                NavFrame.Navigate(typeof(SessionsPage));
             }
+            var newSession = await AppServices.Sessions.StartSessionAsync(customer.Id, dialog.Notes);
+            var folder = AppServices.FolderManager.EnsureCustomerWorkingFolder(customer.Name, customer.Code);
+            newSession.FolderPath = folder;
+            newSession.Customer = customer;
+
+            if (_currentIncomingFile != null)
+            {
+                await AppServices.FileWatcher.RouteFileToCustomerAsync(_currentIncomingFile.FilePath, folder, deleteSource: true);
+            }
+            
+            _currentIncomingFile = null;
+            NotifyIncomingFileRouted();
+            NavFrame.Navigate(typeof(SessionsPage));
         }
     }
 

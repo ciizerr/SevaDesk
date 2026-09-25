@@ -33,6 +33,18 @@ public partial class ActiveSessionItem : ObservableObject
     [ObservableProperty]
     private string _elapsedDisplay = "00m 00s";
 
+    [ObservableProperty]
+    private ApplicationItem? _linkedApplication;
+
+    public bool HasLinkedApplication => LinkedApplication != null;
+    public string LinkedApplicationTitle => LinkedApplication?.Title ?? string.Empty;
+
+    partial void OnLinkedApplicationChanged(ApplicationItem? value)
+    {
+        OnPropertyChanged(nameof(HasLinkedApplication));
+        OnPropertyChanged(nameof(LinkedApplicationTitle));
+    }
+
     public void NotifyStatusChanged()
     {
         OnPropertyChanged(nameof(Status));

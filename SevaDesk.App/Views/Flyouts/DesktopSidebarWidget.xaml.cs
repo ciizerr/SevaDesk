@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml.Media;
 using SevaDesk.Core.Models;
 using SevaDesk_App.Services;
 using SevaDesk_App.Views.Dialogs;
+using SevaDesk_App.Views.Pages;
 
 namespace SevaDesk_App.Views.Flyouts;
 
@@ -19,11 +20,11 @@ public sealed partial class DesktopSidebarWidget : Window
 {
     public static DesktopSidebarWidget Instance { get; } = new DesktopSidebarWidget();
 
-    private const int CollapsedWidthDip = 44;
+    private const int CollapsedWidthDip = 52;
     private const int CollapsedHeightDip = 140;
     private const int ExpandedWidthDip = 380;
     private const int MarginDip = 12;
-    private const double AnimDurationMs = 240.0;
+    private const double AnimDurationMs = 140.0;
 
     private const uint SPI_GETWORKAREA = 0x0030;
     private const uint SWP_NOZORDER = 0x0004;
@@ -191,6 +192,18 @@ public sealed partial class DesktopSidebarWidget : Window
         await LoadSessionsAsync();
     }
 
+    public void ToggleWidget()
+    {
+        if (AppWindow.IsVisible)
+        {
+            AppWindow.Hide();
+        }
+        else
+        {
+            ShowSidebar();
+        }
+    }
+
     private void AttachToDesktopLayer()
     {
         var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
@@ -272,10 +285,21 @@ public sealed partial class DesktopSidebarWidget : Window
         _targetW = tw;
         _targetH = th;
 
+        // Set vertical bounds immediately to expanded target so height does not jitter during horizontal slide
+        _currentY = _targetY;
+        _currentH = _targetH;
+        _startY = _targetY;
+        _startH = _targetH;
+
         _startX = _currentX;
-        _startY = _currentY;
         _startW = _currentW;
-        _startH = _currentH;
+
+        var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
+        if (hwnd != IntPtr.Zero)
+        {
+            SetWindowPos(hwnd, IntPtr.Zero, _startX, _targetY, _startW, _targetH,
+                SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        }
 
         StartAnimation();
     }
@@ -291,6 +315,7 @@ public sealed partial class DesktopSidebarWidget : Window
         _targetW = tw;
         _targetH = th;
 
+        // Keep current Y and H during horizontal slide; snapped cleanly to collapsed pill bounds upon completion
         _startX = _currentX;
         _startY = _currentY;
         _startW = _currentW;
@@ -305,7 +330,7 @@ public sealed partial class DesktopSidebarWidget : Window
         {
             _animTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(15) // ~60 FPS
+                Interval = TimeSpan.FromMilliseconds(10) // Snappy update
             };
             _animTimer.Tick += AnimTimer_Tick;
         }
@@ -323,9 +348,7 @@ public sealed partial class DesktopSidebarWidget : Window
         double progress = 1.0 - Math.Pow(1.0 - t, 4);
 
         _currentX = (int)Math.Round(_startX + (_targetX - _startX) * progress);
-        _currentY = (int)Math.Round(_startY + (_targetY - _startY) * progress);
         _currentW = (int)Math.Round(_startW + (_targetW - _startW) * progress);
-        _currentH = (int)Math.Round(_startH + (_targetH - _startH) * progress);
 
         var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
         if (hwnd != IntPtr.Zero)
@@ -343,6 +366,12 @@ public sealed partial class DesktopSidebarWidget : Window
             _currentY = _targetY;
             _currentW = _targetW;
             _currentH = _targetH;
+
+            if (hwnd != IntPtr.Zero)
+            {
+                SetWindowPos(hwnd, IntPtr.Zero, _currentX, _currentY, _currentW, _currentH,
+                    SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+            }
 
             if (!_isExpanded)
             {
@@ -426,11 +455,47 @@ public sealed partial class DesktopSidebarWidget : Window
         CollapseSidebar();
     }
 
+    private DispatcherTimer? _sessionTicker;
+
+    private void EnsureSessionTicker(bool hasSessions)
+    {
+        if (hasSessions)
+        {
+            if (_sessionTicker == null)
+            {
+                _sessionTicker = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+                _sessionTicker.Tick += (s, e) =>
+                {
+                    foreach (var item in _sessionItems)
+                    {
+                        item.UpdateElapsed();
+                    }
+                };
+            }
+            if (!_sessionTicker.IsEnabled)
+            {
+                _sessionTicker.Start();
+            }
+        }
+        else
+        {
+            _sessionTicker?.Stop();
+        }
+    }
+
     public async Task LoadSessionsAsync()
     {
         try
         {
             var sessions = (await AppServices.Sessions.GetActiveSessionsAsync()).ToList();
+            foreach (var s in sessions)
+            {
+                if (s.Customer != null)
+                {
+                    var apps = await AppServices.Applications.GetByCustomerIdAsync(s.Customer.Id);
+                    s.LinkedApplication = apps.FirstOrDefault(a => a.Status != "Completed");
+                }
+            }
             UpdateSessions(sessions);
         }
         catch { }
@@ -443,6 +508,7 @@ public sealed partial class DesktopSidebarWidget : Window
             _sessionItems.Clear();
             foreach (var item in sessions)
             {
+                item.UpdateElapsed();
                 _sessionItems.Add(item);
             }
 
@@ -451,6 +517,8 @@ public sealed partial class DesktopSidebarWidget : Window
             TxtCollapsedActiveCount.Text = count.ToString();
             EmptyStatePanel.Visibility = count == 0 ? Visibility.Visible : Visibility.Collapsed;
             SessionsListView.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+            EnsureSessionTicker(count > 0);
 
             if (count > 0)
             {
@@ -472,6 +540,113 @@ public sealed partial class DesktopSidebarWidget : Window
         MainWindow.Instance?.RestoreWindow();
     }
 
+    private async void TogglePauseSession_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string sessionId)
+        {
+            var item = _sessionItems.FirstOrDefault(s => s.Session.Id == sessionId);
+            if (item != null)
+            {
+                if (item.Session.Status == "Active")
+                {
+                    var startedUtc = item.Session.StartedAt.Kind == DateTimeKind.Utc
+                        ? item.Session.StartedAt
+                        : (item.Session.StartedAt.Kind == DateTimeKind.Unspecified
+                            ? DateTime.SpecifyKind(item.Session.StartedAt, DateTimeKind.Utc)
+                            : item.Session.StartedAt.ToUniversalTime());
+                    var activeSec = Math.Max(0, (int)(DateTime.UtcNow - startedUtc).TotalSeconds);
+                    item.Session.DurationSeconds += activeSec;
+                    item.Session.Status = "Paused";
+
+                    AppServices.FileWatcher.ClearAutoRouteIfSession(item.Session.Id);
+                    await AppServices.Sessions.PauseSessionAsync(item.Session.Id, item.Session.DurationSeconds);
+                }
+                else
+                {
+                    item.Session.StartedAt = DateTime.UtcNow;
+                    item.Session.Status = "Active";
+
+                    await AppServices.Sessions.ResumeSessionAsync(item.Session.Id);
+                }
+
+                item.NotifyStatusChanged();
+                item.UpdateElapsed();
+            }
+        }
+    }
+
+    private async void OpenLinkFormFlyout_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string sessionId)
+        {
+            var item = _sessionItems.FirstOrDefault(s => s.Session.Id == sessionId);
+            if (item?.Customer == null) return;
+
+            var templates = (await AppServices.Applications.GetAllTemplatesAsync()).ToList();
+            if (templates.Count == 0)
+            {
+                ToastService.Instance.ShowInfo("No form templates available in catalog");
+                return;
+            }
+
+            var flyout = new MenuFlyout();
+            foreach (var tmpl in templates)
+            {
+                var feeText = tmpl.DefaultServiceFee > 0 ? $" (₹{tmpl.DefaultServiceFee:N0})" : "";
+                var mfi = new MenuFlyoutItem
+                {
+                    Text = $"{tmpl.Title}{feeText}",
+                    Icon = new FontIcon { Glyph = "\uE7C3" }
+                };
+                mfi.Click += async (s, args) =>
+                {
+                    await LinkTemplateToSessionAsync(item, tmpl);
+                };
+                flyout.Items.Add(mfi);
+            }
+
+            flyout.ShowAt(btn);
+        }
+    }
+
+    private async Task LinkTemplateToSessionAsync(ActiveSessionItem item, ApplicationTemplate tmpl)
+    {
+        var app = new ApplicationItem
+        {
+            CustomerId = item.Customer.Id,
+            CustomerName = item.Customer.Name,
+            Title = tmpl.Title,
+            PortalName = tmpl.PortalUrl,
+            ApplicationNumber = $"REG-{DateTime.Now:yyyyMMdd}-{DateTime.Now.Millisecond}",
+            Status = "Draft",
+            ServiceCharge = tmpl.DefaultServiceFee,
+            GovtFee = tmpl.DefaultGovtFee,
+            RequiredDocs = tmpl.RequiredDocs,
+            Notes = tmpl.Notes,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var created = await AppServices.Applications.CreateAsync(app);
+        item.LinkedApplication = created;
+        ToastService.Instance.ShowSuccess($"Linked '{created.Title}' to {item.Customer.Name}");
+    }
+
+    private async void UnlinkApplication_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string sessionId)
+        {
+            var item = _sessionItems.FirstOrDefault(s => s.Session.Id == sessionId);
+            if (item?.LinkedApplication != null)
+            {
+                var appTitle = item.LinkedApplication.Title;
+                await AppServices.Applications.DeleteAsync(item.LinkedApplication.Id);
+                item.LinkedApplication = null;
+                ToastService.Instance.ShowInfo($"Removed '{appTitle}'");
+            }
+        }
+    }
+
     private Customer? _selectedQuickCustomer;
     private CancellationTokenSource? _quickSearchCts;
 
@@ -480,30 +655,88 @@ public sealed partial class DesktopSidebarWidget : Window
         if (sender is Button btn && btn.Tag is string sessionId)
         {
             var item = _sessionItems.FirstOrDefault(s => s.Session.Id == sessionId);
-            var customer = item?.Customer;
+            if (item == null) return;
+            var customer = item.Customer;
 
+            // 1. Restore MainWindow
+            MainWindow.Instance?.RestoreWindow();
+
+            // 2. Prompt for missing customer info on MainWindow if applicable
             if (customer != null && (string.IsNullOrWhiteSpace(customer.Mobile) || string.IsNullOrWhiteSpace(customer.IdReference)))
             {
-                var dialog = new CompleteSessionDialog(customer)
+                var mainRoot = MainWindow.Instance?.Content?.XamlRoot;
+                if (mainRoot != null)
                 {
-                    XamlRoot = this.Content.XamlRoot
-                };
+                    var dialog = new CompleteSessionDialog(customer)
+                    {
+                        XamlRoot = mainRoot
+                    };
 
-                var res = await dialog.ShowAsync();
-                if (res == ContentDialogResult.Primary)
-                {
-                    dialog.ApplyToCustomer(customer);
-                    await AppServices.Customers.UpdateAsync(customer);
-                }
-                else if (res != ContentDialogResult.Secondary)
-                {
-                    // User clicked cancel
-                    return;
+                    var res = await dialog.ShowAsync();
+                    if (res == ContentDialogResult.Primary)
+                    {
+                        dialog.ApplyToCustomer(customer);
+                        await AppServices.Customers.UpdateAsync(customer);
+                    }
+                    else if (res != ContentDialogResult.Secondary)
+                    {
+                        // User canceled
+                        return;
+                    }
                 }
             }
 
+            // 3. Prepare handover request for Billing
+            var handover = new BillingHandoverRequest
+            {
+                CustomerId = customer?.Id,
+                CustomerName = customer?.Name ?? "Customer",
+                SessionId = sessionId,
+                Items = []
+            };
+
+            var app = item.LinkedApplication;
+            if (app != null)
+            {
+                if (app.ServiceCharge > 0)
+                {
+                    handover.Items.Add(new CartItem
+                    {
+                        ServiceName = $"{app.Title} (Service Fee)",
+                        Rate = app.ServiceCharge,
+                        Quantity = 1
+                    });
+                }
+                if (app.GovtFee > 0)
+                {
+                    handover.Items.Add(new CartItem
+                    {
+                        ServiceName = $"{app.Title} (Govt Fee)",
+                        Rate = app.GovtFee,
+                        Quantity = 1
+                    });
+                }
+                if (handover.Items.Count == 0)
+                {
+                    handover.Items.Add(new CartItem
+                    {
+                        ServiceName = $"{app.Title} Form Fill",
+                        Rate = 100,
+                        Quantity = 1
+                    });
+                }
+            }
+
+            // 4. Complete session in DB
+            AppServices.FileWatcher.ClearAutoRouteIfSession(sessionId);
             await AppServices.Sessions.CompleteSessionAsync(sessionId);
+
+            // 5. Navigate MainWindow to PaymentsPage with handover
+            MainWindow.Instance?.NavigateTo(typeof(PaymentsPage), handover);
+
+            // 6. Refresh widget sessions & collapse
             await LoadSessionsAsync();
+            CollapseSidebar();
         }
     }
 

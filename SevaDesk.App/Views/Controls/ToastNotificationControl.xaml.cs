@@ -22,10 +22,39 @@ public sealed partial class ToastNotificationControl : UserControl
         };
 
         ToastService.Instance.ToastRequested += OnToastRequested;
-        Unloaded += (s, e) => ToastService.Instance.ToastRequested -= OnToastRequested;
+        ToastService.Instance.ToastWithActionRequested += OnToastWithActionRequested;
+        Unloaded += (s, e) =>
+        {
+            ToastService.Instance.ToastRequested -= OnToastRequested;
+            ToastService.Instance.ToastWithActionRequested -= OnToastWithActionRequested;
+        };
+    }
+
+    private Action? _currentAction;
+
+    private void OnToastWithActionRequested(string message, ToastSeverity severity, int durationMs, string? actionLabel, Action? onAction)
+    {
+        _currentAction = onAction;
+        if (!string.IsNullOrWhiteSpace(actionLabel) && onAction != null)
+        {
+            ToastActionButton.Content = actionLabel;
+            ToastActionButton.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            ToastActionButton.Visibility = Visibility.Collapsed;
+        }
+        ShowToastInternal(message, severity, durationMs);
     }
 
     private void OnToastRequested(string message, ToastSeverity severity, int durationMs)
+    {
+        _currentAction = null;
+        ToastActionButton.Visibility = Visibility.Collapsed;
+        ShowToastInternal(message, severity, durationMs);
+    }
+
+    private void ShowToastInternal(string message, ToastSeverity severity, int durationMs)
     {
         // Stop any pending dismiss
         _autoDismissTimer?.Stop();
@@ -59,6 +88,14 @@ public sealed partial class ToastNotificationControl : UserControl
             };
             _autoDismissTimer.Start();
         }
+    }
+
+    private void ToastActionButton_Click(object sender, RoutedEventArgs e)
+    {
+        var action = _currentAction;
+        _currentAction = null;
+        DismissToast();
+        action?.Invoke();
     }
 
     private void ApplySeverityStyle(ToastSeverity severity)

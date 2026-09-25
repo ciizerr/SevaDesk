@@ -271,6 +271,7 @@ public partial class SessionsViewModel : StatusViewModel
             item.Session.DurationSeconds += activeSec;
             item.Session.Status = "Paused";
 
+            AppServices.FileWatcher.ClearAutoRouteIfSession(item.Session.Id);
             await AppServices.Sessions.PauseSessionAsync(item.Session.Id, item.Session.DurationSeconds);
         }
         else
@@ -293,6 +294,7 @@ public partial class SessionsViewModel : StatusViewModel
     public async Task CompleteSessionAsync(ActiveSessionItem item)
     {
         if (item == null) return;
+        AppServices.FileWatcher.ClearAutoRouteIfSession(item.Session.Id);
         await AppServices.Sessions.CompleteSessionAsync(item.Session.Id);
         Sessions.Remove(item);
         ActiveCount = Sessions.Count(s => s.Session.Status == "Active");
@@ -307,6 +309,7 @@ public partial class SessionsViewModel : StatusViewModel
     public async Task DeleteSessionAsync(ActiveSessionItem item)
     {
         if (item == null) return;
+        AppServices.FileWatcher.ClearAutoRouteIfSession(item.Session.Id);
         await AppServices.Sessions.DeleteSessionAsync(item.Session.Id);
 
         if (item.Customer != null)

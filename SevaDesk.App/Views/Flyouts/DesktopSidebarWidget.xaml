@@ -28,12 +28,12 @@
                 PointerExited="CollapsedPill_PointerExited"
                 ToolTipService.ToolTip="SevaDesk Sidebar (Click to expand)"
                 Visibility="Visible">
-            <Grid Padding="4,10">
-                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10">
+            <Grid Padding="6,12">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
                     <!-- Expand Chevron Icon -->
                     <Border x:Name="PillChevronBorder"
                             Background="{ThemeResource SubtleFillColorSecondaryBrush}"
-                            CornerRadius="8" Width="28" Height="28">
+                            CornerRadius="8" Width="32" Height="28">
                         <FontIcon Glyph="&#xE76B;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
@@ -46,7 +46,7 @@
                             Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                             BorderThickness="1"
-                            CornerRadius="10" MinWidth="24" Height="20" Padding="4,1"
+                            CornerRadius="10" MinWidth="26" Height="20" Padding="5,1"
                             HorizontalAlignment="Center"
                             ToolTipService.ToolTip="Active Sessions">
                         <TextBlock x:Name="TxtCollapsedActiveCount" Text="0" FontSize="11" FontWeight="Bold"
@@ -106,40 +106,93 @@
                 <StackPanel x:Name="EmptyStatePanel" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
                     <FontIcon Glyph="&#xE716;" FontSize="28" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" />
                     <TextBlock loc:Loc.Key="Widget.NoActiveSessions" Text="No active sessions currently running"
-                               FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextAlignment="Center" />
+                                FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextAlignment="Center" />
                 </StackPanel>
 
                 <!-- Sessions List -->
                 <ListView x:Name="SessionsListView" SelectionMode="None">
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="models:ActiveSessionItem">
-                            <Border CornerRadius="8" Padding="12,8" Margin="0,0,0,6"
+                            <Border CornerRadius="8" Padding="12,10" Margin="0,0,0,8"
                                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <TextBlock Text="{x:Bind Customer.Name}" FontWeight="SemiBold" FontSize="13" />
-                                            <Border CornerRadius="3" Padding="4,1" Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}" VerticalAlignment="Center">
-                                                <TextBlock Text="{x:Bind StatusBadge}" FontSize="9" FontWeight="Bold" Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                                <Grid RowDefinitions="Auto,Auto" RowSpacing="6">
+                                    <!-- Top Row: Name, Status, Timer, and Actions -->
+                                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                        <!-- Customer Name, Status Badge, Live Timer -->
+                                        <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                <TextBlock Text="{x:Bind Customer.Name}" FontWeight="SemiBold" FontSize="13" MaxWidth="150" TextTrimming="CharacterEllipsis" />
+                                                <Border CornerRadius="3" Padding="4,1" Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}" VerticalAlignment="Center">
+                                                    <TextBlock Text="{x:Bind StatusBadge}" FontSize="9" FontWeight="Bold" Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                                                </Border>
+                                            </StackPanel>
+
+                                            <!-- Live Running / Paused Timer Chip -->
+                                            <Border CornerRadius="4" Padding="5,2" Background="{ThemeResource SubtleFillColorSecondaryBrush}" HorizontalAlignment="Left">
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <FontIcon Glyph="&#xE916;" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                    <TextBlock Text="{x:Bind ElapsedDisplay, Mode=OneWay}" FontSize="11" FontFamily="Consolas" FontWeight="Medium" />
+                                                </StackPanel>
                                             </Border>
                                         </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <TextBlock Text="{x:Bind Customer.Mobile}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                            <TextBlock Text="{x:Bind Customer.Code}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                        </StackPanel>
-                                    </StackPanel>
 
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                        <Button Background="Transparent" BorderThickness="0" Padding="6,4"
-                                                Click="EndSessionItem_Click" Tag="{x:Bind Session.Id}"
-                                                ToolTipService.ToolTip="End this customer session">
+                                        <!-- Actions: Pause/Resume Toggle & End Button -->
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top">
+                                            <!-- Pause / Resume Toggle -->
+                                            <Button Background="Transparent" BorderThickness="0" Padding="6,4"
+                                                    Click="TogglePauseSession_Click" Tag="{x:Bind Session.Id}"
+                                                    ToolTipService.ToolTip="{x:Bind ToggleActionText, Mode=OneWay}">
+                                                <FontIcon Glyph="{x:Bind ToggleActionGlyph, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                            </Button>
+
+                                            <!-- End Session Button -->
+                                            <Button Background="Transparent" BorderThickness="0" Padding="6,4"
+                                                    Click="EndSessionItem_Click" Tag="{x:Bind Session.Id}"
+                                                    ToolTipService.ToolTip="End session &amp; proceed to billing">
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <FontIcon Glyph="&#xE71A;" FontSize="11" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                                                    <TextBlock loc:Loc.Key="Widget.EndSession" Text="End" FontSize="11" />
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Bottom Row: Online Form Linking (Add / Remove) -->
+                                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+                                        <!-- Linked Application Chip (if linked) -->
+                                        <Border Grid.Column="0" CornerRadius="4" Padding="6,2"
+                                                Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                                Visibility="{x:Bind loc:CustomerAvatarHelper.BoolToVisible(HasLinkedApplication), Mode=OneWay}"
+                                                HorizontalAlignment="Left">
+                                            <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                                <FontIcon Glyph="&#xE7C3;" FontSize="10" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                <TextBlock Text="{x:Bind LinkedApplicationTitle, Mode=OneWay}" FontSize="11" FontWeight="Medium" MaxWidth="190" TextTrimming="CharacterEllipsis" />
+                                                <Button Click="UnlinkApplication_Click" Tag="{x:Bind Session.Id}" Background="Transparent" BorderThickness="0" Padding="3,1"
+                                                        ToolTipService.ToolTip="Remove linked application">
+                                                    <FontIcon Glyph="&#xE711;" FontSize="9" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                </Button>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- '+ Link Form' Button (if not linked) -->
+                                        <Button Grid.Column="0" Click="OpenLinkFormFlyout_Click" Tag="{x:Bind Session.Id}"
+                                                Background="Transparent" BorderBrush="Transparent" Padding="4,2" HorizontalAlignment="Left"
+                                                Visibility="{x:Bind loc:CustomerAvatarHelper.BoolToCollapsed(HasLinkedApplication), Mode=OneWay}"
+                                                ToolTipService.ToolTip="Link an online form / application">
                                             <StackPanel Orientation="Horizontal" Spacing="4">
-                                                <FontIcon Glyph="&#xE71A;" FontSize="11" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
-                                                <TextBlock loc:Loc.Key="Widget.EndSession" Text="End" FontSize="11" />
+                                                <FontIcon Glyph="&#xE710;" FontSize="10" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                <TextBlock Text="Link Form" FontSize="11" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                                             </StackPanel>
                                         </Button>
-                                    </StackPanel>
+
+                                        <!-- Mobile / Code info on the right -->
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                            <TextBlock Text="{x:Bind Customer.Mobile}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            <TextBlock Text="{x:Bind Customer.Code}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </StackPanel>
+                                    </Grid>
                                 </Grid>
                             </Border>
                         </DataTemplate>

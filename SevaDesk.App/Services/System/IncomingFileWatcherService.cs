@@ -225,11 +225,41 @@ public sealed class IncomingFileWatcherService : IDisposable
         catch { }
     }
 
+    public string? AutoRouteSessionId { get; private set; }
+    public string? AutoRouteCustomerName { get; private set; }
+    public (string SourcePath, string DestPath, string SessionId, string CustomerName)? LastAutoMovedFile { get; private set; }
+
+    public void SetAutoRoute(string sessionId, string customerName)
+    {
+        AutoRouteSessionId = sessionId;
+        AutoRouteCustomerName = customerName;
+    }
+
+    public void ClearAutoRoute()
+    {
+        AutoRouteSessionId = null;
+        AutoRouteCustomerName = null;
+    }
+
+    public void ClearAutoRouteIfSession(string sessionId)
+    {
+        if (AutoRouteSessionId == sessionId)
+        {
+            ClearAutoRoute();
+        }
+    }
+
     public async Task<bool> RouteFileToCustomerAsync(string sourceFilePath, string targetCustomerFolderPath, bool deleteSource = true)
+    {
+        var (success, _) = await RouteFileToCustomerExAsync(sourceFilePath, targetCustomerFolderPath, deleteSource);
+        return success;
+    }
+
+    public async Task<(bool Success, string DestPath)> RouteFileToCustomerExAsync(string sourceFilePath, string targetCustomerFolderPath, bool deleteSource = true)
     {
         try
         {
-            if (!File.Exists(sourceFilePath)) return false;
+            if (!File.Exists(sourceFilePath)) return (false, string.Empty);
             if (!Directory.Exists(targetCustomerFolderPath))
             {
                 Directory.CreateDirectory(targetCustomerFolderPath);
@@ -260,11 +290,47 @@ public sealed class IncomingFileWatcherService : IDisposable
                 }
             });
 
-            return true;
+            return (true, destPath);
         }
         catch
         {
-            return false;
+            return (false, string.Empty);
+        }
+    }
+
+    public async Task<(bool Success, string DestPath)> RouteFileToSessionWithUndoTrackingAsync(string sourceFilePath, string targetCustomerFolderPath, string customerName, string sessionId = "")
+    {
+        var (success, destPath) = await RouteFileToCustomerExAsync(sourceFilePath, targetCustomerFolderPath, deleteSource: true);
+        if (success)
+        {
+            LastAutoMovedFile = (sourceFilePath, destPath, sessionId, customerName);
+        }
+        return (success, destPath);
+    }
+
+    public async Task<(bool Success, string RestoredPath)> UndoLastAutoMoveAsync()
+    {
+        if (LastAutoMovedFile == null) return (false, string.Empty);
+        var (sourcePath, destPath, sessionId, customerName) = LastAutoMovedFile.Value;
+        LastAutoMovedFile = null;
+        ClearAutoRoute();
+
+        if (!File.Exists(destPath)) return (false, string.Empty);
+
+        try
+        {
+            var sourceDir = Path.GetDirectoryName(sourcePath);
+            if (!string.IsNullOrEmpty(sourceDir) && !Directory.Exists(sourceDir))
+            {
+                Directory.CreateDirectory(sourceDir);
+            }
+
+            await Task.Run(() => File.Move(destPath, sourcePath, overwrite: true));
+            return (true, sourcePath);
+        }
+        catch
+        {
+            return (false, string.Empty);
         }
     }
 

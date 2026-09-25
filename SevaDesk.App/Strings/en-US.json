@@ -248,6 +248,18 @@
   "Dialog.ExitApp": "Exit Completely",
   "Dialog.RememberChoice": "Remember my choice",
 
+  "Tray.Open": "Open SevaDesk",
+  "Tray.ActiveSessionsHeader": "Active Sessions ({0})",
+  "Tray.NoActiveSessions": "No Active Sessions",
+  "Tray.NewSession": "+ Start New Session...",
+  "Tray.ToggleWidget": "Toggle Desktop Widget",
+  "Tray.Settings": "Settings",
+  "Tray.Exit": "Exit SevaDesk",
+  "Tray.BalloonTitle": "SevaDesk is running in the background",
+  "Tray.BalloonMessage": "Active customer sessions and file triage remain active. Click the tray icon to reopen.",
+  "Tray.DefaultTooltip": "SevaDesk - Cyber Cafe & CSC Suite",
+  "Tray.TooltipWithSessions": "SevaDesk ({0} Active Sessions)",
+
   "Settings.General.CloseBehavior": "Window Close Action",
   "Settings.General.CloseBehaviorDesc": "Choose whether clicking 'X' minimizes to the system tray or exits the app",
   "Settings.General.ClosePrompt": "Always Ask",

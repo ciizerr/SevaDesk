@@ -1,11 +1,14 @@
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Windows.Graphics;
 using Microsoft.UI;
+using Microsoft.UI.Text;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using SevaDesk.Core.Models;
 using SevaDesk_App.Services;
 using SevaDesk_App.ViewModels.Pages;
@@ -65,8 +68,12 @@ public sealed partial class IncomingFileOverlayWidget : Window
 
     private IncomingFileItem? _currentFile;
     private readonly DispatcherTimer _countdownTimer = new();
+    private readonly DispatcherTimer _undoTimer = new();
     private double _remainingSeconds = 12.0;
     private const double TotalSeconds = 12.0;
+    private double _undoRemainingSeconds = 5.0;
+    private const double TotalUndoSeconds = 5.0;
+    private bool _isPointerOver = false;
 
     public bool IsWidgetVisible { get; private set; }
 
@@ -92,13 +99,21 @@ public sealed partial class IncomingFileOverlayWidget : Window
 
         _countdownTimer.Interval = TimeSpan.FromMilliseconds(100);
         _countdownTimer.Tick += CountdownTimer_Tick;
+
+        _undoTimer.Interval = TimeSpan.FromMilliseconds(100);
+        _undoTimer.Tick += UndoTimer_Tick;
     }
 
     public async void ShowForFile(IncomingFileItem file)
     {
         _currentFile = file;
+        _undoTimer.Stop();
         _remainingSeconds = TotalSeconds;
         TimeoutProgressBar.Value = 100;
+
+        // Switch to Triage Mode
+        TriageContentPanel.Visibility = Visibility.Visible;
+        AutoMovedUndoPanel.Visibility = Visibility.Collapsed;
 
         // Populate File Details
         TxtFileName.Text = file.FileName;
@@ -117,67 +132,342 @@ public sealed partial class IncomingFileOverlayWidget : Window
         var sourceName = Path.GetFileName(file.SourceFolder);
         TxtFileMeta.Text = $"{sourceName} • {sizeStr}";
 
-        // Configure Action Button according to active customer sessions
+        // Reset auto route checkbox
+        ChkAutoRoute.IsChecked = false;
+
+        // Fetch active sessions and build dynamic 1-click routing buttons
         var activeSessions = (await AppServices.Sessions.GetActiveSessionsAsync()).ToList();
+        int heightDip = 175;
+
+        ActionButtonsGrid.Children.Clear();
+        ActionButtonsGrid.RowDefinitions.Clear();
+        ActionButtonsGrid.ColumnDefinitions.Clear();
 
         if (activeSessions.Count == 1)
         {
-            var single = activeSessions[0];
-            BtnMainAction.Flyout = null;
-            TxtMainAction.Text = string.Format(AppServices.Localization.GetString("Triage.MoveToSingle") ?? "Move to {0}", single.Customer.Name);
-            BtnMainAction.Tag = single;
-            BtnMainAction.Visibility = Visibility.Visible;
+            ChkAutoRoute.Visibility = Visibility.Visible;
+            var session = activeSessions[0];
+
+            var btn = new Button
+            {
+                Style = (Style)Application.Current.Resources["AccentButtonStyle"],
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Height = 34,
+                Content = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 8,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Children =
+                    {
+                        new FontIcon { Glyph = "\uE8B7", FontSize = 12 },
+                        new TextBlock
+                        {
+                            Text = string.Format(AppServices.Localization.GetString("Triage.MoveToSingle") ?? "Move to {0}", session.Customer.Name),
+                            FontWeight = FontWeights.SemiBold,
+                            FontSize = 12,
+                            TextTrimming = TextTrimming.CharacterEllipsis
+                        }
+                    }
+                }
+            };
+            btn.Click += async (s, e) => await RouteToCustomerSessionAsync(session);
+            ActionButtonsGrid.Children.Add(btn);
         }
-        else if (activeSessions.Count > 1)
+        else if (activeSessions.Count == 2)
         {
-            TxtMainAction.Text = AppServices.Localization.GetString("Triage.SelectCustomer") ?? "Move to Customer...";
-            BtnMainAction.Tag = null;
-            BtnMainAction.Visibility = Visibility.Visible;
+            ChkAutoRoute.Visibility = Visibility.Visible;
+
+            ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8, GridUnitType.Pixel) });
+            ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            for (int i = 0; i < 2; i++)
+            {
+                var session = activeSessions[i];
+                var btn = new Button
+                {
+                    Style = (Style)Application.Current.Resources["AccentButtonStyle"],
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    Height = 34,
+                    Content = new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        Spacing = 6,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        Children =
+                        {
+                            new FontIcon { Glyph = "\uE8B7", FontSize = 12 },
+                            new TextBlock
+                            {
+                                Text = session.Customer.Name,
+                                FontWeight = FontWeights.SemiBold,
+                                FontSize = 12,
+                                TextTrimming = TextTrimming.CharacterEllipsis
+                            }
+                        }
+                    }
+                };
+                ToolTipService.SetToolTip(btn, $"Move to {session.Customer.Name} ({session.Customer.Code})");
+                btn.Click += async (s, e) => await RouteToCustomerSessionAsync(session);
+                Grid.SetColumn(btn, i * 2);
+                ActionButtonsGrid.Children.Add(btn);
+            }
+        }
+        else if (activeSessions.Count is >= 3 and <= 4)
+        {
+            heightDip = 205;
+            ChkAutoRoute.Visibility = Visibility.Visible;
+
+            ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8, GridUnitType.Pixel) });
+            ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            ActionButtonsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            ActionButtonsGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(6, GridUnitType.Pixel) });
+            ActionButtonsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            for (int i = 0; i < activeSessions.Count; i++)
+            {
+                var session = activeSessions[i];
+                var btn = new Button
+                {
+                    Style = (Style)Application.Current.Resources["AccentButtonStyle"],
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    Height = 30,
+                    Content = new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        Spacing = 6,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        Children =
+                        {
+                            new FontIcon { Glyph = "\uE8B7", FontSize = 11 },
+                            new TextBlock
+                            {
+                                Text = session.Customer.Name,
+                                FontWeight = FontWeights.SemiBold,
+                                FontSize = 11,
+                                TextTrimming = TextTrimming.CharacterEllipsis
+                            }
+                        }
+                    }
+                };
+                ToolTipService.SetToolTip(btn, $"Move to {session.Customer.Name} ({session.Customer.Code})");
+                btn.Click += async (s, e) => await RouteToCustomerSessionAsync(session);
+
+                int col = (i % 2) * 2;
+                int row = (i / 2) * 2;
+                Grid.SetColumn(btn, col);
+                Grid.SetRow(btn, row);
+                ActionButtonsGrid.Children.Add(btn);
+            }
+        }
+        else if (activeSessions.Count > 4)
+        {
+            ChkAutoRoute.Visibility = Visibility.Visible;
+
+            ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8, GridUnitType.Pixel) });
+            ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8, GridUnitType.Pixel) });
+            ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            // Button 1
+            var s1 = activeSessions[0];
+            var btn1 = CreateSessionButton(s1);
+            Grid.SetColumn(btn1, 0);
+            ActionButtonsGrid.Children.Add(btn1);
+
+            // Button 2
+            var s2 = activeSessions[1];
+            var btn2 = CreateSessionButton(s2);
+            Grid.SetColumn(btn2, 2);
+            ActionButtonsGrid.Children.Add(btn2);
+
+            // Button 3: More flyout
+            var moreBtn = new Button
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Height = 34,
+                Content = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 4,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Children =
+                    {
+                        new TextBlock { Text = $"More ({activeSessions.Count - 2})", FontSize = 11 },
+                        new FontIcon { Glyph = "\uE70D", FontSize = 10 }
+                    }
+                }
+            };
 
             var flyout = new MenuFlyout();
-            foreach (var session in activeSessions)
+            for (int i = 2; i < activeSessions.Count; i++)
             {
-                var s = session;
+                var s = activeSessions[i];
                 var item = new MenuFlyoutItem
                 {
                     Text = $"{s.Customer.Name} ({s.Customer.Code})",
                     Icon = new FontIcon { Glyph = "\uE77B" }
                 };
-                item.Click += async (sender, args) => await RouteToCustomerAsync(s);
+                item.Click += async (sender, args) => await RouteToCustomerSessionAsync(s);
                 flyout.Items.Add(item);
             }
-            BtnMainAction.Flyout = flyout;
+            moreBtn.Flyout = flyout;
+            Grid.SetColumn(moreBtn, 4);
+            ActionButtonsGrid.Children.Add(moreBtn);
         }
         else
         {
-            BtnMainAction.Flyout = null;
-            TxtMainAction.Text = AppServices.Localization.GetString("Triage.CreateSession", "Create a new session?");
-            BtnMainAction.Tag = "new_session";
-            BtnMainAction.Visibility = Visibility.Visible;
+            // 0 active sessions
+            ChkAutoRoute.Visibility = Visibility.Collapsed;
+
+            ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8, GridUnitType.Pixel) });
+            ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var newSessionBtn = new Button
+            {
+                Style = (Style)Application.Current.Resources["AccentButtonStyle"],
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Height = 34,
+                Content = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 6,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Children =
+                    {
+                        new FontIcon { Glyph = "\uE710", FontSize = 12 },
+                        new TextBlock { Text = "New Session", FontWeight = FontWeights.SemiBold, FontSize = 12 }
+                    }
+                }
+            };
+            newSessionBtn.Click += (s, e) =>
+            {
+                HideWidget();
+                var newSessionWidget = new NewSessionWidget(_currentFile);
+                newSessionWidget.Activate();
+            };
+            Grid.SetColumn(newSessionBtn, 0);
+            ActionButtonsGrid.Children.Add(newSessionBtn);
+
+            var dismissBtn = new Button
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Height = 34,
+                Content = new TextBlock { Text = "Dismiss", FontSize = 12 }
+            };
+            dismissBtn.Click += (s, e) => HideWidget();
+            Grid.SetColumn(dismissBtn, 2);
+            ActionButtonsGrid.Children.Add(dismissBtn);
         }
 
-        PositionWidget();
+        PositionWidget(heightDip);
         IsWidgetVisible = true;
         AppWindow.Show();
         _countdownTimer.Start();
     }
 
+    private Button CreateSessionButton(ActiveSessionItem session)
+    {
+        var btn = new Button
+        {
+            Style = (Style)Application.Current.Resources["AccentButtonStyle"],
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Height = 34,
+            Content = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 6,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Children =
+                {
+                    new FontIcon { Glyph = "\uE8B7", FontSize = 12 },
+                    new TextBlock
+                    {
+                        Text = session.Customer.Name,
+                        FontWeight = FontWeights.SemiBold,
+                        FontSize = 11,
+                        TextTrimming = TextTrimming.CharacterEllipsis
+                    }
+                }
+            }
+        };
+        ToolTipService.SetToolTip(btn, $"Move to {session.Customer.Name} ({session.Customer.Code})");
+        btn.Click += async (s, e) => await RouteToCustomerSessionAsync(session);
+        return btn;
+    }
+
+    private async Task RouteToCustomerSessionAsync(ActiveSessionItem session)
+    {
+        if (_currentFile == null) return;
+        _countdownTimer.Stop();
+
+        var file = _currentFile;
+        bool isAutoRouteChecked = ChkAutoRoute.IsChecked == true;
+        if (isAutoRouteChecked)
+        {
+            AppServices.FileWatcher.SetAutoRoute(session.Session.Id, session.Customer.Name);
+        }
+
+        var (success, _) = await AppServices.FileWatcher.RouteFileToCustomerExAsync(file.FilePath, session.FolderPath, deleteSource: true);
+
+        if (success)
+        {
+            MainWindow.Instance?.NotifyIncomingFileRouted();
+
+            if (isAutoRouteChecked)
+            {
+                ToastService.Instance.ShowSuccess($"Auto-move enabled for {session.Customer.Name}. Subsequent files will route automatically.");
+            }
+
+            HideWidget();
+        }
+        else
+        {
+            HideWidget();
+        }
+    }
+
+    public void ShowAutoMovedToast(string fileName, string customerName, string destPath, string sourcePath)
+    {
+        _countdownTimer.Stop();
+        _undoRemainingSeconds = TotalUndoSeconds;
+        UndoTimeoutProgressBar.Value = 100;
+
+        // Switch to Undo Mode
+        TriageContentPanel.Visibility = Visibility.Collapsed;
+        AutoMovedUndoPanel.Visibility = Visibility.Visible;
+
+        TxtAutoMovedFileName.Text = fileName;
+        TxtAutoMovedTarget.Text = $"Moved to {customerName}'s folder";
+
+        PositionWidget(165);
+        IsWidgetVisible = true;
+        AppWindow.Show();
+        _undoTimer.Start();
+    }
+
     public void HideWidget()
     {
         _countdownTimer.Stop();
+        _undoTimer.Stop();
         IsWidgetVisible = false;
         _currentFile = null;
+        _isPointerOver = false;
         AppWindow.Hide();
     }
 
-    private void PositionWidget()
+    private void PositionWidget(int heightDip = 175)
     {
         var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
         var dpi = GetDpiForWindow(hwnd);
         var scale = (dpi == 0 ? 96.0 : dpi) / 96.0;
 
-        int widthDip = 360;
-        int heightDip = 145;
+        int widthDip = 400;
         int widthPx = (int)(widthDip * scale);
         int heightPx = (int)(heightDip * scale);
 
@@ -231,6 +521,8 @@ public sealed partial class IncomingFileOverlayWidget : Window
 
     private void CountdownTimer_Tick(object? sender, object e)
     {
+        if (_isPointerOver) return;
+
         _remainingSeconds -= 0.1;
         if (_remainingSeconds <= 0)
         {
@@ -241,50 +533,47 @@ public sealed partial class IncomingFileOverlayWidget : Window
         TimeoutProgressBar.Value = (_remainingSeconds / TotalSeconds) * 100.0;
     }
 
-    private async void MainAction_Click(object sender, RoutedEventArgs e)
+    private void UndoTimer_Tick(object? sender, object e)
     {
-        if (BtnMainAction.Tag is ActiveSessionItem session)
-        {
-            await RouteToCustomerAsync(session);
-        }
-        else if (BtnMainAction.Tag is string tag && tag == "documents")
-        {
-            HideWidget();
-            MainWindow.Instance?.RestoreWindow();
-            MainWindow.Instance?.NavigateTo(typeof(DocumentsPage));
-        }
-        else if (BtnMainAction.Tag is string tag2 && tag2 == "new_session")
+        if (_isPointerOver) return;
+
+        _undoRemainingSeconds -= 0.1;
+        if (_undoRemainingSeconds <= 0)
         {
             HideWidget();
-            var newSessionWidget = new NewSessionWidget(_currentFile);
-            newSessionWidget.Activate();
+            return;
         }
+
+        UndoTimeoutProgressBar.Value = (_undoRemainingSeconds / TotalUndoSeconds) * 100.0;
     }
 
-    private async Task RouteToCustomerAsync(ActiveSessionItem session)
+    private async void UndoAutoMove_Click(object sender, RoutedEventArgs e)
     {
-        if (_currentFile == null) return;
-        _countdownTimer.Stop();
+        _undoTimer.Stop();
 
-        var file = _currentFile;
-        var success = await AppServices.FileWatcher.RouteFileToCustomerAsync(file.FilePath, session.FolderPath, deleteSource: true);
-
+        var (success, restoredPath) = await AppServices.FileWatcher.UndoLastAutoMoveAsync();
         if (success)
         {
-            TxtMainAction.Text = AppServices.Localization.GetString("Common.Success") ?? "Moved!";
-            BtnMainAction.IsEnabled = false;
-
-            // Notify MainWindow and open pages
             MainWindow.Instance?.NotifyIncomingFileRouted();
-
-            await Task.Delay(1200);
-            BtnMainAction.IsEnabled = true;
-            HideWidget();
+            var dirName = Path.GetFileName(Path.GetDirectoryName(restoredPath) ?? "original folder");
+            ToastService.Instance.ShowSuccess($"Restored to {dirName}. Auto-move disabled.");
         }
         else
         {
-            HideWidget();
+            ToastService.Instance.ShowError("Could not undo file move.");
         }
+
+        HideWidget();
+    }
+
+    private void Widget_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        _isPointerOver = true;
+    }
+
+    private void Widget_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        _isPointerOver = false;
     }
 
     private void Dismiss_Click(object sender, RoutedEventArgs e)

@@ -10,65 +10,111 @@
     mc:Ignorable="d">
 
     <Window.SystemBackdrop>
-        <MicaBackdrop />
+        <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
 
     <Border
         x:Name="RootBorder"
         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-        BorderThickness="0"
-        CornerRadius="12"
-        Padding="14,10,14,10">
+        BorderThickness="1"
+        CornerRadius="14"
+        Padding="14,12,14,10"
+        PointerEntered="Widget_PointerEntered"
+        PointerExited="Widget_PointerExited">
 
-        <Grid RowDefinitions="Auto,*,Auto,Auto" RowSpacing="8">
-            <!-- 1. Header with Glyph and Dismiss Button -->
-            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                    <FontIcon Glyph="&#xE8B7;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                    <TextBlock loc:Loc.Key="Triage.DetectedTitle" Text="Incoming File Detected" FontWeight="SemiBold" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                </StackPanel>
-
-                <Button Grid.Column="1" Background="Transparent" BorderBrush="Transparent" Padding="4" Click="Dismiss_Click" ToolTipService.ToolTip="Dismiss" UseSystemFocusVisuals="False">
-                    <FontIcon Glyph="&#xE711;" FontSize="11" />
-                </Button>
-            </Grid>
-
-            <!-- 2. File Details Card -->
-            <Grid Grid.Row="1" ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
-                <Border Grid.Column="0" Width="36" Height="36" CornerRadius="6" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
-                    <FontIcon x:Name="FileGlyphIcon" Glyph="&#xEB9F;" FontSize="18" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Border>
-
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                    <TextBlock x:Name="TxtFileName" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" MaxLines="1" />
-                    <TextBlock x:Name="TxtFileMeta" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                </StackPanel>
-            </Grid>
-
-            <!-- 3. Action Buttons Row -->
-            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,2,0,0">
-                <Button x:Name="BtnMainAction" Grid.Column="0" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Click="MainAction_Click" UseSystemFocusVisuals="False">
-                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
-                        <FontIcon Glyph="&#xE8B7;" FontSize="12" />
-                        <TextBlock x:Name="TxtMainAction" Text="Move to Customer" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+        <Grid>
+            <!-- Mode 1: Standard File Detection Triage Panel -->
+            <Grid x:Name="TriageContentPanel" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+                <!-- 1. Header with Icon and Dismiss Button -->
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE8B7;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                        <TextBlock loc:Loc.Key="Triage.DetectedTitle" Text="New File Detected" FontWeight="SemiBold" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     </StackPanel>
-                </Button>
 
-                <Button Grid.Column="1" Click="Dismiss_Click" Padding="10,5" UseSystemFocusVisuals="False">
-                    <TextBlock loc:Loc.Key="Triage.DismissBtn" Text="Dismiss" FontSize="12" />
-                </Button>
+                    <Button Grid.Column="1" Background="Transparent" BorderBrush="Transparent" Padding="4" Click="Dismiss_Click" ToolTipService.ToolTip="Dismiss" UseSystemFocusVisuals="False">
+                        <FontIcon Glyph="&#xE711;" FontSize="11" />
+                    </Button>
+                </Grid>
+
+                <!-- 2. File Details Card -->
+                <Grid Grid.Row="1" ColumnDefinitions="Auto,*" ColumnSpacing="10" VerticalAlignment="Center">
+                    <Border Grid.Column="0" Width="36" Height="36" CornerRadius="8" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                        <FontIcon x:Name="FileGlyphIcon" Glyph="&#xEB9F;" FontSize="18" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                        <TextBlock x:Name="TxtFileName" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" MaxLines="1" />
+                        <TextBlock x:Name="TxtFileMeta" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- 3. Auto-Move Checkbox -->
+                <CheckBox x:Name="ChkAutoRoute" Grid.Row="2"
+                          Content="Auto-move future files for this session"
+                          FontSize="11" Margin="2,0,0,0"
+                          ToolTipService.ToolTip="When checked, upcoming downloads and scans will automatically move to this customer" />
+
+                <!-- 4. Dynamic Customer Action Buttons Container -->
+                <Grid x:Name="ActionButtonsGrid" Grid.Row="3" Margin="0,2,0,0">
+                    <!-- Populated dynamically in code-behind for 1, 2, or multiple sessions -->
+                </Grid>
+
+                <!-- 5. Countdown Progress Bar -->
+                <ProgressBar x:Name="TimeoutProgressBar"
+                             Grid.Row="4"
+                             Minimum="0"
+                             Maximum="100"
+                             Value="100"
+                             Height="2"
+                             Margin="0,4,0,0"
+                             Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
             </Grid>
 
-            <!-- 4. Subtle 12-Second Countdown Progress Bar -->
-            <ProgressBar x:Name="TimeoutProgressBar"
-                         Grid.Row="3"
-                         Minimum="0"
-                         Maximum="100"
-                         Value="100"
-                         Height="2"
-                         Margin="0,2,0,0"
-                         Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+            <!-- Mode 2: Auto-Moved Undo Panel (Appears when file was auto-routed) -->
+            <Grid x:Name="AutoMovedUndoPanel" Visibility="Collapsed" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="10">
+                <!-- 1. Header with Success Dot -->
+                <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <FontIcon Glyph="&#xE73E;" FontSize="13" Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                        <TextBlock Text="File Auto-Moved" FontWeight="SemiBold" FontSize="12" Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                    </StackPanel>
+
+                    <Button Grid.Column="1" Background="Transparent" BorderBrush="Transparent" Padding="4" Click="Dismiss_Click" ToolTipService.ToolTip="Dismiss">
+                        <FontIcon Glyph="&#xE711;" FontSize="11" />
+                    </Button>
+                </Grid>
+
+                <!-- 2. Auto-Moved File Description -->
+                <StackPanel Grid.Row="1" Spacing="2">
+                    <TextBlock x:Name="TxtAutoMovedFileName" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" MaxLines="1" />
+                    <TextBlock x:Name="TxtAutoMovedTarget" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <!-- 3. Undo / Dismiss Actions -->
+                <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Button Grid.Column="0" Style="{StaticResource AccentButtonStyle}" Background="#E11D48" Foreground="White" HorizontalAlignment="Stretch" Click="UndoAutoMove_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                            <FontIcon Glyph="&#xE7A7;" FontSize="12" />
+                            <TextBlock Text="Undo &amp; Stop Auto-Move" FontWeight="SemiBold" FontSize="12" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Grid.Column="1" Click="Dismiss_Click" Padding="12,5">
+                        <TextBlock Text="Keep" FontSize="12" />
+                    </Button>
+                </Grid>
+
+                <!-- 4. Quick Auto-Dismiss Bar -->
+                <ProgressBar x:Name="UndoTimeoutProgressBar"
+                             Grid.Row="3"
+                             Minimum="0"
+                             Maximum="100"
+                             Value="100"
+                             Height="2"
+                             Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+            </Grid>
         </Grid>
     </Border>
 </Window>

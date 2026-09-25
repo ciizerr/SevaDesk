@@ -92,6 +92,7 @@ public partial class DashboardViewModel : StatusViewModel
     [RelayCommand]
     public async Task PauseSessionAsync(string sessionId)
     {
+        AppServices.FileWatcher.ClearAutoRouteIfSession(sessionId);
         await AppServices.Sessions.PauseSessionAsync(sessionId);
         await LoadActiveSessionsAsync();
     }
@@ -106,6 +107,7 @@ public partial class DashboardViewModel : StatusViewModel
     [RelayCommand]
     public async Task CompleteSessionAsync(string sessionId)
     {
+        AppServices.FileWatcher.ClearAutoRouteIfSession(sessionId);
         await AppServices.Sessions.CompleteSessionAsync(sessionId);
         await LoadActiveSessionsAsync();
     }
@@ -114,6 +116,7 @@ public partial class DashboardViewModel : StatusViewModel
     public async Task DeleteSessionAsync(ActiveSessionItem item)
     {
         if (item == null) return;
+        AppServices.FileWatcher.ClearAutoRouteIfSession(item.Session.Id);
         await AppServices.Sessions.DeleteSessionAsync(item.Session.Id);
         if (item.Customer != null)
         {
