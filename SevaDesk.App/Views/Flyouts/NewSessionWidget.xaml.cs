@@ -62,6 +62,16 @@ public sealed partial class NewSessionWidget : Window
             presenter.SetBorderAndTitleBar(false, false);
         }
 
+        AppWindow.Closing += (sender, args) =>
+        {
+            var pending = _pendingFile;
+            _pendingFile = null;
+            if (pending != null)
+            {
+                IncomingFileOverlayWidget.Instance.ShowForFile(pending);
+            }
+        };
+
         PositionWidget();
     }
 
@@ -72,7 +82,7 @@ public sealed partial class NewSessionWidget : Window
         var scale = (dpi == 0 ? 96.0 : dpi) / 96.0;
 
         int widthPx = (int)(480 * scale);
-        int heightPx = (int)(480 * scale);
+        int heightPx = (int)(520 * scale);
 
         int screenW = GetSystemMetrics(0); // SM_CXSCREEN
         int screenH = GetSystemMetrics(1); // SM_CYSCREEN
@@ -231,20 +241,27 @@ public sealed partial class NewSessionWidget : Window
         newSession.Customer = customer;
         newSession.FolderStats = new FolderStats();
 
-        // Route pending file if any
-        if (_pendingFile != null)
-        {
-            await AppServices.FileWatcher.RouteFileToCustomerAsync(_pendingFile.FilePath, folder, deleteSource: true);
-        }
-
-        // Notify MainWindow
-        MainWindow.Instance?.NotifyIncomingFileRouted();
-        
+        var pending = _pendingFile;
+        _pendingFile = null;
         this.Close();
+
+        if (pending != null)
+        {
+            // Re-open / refresh the incoming file triage widget for this newly created customer
+            // so the operator can choose a quick rename tag (e.g. [Aadhaar]) or move directly!
+            IncomingFileOverlayWidget.Instance.ShowForFile(pending);
+        }
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)
     {
+        var pending = _pendingFile;
+        _pendingFile = null;
         this.Close();
+
+        if (pending != null)
+        {
+            IncomingFileOverlayWidget.Instance.ShowForFile(pending);
+        }
     }
 }

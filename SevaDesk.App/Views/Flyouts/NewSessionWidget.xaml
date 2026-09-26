@@ -26,80 +26,82 @@
                 <TextBlock loc:Loc.Key="Dialog.NewCustomer.Title" Text="Start Customer Session" FontWeight="SemiBold" FontSize="16" />
             </StackPanel>
 
-            <StackPanel Grid.Row="1" Spacing="12">
-                <AutoSuggestBox
-                    x:Name="NameSuggestBox"
-                    loc:Loc.HeaderKey="Dialog.NewCustomer.NameHeader"
-                    Header="Customer Name *"
-                    loc:Loc.PlaceholderKey="Dialog.NewCustomer.NamePlaceholder"
-                    PlaceholderText="Type name to search or create..."
-                    TextChanged="NameSuggestBox_TextChanged"
-                    SuggestionChosen="NameSuggestBox_SuggestionChosen"
-                    QuerySubmitted="NameSuggestBox_QuerySubmitted"
-                    TextMemberPath="Name">
-                    <AutoSuggestBox.ItemTemplate>
-                        <DataTemplate x:DataType="models:Customer">
-                            <StackPanel Padding="4,2">
-                                <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="13" />
-                                <TextBlock Text="{x:Bind Subtitle}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </AutoSuggestBox.ItemTemplate>
-                </AutoSuggestBox>
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" VerticalScrollMode="Auto">
+                <StackPanel Spacing="12" Margin="0,0,6,0">
+                    <AutoSuggestBox
+                        x:Name="NameSuggestBox"
+                        loc:Loc.HeaderKey="Dialog.NewCustomer.NameHeader"
+                        Header="Customer Name *"
+                        loc:Loc.PlaceholderKey="Dialog.NewCustomer.NamePlaceholder"
+                        PlaceholderText="Type name to search or create..."
+                        TextChanged="NameSuggestBox_TextChanged"
+                        SuggestionChosen="NameSuggestBox_SuggestionChosen"
+                        QuerySubmitted="NameSuggestBox_QuerySubmitted"
+                        TextMemberPath="Name">
+                        <AutoSuggestBox.ItemTemplate>
+                            <DataTemplate x:DataType="models:Customer">
+                                <StackPanel Padding="4,2">
+                                    <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="13" />
+                                    <TextBlock Text="{x:Bind Subtitle}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </AutoSuggestBox.ItemTemplate>
+                    </AutoSuggestBox>
 
-                <Border x:Name="ExistingCustomerBadge"
-                        Visibility="Collapsed"
-                        Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}"
-                        BorderBrush="{ThemeResource SystemFillColorSuccessBrush}"
-                        BorderThickness="1"
-                        CornerRadius="6"
-                        Padding="10,6">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="&#xE73E;" FontSize="14" Foreground="{ThemeResource SystemFillColorSuccessBrush}" VerticalAlignment="Center" />
-                        <TextBlock x:Name="TxtBadgeInfo"
-                                   loc:Loc.Key="Dialog.NewCustomer.ExistingCustomerFound"
-                                   Text="Existing customer matched — session will be linked to profile."
-                                   FontSize="12"
-                                   VerticalAlignment="Center" />
-                    </StackPanel>
-                </Border>
+                    <Border x:Name="ExistingCustomerBadge"
+                            Visibility="Collapsed"
+                            Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}"
+                            BorderBrush="{ThemeResource SystemFillColorSuccessBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,6">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE73E;" FontSize="14" Foreground="{ThemeResource SystemFillColorSuccessBrush}" VerticalAlignment="Center" />
+                            <TextBlock x:Name="TxtBadgeInfo"
+                                       loc:Loc.Key="Dialog.NewCustomer.ExistingCustomerFound"
+                                       Text="Existing customer matched — session will be linked to profile."
+                                       FontSize="12"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
 
-                <Grid ColumnDefinitions="*,*">
+                    <Grid ColumnDefinitions="*,*">
+                        <TextBox
+                            x:Name="MobileBox"
+                            Grid.Column="0"
+                            loc:Loc.HeaderKey="Dialog.NewCustomer.MobileHeader"
+                            Header="Mobile Number"
+                            Margin="0,0,8,0"
+                            loc:Loc.PlaceholderKey="Dialog.NewCustomer.MobilePlaceholder"
+                            PlaceholderText="e.g. 9876543210" />
+
+                        <TextBox
+                            x:Name="VillageBox"
+                            Grid.Column="1"
+                            loc:Loc.HeaderKey="Dialog.NewCustomer.VillageHeader"
+                            Header="Village / Locality"
+                            Margin="8,0,0,0"
+                            loc:Loc.PlaceholderKey="Dialog.NewCustomer.VillagePlaceholder"
+                            PlaceholderText="e.g. Rampur" />
+                    </Grid>
+
                     <TextBox
-                        x:Name="MobileBox"
-                        Grid.Column="0"
-                        loc:Loc.HeaderKey="Dialog.NewCustomer.MobileHeader"
-                        Header="Mobile Number"
-                        Margin="0,0,8,0"
-                        loc:Loc.PlaceholderKey="Dialog.NewCustomer.MobilePlaceholder"
-                        PlaceholderText="e.g. 9876543210" />
+                        x:Name="IdRefBox"
+                        loc:Loc.HeaderKey="Dialog.NewCustomer.IdRefHeader"
+                        Header="Aadhaar / ID Ref (Optional)"
+                        loc:Loc.PlaceholderKey="Dialog.NewCustomer.IdRefPlaceholder"
+                        PlaceholderText="e.g. Last 4 digits: 1234" />
 
                     <TextBox
-                        x:Name="VillageBox"
-                        Grid.Column="1"
-                        loc:Loc.HeaderKey="Dialog.NewCustomer.VillageHeader"
-                        Header="Village / Locality"
-                        Margin="8,0,0,0"
-                        loc:Loc.PlaceholderKey="Dialog.NewCustomer.VillagePlaceholder"
-                        PlaceholderText="e.g. Rampur" />
-                </Grid>
+                        x:Name="NotesBox"
+                        loc:Loc.HeaderKey="Dialog.NewCustomer.NotesHeader"
+                        Header="Session Notes / Service (Optional)"
+                        loc:Loc.PlaceholderKey="Dialog.NewCustomer.NotesPlaceholder"
+                        PlaceholderText="e.g. PAN application &amp; photo scan" />
+                </StackPanel>
+            </ScrollViewer>
 
-                <TextBox
-                    x:Name="IdRefBox"
-                    loc:Loc.HeaderKey="Dialog.NewCustomer.IdRefHeader"
-                    Header="Aadhaar / ID Ref (Optional)"
-                    loc:Loc.PlaceholderKey="Dialog.NewCustomer.IdRefPlaceholder"
-                    PlaceholderText="e.g. Last 4 digits: 1234" />
-
-                <TextBox
-                    x:Name="NotesBox"
-                    loc:Loc.HeaderKey="Dialog.NewCustomer.NotesHeader"
-                    Header="Session Notes / Service (Optional)"
-                    loc:Loc.PlaceholderKey="Dialog.NewCustomer.NotesPlaceholder"
-                    PlaceholderText="e.g. PAN application &amp; photo scan" />
-            </StackPanel>
-
-            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,20,0,0">
+            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,16,0,0">
                 <Button Grid.Column="1" Click="Cancel_Click" Margin="0,0,8,0" Padding="16,6" UseSystemFocusVisuals="False">
                     <TextBlock loc:Loc.Key="Common.Cancel" Text="Cancel" />
                 </Button>

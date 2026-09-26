@@ -51,7 +51,23 @@ public partial class CartItem : ObservableObject
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string ServiceName { get; set; } = string.Empty;
-    public decimal Rate { get; set; }
+    public decimal OriginalRate { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Total))]
+    [NotifyPropertyChangedFor(nameof(FormattedTotal))]
+    [NotifyPropertyChangedFor(nameof(FormattedRate))]
+    [NotifyPropertyChangedFor(nameof(FormattedOriginalRate))]
+    [NotifyPropertyChangedFor(nameof(IsRateModified))]
+    private decimal _rate;
+
+    partial void OnRateChanged(decimal value)
+    {
+        if (OriginalRate == 0 && value > 0)
+        {
+            OriginalRate = value;
+        }
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Total))]
@@ -60,6 +76,17 @@ public partial class CartItem : ObservableObject
 
     public decimal Total => Rate * Quantity;
     public string FormattedTotal => $"₹{Total:N0}";
+    public string FormattedRate => $"₹{Rate:N0}";
+    public string FormattedOriginalRate => $"₹{OriginalRate:N0}";
+    public bool IsRateModified => OriginalRate > 0 && Rate != OriginalRate;
+
+    public void ResetToOriginalRate()
+    {
+        if (OriginalRate > 0)
+        {
+            Rate = OriginalRate;
+        }
+    }
 }
 
 public class TransactionItem

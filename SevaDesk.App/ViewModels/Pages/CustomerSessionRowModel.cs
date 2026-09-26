@@ -12,10 +12,35 @@ public partial class CustomerSessionRowModel : ObservableObject
     [ObservableProperty]
     private bool _isHighlighted;
 
+    public List<BilledServiceItem> BilledItems { get; }
+    public bool HasBilledItems => BilledItems.Count > 0;
+
     public CustomerSessionRowModel(Session session, Payment? payment = null)
     {
         Session = session;
         Payment = payment;
+
+        var parsed = BilledServiceItem.ParseSummary(payment?.ItemsSummary);
+        if (parsed.Count == 0)
+        {
+            if (!string.IsNullOrWhiteSpace(session.Notes))
+            {
+                parsed.Add(new BilledServiceItem
+                {
+                    ServiceName = session.Notes,
+                    Glyph = "\uE8A5"
+                });
+            }
+            else
+            {
+                parsed.Add(new BilledServiceItem
+                {
+                    ServiceName = "General Desk Session",
+                    Glyph = "\uE7BE"
+                });
+            }
+        }
+        BilledItems = parsed;
     }
 
     public bool HasPayment => Payment != null;

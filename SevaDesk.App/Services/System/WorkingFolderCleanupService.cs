@@ -32,11 +32,15 @@ public static class WorkingFolderCleanupService
     /// <summary>
     /// Call this once during app startup (after AppServices.Initialize).
     /// Runs the scan + delete in background; fires a toast if folders were cleaned.
+    /// Strictly protects working folders for all currently Active or Paused sessions.
     /// </summary>
     public static async Task RunAsync()
     {
         try
         {
+            // 1. Ensure any missing working folders for active/paused sessions are recreated and restored
+            await EnsureActiveSessionWorkingFoldersAsync();
+
             int ttlHours = GetTtlHours();
             if (ttlHours < 0) return; // 0 = immediate, negative = disabled
 
@@ -73,12 +77,68 @@ public static class WorkingFolderCleanupService
         catch { /* never crash startup */ }
     }
 
+    /// <summary>
+    /// Re-ensures that all currently Active or Paused sessions have their working folders on Desktop.
+    /// If a folder is missing on startup, recreates it and restores files from the Backup archive.
+    /// </summary>
+    public static async Task<int> EnsureActiveSessionWorkingFoldersAsync()
+    {
+        int restoredCount = 0;
+        try
+        {
+            var activeItems = await AppServices.Sessions.GetActiveSessionsAsync();
+            foreach (var item in activeItems)
+            {
+                if (item.Customer == null || string.IsNullOrWhiteSpace(item.Customer.Name)) continue;
+                var folderPath = AppServices.FolderManager.GetCustomerFolderPath(item.Customer.Name, item.Customer.Code);
+                if (!Directory.Exists(folderPath))
+                {
+                    AppServices.FolderManager.EnsureCustomerWorkingFolder(item.Customer.Name, item.Customer.Code);
+                    await AppServices.FolderManager.SyncToWorkingAsync(item.Customer.Name, item.Customer.Code);
+                    restoredCount++;
+                }
+            }
+        }
+        catch { }
+        return restoredCount;
+    }
+
     private static async Task<IEnumerable<(string SessionId, string FolderPath, DateTime SyncedAt)>> GetCandidatesAsync(DateTime cutoff)
     {
         try
         {
             using var conn = AppServices.Database.CreateConnection();
             await conn.OpenAsync();
+
+            // Collect all protected folder paths belonging to currently Active or Paused sessions
+            var activeRows = await conn.QueryAsync(
+                @"SELECT s.working_folder_path, c.name, c.code
+                  FROM sessions s
+                  JOIN customers c ON s.customer_id = c.id
+                  WHERE s.status IN ('Active', 'Paused')",
+                commandTimeout: 5);
+
+            var protectedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var a in activeRows)
+            {
+                string? wfp = a.working_folder_path as string;
+                if (!string.IsNullOrWhiteSpace(wfp))
+                {
+                    try { protectedPaths.Add(Path.GetFullPath(wfp).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)); } catch { }
+                }
+
+                string? cName = a.name as string;
+                string? cCode = a.code as string;
+                if (!string.IsNullOrWhiteSpace(cName))
+                {
+                    try
+                    {
+                        var folder = AppServices.FolderManager.GetCustomerFolderPath(cName, cCode ?? string.Empty);
+                        protectedPaths.Add(Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                    }
+                    catch { }
+                }
+            }
 
             var rows = await conn.QueryAsync(
                 @"SELECT id, working_folder_path, backup_synced_at
@@ -98,6 +158,17 @@ public static class WorkingFolderCleanupService
 
                 if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(syncedStr) || string.IsNullOrEmpty(id))
                     continue;
+
+                // STRICT IMMUNITY: Never delete a folder that belongs to any currently Active or Paused session!
+                try
+                {
+                    var norm = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    if (protectedPaths.Contains(norm))
+                    {
+                        continue;
+                    }
+                }
+                catch { }
 
                 if (!DateTime.TryParse(syncedStr, null, System.Globalization.DateTimeStyles.RoundtripKind, out var syncedAt))
                     continue;

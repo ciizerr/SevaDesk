@@ -4,6 +4,7 @@ namespace SevaDesk.Core.Interfaces;
 
 public interface ISessionRepository
 {
+    event EventHandler? SessionsChanged;
     Task<IEnumerable<ActiveSessionItem>> GetActiveSessionsAsync();
     Task<ActiveSessionItem> StartSessionAsync(string customerId, string? notes = null);
     Task PauseSessionAsync(string sessionId, int? knownDurationSeconds = null);
@@ -11,4 +12,5 @@ public interface ISessionRepository
     Task CompleteSessionAsync(string sessionId);
     Task DeleteSessionAsync(string sessionId);
     Task<IEnumerable<Session>> GetCustomerSessionsAsync(string customerId);
+    Task<int> GetTodayCompletedVisitsCountAsync();
 }

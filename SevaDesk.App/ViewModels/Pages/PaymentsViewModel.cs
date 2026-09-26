@@ -9,6 +9,8 @@ namespace SevaDesk_App.ViewModels.Pages;
 
 public partial class PaymentsViewModel : StatusViewModel
 {
+    public static PaymentsViewModel SharedInstance { get; } = new();
+
     // --- View Switching (POS vs Service Rates vs Earnings Report) ---
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsPosView))]
@@ -135,9 +137,100 @@ public partial class PaymentsViewModel : StatusViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasCartItems))]
+    [NotifyPropertyChangedFor(nameof(DraftItemsCountText))]
     private ObservableCollection<CartItem> _cartItems = [];
 
     public bool HasCartItems => CartItems.Count > 0;
+    public string DraftItemsCountText => CartItems.Count == 1 ? "Draft: 1 item" : $"Draft: {CartItems.Count} items";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FormattedSubTotal))]
+    private decimal _subTotal;
+
+    public string FormattedSubTotal => $"₹{SubTotal:N0}";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CalculatedDiscount))]
+    [NotifyPropertyChangedFor(nameof(FormattedDiscount))]
+    [NotifyPropertyChangedFor(nameof(HasDiscount))]
+    [NotifyPropertyChangedFor(nameof(DiscountSummaryText))]
+    [NotifyPropertyChangedFor(nameof(FormattedGrandTotal))]
+    private decimal _discountValue;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CalculatedDiscount))]
+    [NotifyPropertyChangedFor(nameof(FormattedDiscount))]
+    [NotifyPropertyChangedFor(nameof(DiscountTypeSymbol))]
+    [NotifyPropertyChangedFor(nameof(DiscountPlaceholder))]
+    [NotifyPropertyChangedFor(nameof(DiscountSummaryText))]
+    [NotifyPropertyChangedFor(nameof(FormattedGrandTotal))]
+    private bool _isPercentageDiscount;
+
+    public string DiscountPlaceholder => IsPercentageDiscount ? "Discount percent (e.g. 10)" : "Discount amount in ₹ (e.g. 20)";
+
+    [ObservableProperty]
+    private string _discountInputText = string.Empty;
+
+    partial void OnDiscountInputTextChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            if (DiscountValue != 0)
+            {
+                DiscountValue = 0;
+            }
+            return;
+        }
+
+        var cleaned = value.Trim().TrimStart('₹').TrimEnd('%');
+        if (decimal.TryParse(cleaned, NumberStyles.Any, CultureInfo.InvariantCulture, out var val) ||
+            decimal.TryParse(cleaned, NumberStyles.Any, CultureInfo.CurrentCulture, out val))
+        {
+            var clamped = Math.Max(0, val);
+            if (DiscountValue != clamped)
+            {
+                DiscountValue = clamped;
+            }
+        }
+        else
+        {
+            if (DiscountValue != 0)
+            {
+                DiscountValue = 0;
+            }
+        }
+    }
+
+    partial void OnDiscountValueChanged(decimal value)
+    {
+        RecalculateGrandTotal();
+    }
+
+    partial void OnIsPercentageDiscountChanged(bool value)
+    {
+        RecalculateGrandTotal();
+    }
+
+    public string DiscountTypeSymbol => IsPercentageDiscount ? "%" : "₹";
+
+    public decimal CalculatedDiscount
+    {
+        get
+        {
+            if (DiscountValue <= 0 || SubTotal <= 0) return 0;
+            if (IsPercentageDiscount)
+            {
+                var disc = (SubTotal * DiscountValue) / 100m;
+                return Math.Min(SubTotal, Math.Round(disc, 2));
+            }
+            return Math.Min(SubTotal, DiscountValue);
+        }
+    }
+
+    public string FormattedDiscount => $"-₹{CalculatedDiscount:N0}";
+    public bool HasDiscount => CalculatedDiscount > 0;
+
+    public string DiscountSummaryText => IsPercentageDiscount ? $"({DiscountValue:G29}%)" : $"(Flat ₹{DiscountValue:N0})";
 
     [ObservableProperty]
     private ObservableCollection<TransactionItem> _recentTransactions = [];
@@ -180,7 +273,33 @@ public partial class PaymentsViewModel : StatusViewModel
     private string? _currentCustomerId;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLinkedActiveSession))]
+    [NotifyPropertyChangedFor(nameof(LinkedSessionDurationText))]
     private string? _currentSessionId;
+
+    public bool HasLinkedActiveSession => !string.IsNullOrEmpty(CurrentSessionId);
+
+    public string LinkedSessionDurationText
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(CurrentSessionId)) return string.Empty;
+            var active = ActiveSessions.FirstOrDefault(s => s.Session.Id == CurrentSessionId);
+            if (active != null)
+            {
+                return $"({active.ElapsedDisplay})";
+            }
+            return "(Session Completed)";
+        }
+    }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMultipleActiveSessions))]
+    [NotifyPropertyChangedFor(nameof(HasActiveSessions))]
+    private ObservableCollection<ActiveSessionItem> _activeSessions = [];
+
+    public bool HasActiveSessions => ActiveSessions.Count > 0;
+    public bool HasMultipleActiveSessions => ActiveSessions.Count > 1;
 
     [ObservableProperty]
     private string _upiDeepLink = string.Empty;
@@ -304,6 +423,10 @@ public partial class PaymentsViewModel : StatusViewModel
         RefreshShopSettings();
 
         AppServices.Database.SettingChanged += OnSettingChanged;
+        AppServices.Sessions.SessionsChanged += (s, e) =>
+        {
+            _ = RefreshActiveSessionsAsync();
+        };
 
         var currentYear = DateTime.Today.Year;
         for (int y = currentYear - 2; y <= currentYear + 1; y++)
@@ -348,6 +471,7 @@ public partial class PaymentsViewModel : StatusViewModel
         RefreshShopSettings();
         await LoadRatesAsync();
         await LoadPaymentsDataAsync();
+        await RefreshActiveSessionsAsync();
     }
 
     public async Task LoadRatesAsync()
@@ -586,6 +710,7 @@ public partial class PaymentsViewModel : StatusViewModel
             CartItems.Add(new CartItem
             {
                 ServiceName = service.ServiceName,
+                OriginalRate = service.Rate,
                 Rate = service.Rate,
                 Quantity = 1
             });
@@ -629,6 +754,9 @@ public partial class PaymentsViewModel : StatusViewModel
     public void ClearBill()
     {
         CartItems.Clear();
+        DiscountValue = 0;
+        DiscountInputText = string.Empty;
+        IsPercentageDiscount = false;
         UpdateCartTotals();
         CustomerName = "Walk-in Customer";
         CurrentCustomerId = null;
@@ -643,7 +771,24 @@ public partial class PaymentsViewModel : StatusViewModel
 
         var invoiceNo = await AppServices.Payments.GenerateNextInvoiceNoAsync();
         var custName = string.IsNullOrWhiteSpace(CustomerName) ? "Walk-in Customer" : CustomerName.Trim();
-        var itemsSummary = string.Join(", ", CartItems.Select(c => $"{c.ServiceName} x{c.Quantity}"));
+        
+        var itemsSummaryList = new List<string>();
+        foreach (var c in CartItems)
+        {
+            if (c.IsRateModified)
+            {
+                itemsSummaryList.Add($"{c.ServiceName} x{c.Quantity} @ ₹{c.Rate:N0} (orig ₹{c.OriginalRate:N0})");
+            }
+            else
+            {
+                itemsSummaryList.Add($"{c.ServiceName} x{c.Quantity} @ ₹{c.Rate:N0}");
+            }
+        }
+        if (HasDiscount)
+        {
+            itemsSummaryList.Add($"[Disc: {FormattedDiscount}]");
+        }
+        var itemsSummary = string.Join(", ", itemsSummaryList);
 
         var payment = new Payment
         {
@@ -684,6 +829,9 @@ public partial class PaymentsViewModel : StatusViewModel
         ShowSuccess($"Payment of ₹{GrandTotal:N0} recorded via {paymentMode} ({invoiceNo})!");
 
         CartItems.Clear();
+        DiscountValue = 0;
+        DiscountInputText = string.Empty;
+        IsPercentageDiscount = false;
         UpdateCartTotals();
         CustomerName = "Walk-in Customer";
         CurrentCustomerId = null;
@@ -698,10 +846,95 @@ public partial class PaymentsViewModel : StatusViewModel
 
     private void UpdateCartTotals()
     {
-        GrandTotal = CartItems.Sum(c => c.Total);
+        SubTotal = CartItems.Sum(c => c.Total);
+        RecalculateGrandTotal();
         OnPropertyChanged(nameof(HasCartItems));
+        OnPropertyChanged(nameof(DraftItemsCountText));
+    }
+
+    private void RecalculateGrandTotal()
+    {
+        OnPropertyChanged(nameof(CalculatedDiscount));
+        OnPropertyChanged(nameof(FormattedDiscount));
+        OnPropertyChanged(nameof(HasDiscount));
+        OnPropertyChanged(nameof(DiscountSummaryText));
+
+        GrandTotal = Math.Max(0, SubTotal - CalculatedDiscount);
         UpiDeepLink = AppServices.QrCode.BuildUpiPayload(ShopUpiId, PayeeName, GrandTotal > 0 ? GrandTotal : null, "Cyber Cafe Bill");
         RegenerateQrCode();
+    }
+
+    public void SetDiscount(decimal value, bool isPercent)
+    {
+        IsPercentageDiscount = isPercent;
+        DiscountValue = Math.Max(0, value);
+        DiscountInputText = DiscountValue > 0 ? DiscountValue.ToString("G29") : string.Empty;
+        RecalculateGrandTotal();
+    }
+
+    [RelayCommand]
+    public void SetDiscountType(bool isPercent)
+    {
+        if (IsPercentageDiscount != isPercent)
+        {
+            IsPercentageDiscount = isPercent;
+            RecalculateGrandTotal();
+        }
+    }
+
+    [RelayCommand]
+    public void ClearDiscount()
+    {
+        DiscountValue = 0;
+        DiscountInputText = string.Empty;
+        RecalculateGrandTotal();
+    }
+
+    [RelayCommand]
+    public void ApplyQuickDiscount(string? param)
+    {
+        if (string.IsNullOrWhiteSpace(param)) return;
+        var p = param.Trim();
+        if (p.EndsWith("%"))
+        {
+            if (decimal.TryParse(p.TrimEnd('%'), NumberStyles.Any, CultureInfo.InvariantCulture, out var pVal))
+            {
+                SetDiscount(pVal, true);
+            }
+        }
+        else
+        {
+            if (decimal.TryParse(p.TrimStart('₹'), NumberStyles.Any, CultureInfo.InvariantCulture, out var fVal))
+            {
+                SetDiscount(fVal, false);
+            }
+        }
+    }
+
+    public void UpdateItemRate(CartItem item, decimal newRate)
+    {
+        if (newRate >= 0)
+        {
+            item.Rate = newRate;
+            UpdateCartTotals();
+        }
+    }
+
+    public void ResetItemRate(CartItem item)
+    {
+        item.ResetToOriginalRate();
+        UpdateCartTotals();
+    }
+
+    public void UpdateItemQuantity(CartItem item, int newQuantity)
+    {
+        item.Quantity = Math.Max(1, newQuantity);
+        var idx = CartItems.IndexOf(item);
+        if (idx >= 0)
+        {
+            CartItems[idx] = item;
+        }
+        UpdateCartTotals();
     }
 
     public void RegenerateQrCode()
@@ -722,6 +955,13 @@ public partial class PaymentsViewModel : StatusViewModel
     {
         if (handover == null) return;
 
+        bool isSameOrUnassignedCustomer =
+            string.IsNullOrWhiteSpace(CurrentCustomerId) ||
+            CurrentCustomerId == "walk-in" ||
+            string.Equals(CurrentCustomerId, handover.CustomerId, StringComparison.OrdinalIgnoreCase) ||
+            CustomerName == "Walk-in Customer" ||
+            CartItems.Count == 0;
+
         if (!string.IsNullOrWhiteSpace(handover.CustomerName))
         {
             CustomerName = handover.CustomerName;
@@ -730,14 +970,114 @@ public partial class PaymentsViewModel : StatusViewModel
         CurrentCustomerId = handover.CustomerId;
         CurrentSessionId = handover.SessionId;
 
-        CartItems.Clear();
+        if (!isSameOrUnassignedCustomer)
+        {
+            CartItems.Clear();
+        }
+
         foreach (var item in handover.Items)
         {
-            CartItems.Add(item);
+            if (item.OriginalRate == 0 && item.Rate > 0)
+            {
+                item.OriginalRate = item.Rate;
+            }
+
+            var existing = CartItems.FirstOrDefault(c =>
+                string.Equals(c.ServiceName, item.ServiceName, StringComparison.OrdinalIgnoreCase) &&
+                c.Rate == item.Rate);
+
+            if (existing != null)
+            {
+                existing.Quantity += item.Quantity;
+                var idx = CartItems.IndexOf(existing);
+                CartItems[idx] = existing;
+            }
+            else
+            {
+                CartItems.Add(item);
+            }
         }
 
         UpdateCartTotals();
-        ShowInfo($"Pre-loaded fees from session for {CustomerName}. Total: ₹{GrandTotal:N0}");
+        _ = RefreshActiveSessionsAsync();
+
+        if (handover.Items.Count > 0)
+        {
+            ShowInfo($"Added session fees for {CustomerName}. Current Total: ₹{GrandTotal:N0}");
+        }
+        else
+        {
+            ShowInfo($"Ready to bill session for {CustomerName}. Total: ₹{GrandTotal:N0}");
+        }
+    }
+
+    public async Task RefreshActiveSessionsAsync()
+    {
+        try
+        {
+            var sessions = (await AppServices.Sessions.GetActiveSessionsAsync()).ToList();
+            ActiveSessions.Clear();
+            foreach (var s in sessions)
+            {
+                ActiveSessions.Add(s);
+            }
+            OnPropertyChanged(nameof(HasActiveSessions));
+            OnPropertyChanged(nameof(HasMultipleActiveSessions));
+            OnPropertyChanged(nameof(HasLinkedActiveSession));
+            OnPropertyChanged(nameof(LinkedSessionDurationText));
+        }
+        catch { }
+    }
+
+    public async Task CheckAutoSelectActiveSessionAsync()
+    {
+        await RefreshActiveSessionsAsync();
+
+        bool isUnassigned = string.IsNullOrWhiteSpace(CurrentCustomerId) ||
+                            CurrentCustomerId == "walk-in" ||
+                            CustomerName == "Walk-in Customer";
+
+        if (isUnassigned && ActiveSessions.Count == 1 && string.IsNullOrEmpty(CurrentSessionId))
+        {
+            var active = ActiveSessions[0];
+            SelectActiveSession(active, autoSelected: true);
+        }
+    }
+
+    [RelayCommand]
+    public void SelectActiveSession(ActiveSessionItem session)
+    {
+        SelectActiveSession(session, autoSelected: false);
+    }
+
+    public void SelectActiveSession(ActiveSessionItem session, bool autoSelected)
+    {
+        if (session?.Customer == null) return;
+
+        CustomerName = session.Customer.Name;
+        CurrentCustomerId = session.Customer.Id;
+        CurrentSessionId = session.Session.Id;
+
+        OnPropertyChanged(nameof(HasLinkedActiveSession));
+        OnPropertyChanged(nameof(LinkedSessionDurationText));
+
+        if (autoSelected)
+        {
+            ShowInfo($"Auto-selected active session for {CustomerName}");
+        }
+        else
+        {
+            ShowSuccess($"Linked active session for {CustomerName}");
+        }
+    }
+
+    [RelayCommand]
+    public void UnlinkSession()
+    {
+        CurrentSessionId = null;
+        OnPropertyChanged(nameof(HasLinkedActiveSession));
+        OnPropertyChanged(nameof(LinkedSessionDurationText));
+        ShowInfo("Unlinked session from bill.");
     }
 
     // --- Earnings Filter Event Handlers ---

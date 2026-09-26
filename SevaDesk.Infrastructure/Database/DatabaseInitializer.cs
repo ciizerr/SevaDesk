@@ -104,6 +104,7 @@ public class DatabaseInitializer
             CREATE TABLE IF NOT EXISTS applications (
                 id TEXT PRIMARY KEY,
                 customer_id TEXT,
+                session_id TEXT,
                 customer_name TEXT,
                 title TEXT NOT NULL,
                 portal_name TEXT,
@@ -118,6 +119,7 @@ public class DatabaseInitializer
             );
 
             CREATE INDEX IF NOT EXISTS idx_applications_customer_id ON applications(customer_id);
+            CREATE INDEX IF NOT EXISTS idx_applications_session_id ON applications(session_id);
             CREATE INDEX IF NOT EXISTS idx_applications_status ON applications(status);
 
             CREATE TABLE IF NOT EXISTS resources (
@@ -165,6 +167,15 @@ public class DatabaseInitializer
                 glyph TEXT NOT NULL,
                 is_active INTEGER NOT NULL DEFAULT 1
             );
+
+            CREATE TABLE IF NOT EXISTS custom_document_tags (
+                id TEXT PRIMARY KEY,
+                display_name TEXT NOT NULL,
+                tag_key TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_custom_tags_key ON custom_document_tags(tag_key);
         ";
 
         connection.Execute(sql);
@@ -179,6 +190,7 @@ public class DatabaseInitializer
         try { connection.Execute("ALTER TABLE resources ADD COLUMN required_docs TEXT;"); } catch { }
         try { connection.Execute("ALTER TABLE resources ADD COLUMN notes TEXT;"); } catch { }
         try { connection.Execute("ALTER TABLE customers ADD COLUMN photo_path TEXT;"); } catch { }
+        try { connection.Execute("ALTER TABLE applications ADD COLUMN session_id TEXT;"); } catch { }
 
         // Ensure default walk-in customer exists for POS walk-in payments
         connection.Execute(@"

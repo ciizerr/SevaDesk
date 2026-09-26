@@ -9,10 +9,15 @@ public class ApplicationRepository : IApplicationRepository
 {
     private readonly DatabaseInitializer _db;
 
+    public event EventHandler? ApplicationsChanged;
+
     public ApplicationRepository(DatabaseInitializer db)
     {
         _db = db;
     }
+
+    public void NotifyApplicationsChanged() => ApplicationsChanged?.Invoke(this, EventArgs.Empty);
+
 
     public async Task<IEnumerable<ApplicationItem>> GetAllAsync(string? status = null)
     {
@@ -23,6 +28,7 @@ public class ApplicationRepository : IApplicationRepository
             SELECT 
                 id AS Id,
                 customer_id AS CustomerId,
+                session_id AS SessionId,
                 customer_name AS CustomerName,
                 title AS Title,
                 portal_name AS PortalName,
@@ -57,6 +63,7 @@ public class ApplicationRepository : IApplicationRepository
             {
                 Id = r.Id,
                 CustomerId = r.CustomerId,
+                SessionId = r.SessionId,
                 CustomerName = r.CustomerName ?? string.Empty,
                 Title = r.Title ?? string.Empty,
                 PortalName = r.PortalName ?? string.Empty,
@@ -92,6 +99,7 @@ public class ApplicationRepository : IApplicationRepository
             SELECT 
                 id AS Id,
                 customer_id AS CustomerId,
+                session_id AS SessionId,
                 customer_name AS CustomerName,
                 title AS Title,
                 portal_name AS PortalName,
@@ -116,6 +124,7 @@ public class ApplicationRepository : IApplicationRepository
             {
                 Id = r.Id,
                 CustomerId = r.CustomerId,
+                SessionId = r.SessionId,
                 CustomerName = r.CustomerName ?? string.Empty,
                 Title = r.Title ?? string.Empty,
                 PortalName = r.PortalName ?? string.Empty,
@@ -155,6 +164,7 @@ public class ApplicationRepository : IApplicationRepository
         {
             Id = r.id,
             CustomerId = r.customer_id,
+            SessionId = r.session_id,
             CustomerName = r.customer_name ?? string.Empty,
             Title = r.title ?? string.Empty,
             PortalName = r.portal_name ?? string.Empty,
@@ -188,13 +198,14 @@ public class ApplicationRepository : IApplicationRepository
         await connection.OpenAsync();
 
         const string sql = @"
-            INSERT INTO applications (id, customer_id, customer_name, title, portal_name, application_number, status, service_charge, govt_fee, required_docs, notes, created_at, updated_at)
-            VALUES (@Id, @CustomerId, @CustomerName, @Title, @PortalName, @ApplicationNumber, @Status, @ServiceCharge, @GovtFee, @RequiredDocs, @Notes, @CreatedAt, @UpdatedAt);";
+            INSERT INTO applications (id, customer_id, session_id, customer_name, title, portal_name, application_number, status, service_charge, govt_fee, required_docs, notes, created_at, updated_at)
+            VALUES (@Id, @CustomerId, @SessionId, @CustomerName, @Title, @PortalName, @ApplicationNumber, @Status, @ServiceCharge, @GovtFee, @RequiredDocs, @Notes, @CreatedAt, @UpdatedAt);";
 
         await connection.ExecuteAsync(sql, new
         {
             app.Id,
             app.CustomerId,
+            app.SessionId,
             app.CustomerName,
             app.Title,
             app.PortalName,
@@ -208,8 +219,10 @@ public class ApplicationRepository : IApplicationRepository
             UpdatedAt = app.UpdatedAt.ToString("o")
         });
 
+        NotifyApplicationsChanged();
         return app;
     }
+
 
     public async Task UpdateAsync(ApplicationItem app)
     {
@@ -221,6 +234,7 @@ public class ApplicationRepository : IApplicationRepository
         const string sql = @"
             UPDATE applications
             SET customer_id = @CustomerId,
+                session_id = @SessionId,
                 customer_name = @CustomerName,
                 title = @Title,
                 portal_name = @PortalName,
@@ -237,6 +251,7 @@ public class ApplicationRepository : IApplicationRepository
         {
             app.Id,
             app.CustomerId,
+            app.SessionId,
             app.CustomerName,
             app.Title,
             app.PortalName,
@@ -248,6 +263,8 @@ public class ApplicationRepository : IApplicationRepository
             app.Notes,
             UpdatedAt = app.UpdatedAt.ToString("o")
         });
+
+        NotifyApplicationsChanged();
     }
 
     public async Task DeleteAsync(string id)
@@ -256,7 +273,9 @@ public class ApplicationRepository : IApplicationRepository
         await connection.OpenAsync();
 
         await connection.ExecuteAsync("DELETE FROM applications WHERE id = @Id", new { Id = id });
+        NotifyApplicationsChanged();
     }
+
 
     public async Task<IEnumerable<ApplicationTemplate>> GetAllTemplatesAsync(string? category = null)
     {

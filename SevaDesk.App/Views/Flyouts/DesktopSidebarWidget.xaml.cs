@@ -24,7 +24,7 @@ public sealed partial class DesktopSidebarWidget : Window
     private const int CollapsedHeightDip = 140;
     private const int ExpandedWidthDip = 380;
     private const int MarginDip = 12;
-    private const double AnimDurationMs = 140.0;
+    private const double AnimDurationMs = 180.0;
 
     private const uint SPI_GETWORKAREA = 0x0030;
     private const uint SWP_NOZORDER = 0x0004;
@@ -168,7 +168,26 @@ public sealed partial class DesktopSidebarWidget : Window
 
         LoadShopAndUpiSettings();
         AppServices.Database.SettingChanged += OnSettingChanged;
+        AppServices.Sessions.SessionsChanged += async (s, e) =>
+        {
+            await LoadSessionsAsync();
+        };
+        AppServices.Applications.ApplicationsChanged += async (s, e) =>
+        {
+            await LoadSessionsAsync();
+        };
+        CustomerAvatarHelper.AvatarUpdated += (photo) =>
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                foreach (var item in _sessionItems)
+                {
+                    item.Customer?.NotifyPhotoUpdated();
+                }
+            });
+        };
     }
+
 
     public async void ShowSidebar()
     {
@@ -276,8 +295,10 @@ public sealed partial class DesktopSidebarWidget : Window
         if (_isExpanded) return;
         _isExpanded = true;
 
-        CollapsedPillPanel.Visibility = Visibility.Collapsed;
+        // Reset opacity to 0 and show panel for smooth crossfade without layout jump
+        ExpandedPanel.Opacity = 0.0;
         ExpandedPanel.Visibility = Visibility.Visible;
+        CollapsedPillPanel.Visibility = Visibility.Collapsed;
 
         var (tx, ty, tw, th) = GetTargetBounds(true);
         _targetX = tx;
@@ -350,6 +371,17 @@ public sealed partial class DesktopSidebarWidget : Window
         _currentX = (int)Math.Round(_startX + (_targetX - _startX) * progress);
         _currentW = (int)Math.Round(_startW + (_targetW - _startW) * progress);
 
+        // Opacity crossfade
+        if (_isExpanded)
+        {
+            ExpandedPanel.Opacity = Math.Clamp(progress, 0.0, 1.0);
+        }
+        else
+        {
+            // Rapid fade-out on collapse so content disappears smoothly before physical window collapses
+            ExpandedPanel.Opacity = Math.Clamp(1.0 - (t * 2.0), 0.0, 1.0);
+        }
+
         var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
         if (hwnd != IntPtr.Zero)
         {
@@ -376,7 +408,12 @@ public sealed partial class DesktopSidebarWidget : Window
             if (!_isExpanded)
             {
                 ExpandedPanel.Visibility = Visibility.Collapsed;
+                ExpandedPanel.Opacity = 1.0;
                 CollapsedPillPanel.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                ExpandedPanel.Opacity = 1.0;
             }
         }
     }
@@ -493,13 +530,23 @@ public sealed partial class DesktopSidebarWidget : Window
                 if (s.Customer != null)
                 {
                     var apps = await AppServices.Applications.GetByCustomerIdAsync(s.Customer.Id);
-                    s.LinkedApplication = apps.FirstOrDefault(a => a.Status != "Completed");
+                    var activeApp = apps.FirstOrDefault(a => a.Status != "Completed");
+                    if (activeApp != null)
+                    {
+                        try
+                        {
+                            await ApplicationDocumentVerifier.CheckAndAutoUpdateStatusAsync(activeApp, s.FolderPath);
+                        }
+                        catch { }
+                    }
+                    s.LinkedApplication = activeApp;
                 }
             }
             UpdateSessions(sessions);
         }
         catch { }
     }
+
 
     public void UpdateSessions(IReadOnlyList<ActiveSessionItem> sessions)
     {
@@ -531,6 +578,11 @@ public sealed partial class DesktopSidebarWidget : Window
                 CollapsedActiveBadge.Background = (Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
                 CollapsedActiveBadge.BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"];
                 TxtCollapsedActiveCount.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+
+                if (_isExpanded)
+                {
+                    CollapseSidebar();
+                }
             }
         });
     }
@@ -609,11 +661,131 @@ public sealed partial class DesktopSidebarWidget : Window
         }
     }
 
+    public static Brush SessionStatusBackground(bool isPaused) =>
+        isPaused
+            ? (Brush)Application.Current.Resources["SystemFillColorAttentionBackgroundBrush"]
+            : (Brush)Application.Current.Resources["SystemFillColorSuccessBackgroundBrush"];
+
+    public static Brush SessionStatusForeground(bool isPaused) =>
+        isPaused
+            ? (Brush)Application.Current.Resources["SystemFillColorCautionBrush"]
+            : (Brush)Application.Current.Resources["SystemFillColorSuccessBrush"];
+
+    private void OpenFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string sessionId)
+        {
+            var item = _sessionItems.FirstOrDefault(s => s.Session.Id == sessionId);
+            if (item != null)
+            {
+                var folderPath = !string.IsNullOrWhiteSpace(item.FolderPath)
+                    ? item.FolderPath
+                    : (item.Customer != null
+                        ? AppServices.FolderManager.EnsureCustomerWorkingFolder(item.Customer.Name, item.Customer.Code)
+                        : null);
+
+                if (!string.IsNullOrWhiteSpace(folderPath))
+                {
+                    AppServices.FolderManager.OpenFolderInExplorer(folderPath);
+                }
+            }
+        }
+    }
+
+    private void OpenCustomerWorkspace_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem item && item.Tag is string sessionId)
+        {
+            var sessionItem = _sessionItems.FirstOrDefault(s => s.Session.Id == sessionId);
+            if (sessionItem?.Customer == null) return;
+
+            MainWindow.Instance?.RestoreWindow();
+            MainWindow.Instance?.NavigateTo(typeof(CustomerWorkspacePage), sessionItem.Customer);
+        }
+    }
+
+    private async void DeleteSession_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem item && item.Tag is string sessionId)
+        {
+            var sessionItem = _sessionItems.FirstOrDefault(s => s.Session.Id == sessionId);
+            if (sessionItem == null) return;
+
+            MainWindow.Instance?.RestoreWindow();
+            var mainRoot = MainWindow.Instance?.Content?.XamlRoot;
+            if (mainRoot == null) return;
+
+            var (action, fileCount) = await AppServices.Dialogs.PromptDeleteActiveSessionAsync(sessionItem, mainRoot);
+            if (action == DeleteSessionFileAction.Cancel) return;
+
+            if (action == DeleteSessionFileAction.BackupAndDelete && sessionItem.Customer != null)
+            {
+                try
+                {
+                    await AppServices.FolderManager.SyncToBackupAsync(sessionItem.Customer.Name, sessionItem.Customer.Code);
+                    AppServices.FolderManager.DeleteCustomerWorkingFolder(sessionItem.Customer.Name, sessionItem.Customer.Code);
+                }
+                catch { }
+            }
+
+            AppServices.FileWatcher.ClearAutoRouteIfSession(sessionItem.Session.Id);
+            await AppServices.Sessions.DeleteSessionAsync(sessionItem.Session.Id);
+
+            if (action == DeleteSessionFileAction.BackupAndDelete)
+            {
+                MainWindow.Instance?.ShowToast(
+                    fileCount > 0
+                        ? $"Session deleted. {fileCount} file(s) backed up to permanent archive and removed from Desktop."
+                        : "Session deleted and Desktop folder cleaned up.",
+                    InfoBarSeverity.Success);
+            }
+            else if (fileCount > 0)
+            {
+                MainWindow.Instance?.ShowToast(
+                    "Session deleted. Files kept on Desktop.",
+                    InfoBarSeverity.Informational);
+            }
+            else
+            {
+                MainWindow.Instance?.ShowToast(
+                    AppServices.Localization.GetString("Toast.DeleteSuccess", "Session deleted"),
+                    InfoBarSeverity.Success);
+            }
+
+            await LoadSessionsAsync();
+        }
+    }
+
+    public static Brush AppStatusBackground(string? status) =>
+        status switch
+        {
+            "Docs Ready" or "Docs Uploaded" => new SolidColorBrush(Windows.UI.Color.FromArgb(35, 59, 130, 246)),
+            "Completed" => new SolidColorBrush(Windows.UI.Color.FromArgb(35, 16, 185, 129)),
+            _ => new SolidColorBrush(Windows.UI.Color.FromArgb(35, 245, 158, 11))
+        };
+
+    public static Brush AppStatusForeground(string? status) =>
+        status switch
+        {
+            "Docs Ready" or "Docs Uploaded" => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 59, 130, 246)),
+            "Completed" => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 16, 185, 129)),
+            _ => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 217, 119, 6))
+        };
+
+    public static string AppStatusDisplay(string? status) =>
+        status switch
+        {
+            "Docs Ready" or "Docs Uploaded" => "Docs Ready",
+            "Completed" => "Completed",
+            _ => "Draft"
+        };
+
     private async Task LinkTemplateToSessionAsync(ActiveSessionItem item, ApplicationTemplate tmpl)
     {
         var app = new ApplicationItem
         {
             CustomerId = item.Customer.Id,
+            SessionId = item.Session.Id,
             CustomerName = item.Customer.Name,
             Title = tmpl.Title,
             PortalName = tmpl.PortalUrl,
@@ -629,6 +801,11 @@ public sealed partial class DesktopSidebarWidget : Window
 
         var created = await AppServices.Applications.CreateAsync(app);
         item.LinkedApplication = created;
+
+        // Auto-check existing files in customer working folder & backup folder
+        await ApplicationDocumentVerifier.CheckAndAutoUpdateStatusAsync(created, item.FolderPath);
+        item.NotifyLinkedApplicationChanged();
+
         ToastService.Instance.ShowSuccess($"Linked '{created.Title}' to {item.Customer.Name}");
     }
 
@@ -698,6 +875,8 @@ public sealed partial class DesktopSidebarWidget : Window
             var app = item.LinkedApplication;
             if (app != null)
             {
+                await ApplicationDocumentVerifier.CompleteApplicationAsync(app);
+
                 if (app.ServiceCharge > 0)
                 {
                     handover.Items.Add(new CartItem
@@ -738,6 +917,34 @@ public sealed partial class DesktopSidebarWidget : Window
             await LoadSessionsAsync();
             CollapseSidebar();
         }
+    }
+
+    private void StageSelectedCustomer(Customer customer)
+    {
+        _selectedQuickCustomer = customer;
+        TxtSelectedCustomerName.Text = customer.Name;
+
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(customer.Mobile)) parts.Add(customer.Mobile);
+        if (!string.IsNullOrWhiteSpace(customer.Code)) parts.Add(customer.Code);
+        if (!string.IsNullOrWhiteSpace(customer.Village)) parts.Add(customer.Village);
+        TxtSelectedCustomerSub.Text = parts.Count > 0 ? string.Join(" · ", parts) : "Customer";
+
+        TxtSelectedCustomerInitials.Text = customer.Initials;
+
+        TxtQuickCustomerName.Visibility = Visibility.Collapsed;
+        SelectedCustomerCard.Visibility = Visibility.Visible;
+        BtnQuickStart.Focus(FocusState.Programmatic);
+    }
+
+    private void ClearSelectedCustomer_Click(object sender, RoutedEventArgs e)
+    {
+        _selectedQuickCustomer = null;
+        SelectedCustomerCard.Visibility = Visibility.Collapsed;
+        TxtQuickCustomerName.Visibility = Visibility.Visible;
+        TxtQuickCustomerName.Text = string.Empty;
+        TxtQuickCustomerName.ItemsSource = null;
+        TxtQuickCustomerName.Focus(FocusState.Programmatic);
     }
 
     private async void TxtQuickCustomerName_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
@@ -781,8 +988,7 @@ public sealed partial class DesktopSidebarWidget : Window
     {
         if (args.SelectedItem is Customer customer)
         {
-            _selectedQuickCustomer = customer;
-            sender.Text = customer.Name;
+            StageSelectedCustomer(customer);
         }
     }
 
@@ -790,8 +996,15 @@ public sealed partial class DesktopSidebarWidget : Window
     {
         if (args.ChosenSuggestion is Customer customer)
         {
-            _selectedQuickCustomer = customer;
+            StageSelectedCustomer(customer);
+            return;
         }
+
+        if (string.IsNullOrWhiteSpace(args.QueryText))
+        {
+            return;
+        }
+
         await ExecuteQuickStartAsync();
     }
 
@@ -802,27 +1015,31 @@ public sealed partial class DesktopSidebarWidget : Window
 
     private async Task ExecuteQuickStartAsync()
     {
-        var name = TxtQuickCustomerName.Text?.Trim();
-        if (string.IsNullOrWhiteSpace(name)) return;
-
         Customer? customer = _selectedQuickCustomer;
 
         if (customer == null)
         {
+            var name = TxtQuickCustomerName.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(name)) return;
+
             var matches = (await AppServices.Customers.SearchAsync(name)).ToList();
             customer = matches.FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase));
-        }
 
-        if (customer == null)
-        {
-            customer = await AppServices.Customers.CreateAsync(new Customer
+            if (customer == null)
             {
-                Name = name
-            });
+                customer = await AppServices.Customers.CreateAsync(new Customer
+                {
+                    Name = name
+                });
+            }
         }
 
-        TxtQuickCustomerName.Text = string.Empty;
+        // Reset staged customer UI & search box
         _selectedQuickCustomer = null;
+        SelectedCustomerCard.Visibility = Visibility.Collapsed;
+        TxtQuickCustomerName.Visibility = Visibility.Visible;
+        TxtQuickCustomerName.Text = string.Empty;
+        TxtQuickCustomerName.ItemsSource = null;
 
         var session = await AppServices.Sessions.StartSessionAsync(customer.Id);
         var folder = AppServices.FolderManager.EnsureCustomerWorkingFolder(customer.Name, customer.Code);

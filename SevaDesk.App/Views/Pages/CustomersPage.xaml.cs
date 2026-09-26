@@ -13,10 +13,30 @@ public sealed partial class CustomersPage : Page
 {
     public CustomersViewModel ViewModel { get; } = new();
 
+    private readonly System.Action<string> _avatarUpdatedHandler;
+
     public CustomersPage()
     {
         InitializeComponent();
-        Loaded += async (s, e) => await ViewModel.InitializeAsync();
+        _avatarUpdatedHandler = (photo) =>
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                foreach (var row in ViewModel.Customers)
+                {
+                    row.Customer.NotifyPhotoUpdated();
+                }
+            });
+        };
+        Loaded += async (s, e) =>
+        {
+            await ViewModel.InitializeAsync();
+            CustomerAvatarHelper.AvatarUpdated += _avatarUpdatedHandler;
+        };
+        Unloaded += (s, e) =>
+        {
+            CustomerAvatarHelper.AvatarUpdated -= _avatarUpdatedHandler;
+        };
     }
 
     private async void AddCustomer_Click(object sender, RoutedEventArgs e)
@@ -72,7 +92,7 @@ public sealed partial class CustomersPage : Page
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button btn && btn.Tag is Customer customer)
+        if (sender is FrameworkElement el && el.Tag is Customer customer)
         {
             var folderPath = AppServices.FolderManager.GetEffectiveCustomerFolderPath(
                 customer.Name, customer.Code, out _);
@@ -89,10 +109,70 @@ public sealed partial class CustomersPage : Page
 
     private async void StartSession_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button btn && btn.Tag is string customerId)
+        if (sender is FrameworkElement el && el.Tag is string customerId)
         {
             await AppServices.Sessions.StartSessionAsync(customerId);
             MainWindow.Instance?.NavigateTo(typeof(DashboardPage));
+        }
+    }
+
+    private async void DeleteCustomer_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement el && el.Tag is Customer customer)
+        {
+            await DeleteCustomerWorkflowAsync(customer);
+        }
+    }
+
+    private async System.Threading.Tasks.Task DeleteCustomerWorkflowAsync(Customer customer)
+    {
+        // 1. Safeguard: Check if customer has an active or paused session
+        var activeSessions = await AppServices.Sessions.GetActiveSessionsAsync();
+        if (activeSessions.Any(s => s.Customer?.Id == customer.Id || s.Session.CustomerId == customer.Id))
+        {
+            await AppServices.Dialogs.ShowAlertAsync(
+                "Active Session Running",
+                $"An active or paused session is currently in progress for '{customer.Name}'.\n\nPlease complete or delete the ongoing session first before deleting this customer profile.");
+            return;
+        }
+
+        // 2. Prompt confirmation dialog
+        var action = await AppServices.Dialogs.PromptDeleteCustomerAsync(customer, XamlRoot);
+        if (action == DeleteCustomerAction.Cancel) return;
+
+        try
+        {
+            // 3. Clean up disk folders according to choice
+            AppServices.FolderManager.DeleteCustomerWorkingFolder(customer.Name, customer.Code);
+            if (action == DeleteCustomerAction.DeleteAndWipeAll)
+            {
+                AppServices.FolderManager.DeleteCustomerBackupFolder(customer.Name, customer.Code);
+            }
+
+            // 4. Delete from database
+            await AppServices.Customers.DeleteCustomerAsync(customer.Id);
+
+            // 5. Remove from UI list
+            var existing = ViewModel.Customers.FirstOrDefault(c => c.Customer.Id == customer.Id);
+            if (existing != null)
+            {
+                ViewModel.Customers.Remove(existing);
+                ViewModel.TotalCustomersCount = ViewModel.Customers.Count;
+            }
+
+            // 6. Toast feedback
+            if (action == DeleteCustomerAction.DeleteAndWipeAll)
+            {
+                MainWindow.Instance?.ShowToast($"Customer '{customer.Name}' and all files permanently deleted.", InfoBarSeverity.Success);
+            }
+            else
+            {
+                MainWindow.Instance?.ShowToast($"Customer '{customer.Name}' deleted. Backup files preserved.", InfoBarSeverity.Success);
+            }
+        }
+        catch (System.Exception ex)
+        {
+            ViewModel.ShowError($"Error deleting customer: {ex.Message}");
         }
     }
 

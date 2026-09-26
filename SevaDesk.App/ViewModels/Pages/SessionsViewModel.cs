@@ -58,9 +58,12 @@ public partial class SessionsViewModel : StatusViewModel
         if (app != null)
         {
             ActiveApplication = app;
-            UpdateActiveChecklist();
+            _ = RefreshActiveChecklistAsync();
         }
     }
+
+    private readonly SemaphoreSlim _loadLock = new(1, 1);
+    public string? PendingPreferredSessionId { get; set; }
 
     public ObservableCollection<ApplicationChecklistItem> ActiveChecklist { get; } = [];
 
@@ -68,6 +71,20 @@ public partial class SessionsViewModel : StatusViewModel
     {
         _ = LoadSessionsAsync();
         AppServices.FileWatcher.FileDetected += FileWatcher_FileDetected;
+        AppServices.Sessions.SessionsChanged += (s, e) =>
+        {
+            if (MainWindow.Instance?.DispatcherQueue != null)
+            {
+                MainWindow.Instance.DispatcherQueue.TryEnqueue(async () =>
+                {
+                    await LoadSessionsAsync();
+                });
+            }
+            else
+            {
+                _ = LoadSessionsAsync();
+            }
+        };
     }
 
     private void FileWatcher_FileDetected(IncomingFileItem item)
@@ -109,23 +126,54 @@ public partial class SessionsViewModel : StatusViewModel
 
         ActiveApplication = pendingApps.FirstOrDefault();
         OnPropertyChanged(nameof(HasMultipleApplications));
-        UpdateActiveChecklist();
+        _ = RefreshActiveChecklistAsync();
     }
 
-    private void UpdateActiveChecklist()
+    public async Task RefreshActiveChecklistAsync()
     {
-        ActiveChecklist.Clear();
-        if (ActiveApplication == null || string.IsNullOrWhiteSpace(ActiveApplication.RequiredDocs)) return;
-
-        var docs = ActiveApplication.RequiredDocs.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        foreach (var doc in docs)
+        if (ActiveApplication == null || string.IsNullOrWhiteSpace(ActiveApplication.RequiredDocs))
         {
-            ActiveChecklist.Add(new ApplicationChecklistItem
-            {
-                Title = doc,
-                IsCompleted = ActiveApplication.Status != "Draft",
-                Category = "Document"
-            });
+            ActiveChecklist.Clear();
+            return;
+        }
+
+        string? workingFolder = SelectedSession?.FolderPath;
+        string? backupFolder = null;
+        if (SelectedSession?.Customer != null)
+        {
+            backupFolder = AppServices.FolderManager.GetCustomerBackupFolderPath(
+                SelectedSession.Customer.Name, SelectedSession.Customer.Code);
+        }
+
+        var result = await ApplicationDocumentVerifier.CheckAndAutoUpdateStatusAsync(
+            ActiveApplication, workingFolder, backupFolder);
+
+        ActiveChecklist.Clear();
+        foreach (var item in result.Checklist)
+        {
+            ActiveChecklist.Add(item);
+        }
+
+        OnPropertyChanged(nameof(ActiveApplication));
+    }
+
+    public async Task OnChecklistItemToggledAsync()
+    {
+        if (ActiveApplication == null) return;
+        bool allChecked = ActiveChecklist.Count > 0 && ActiveChecklist.All(i => i.IsCompleted);
+        if (allChecked && ActiveApplication.Status == "Draft")
+        {
+            ActiveApplication.Status = "Docs Ready";
+            ActiveApplication.UpdatedAt = DateTime.UtcNow;
+            await AppServices.Applications.UpdateAsync(ActiveApplication);
+            OnPropertyChanged(nameof(ActiveApplication));
+        }
+        else if (!allChecked && ActiveApplication.Status == "Docs Ready")
+        {
+            ActiveApplication.Status = "Draft";
+            ActiveApplication.UpdatedAt = DateTime.UtcNow;
+            await AppServices.Applications.UpdateAsync(ActiveApplication);
+            OnPropertyChanged(nameof(ActiveApplication));
         }
     }
 
@@ -148,7 +196,11 @@ public partial class SessionsViewModel : StatusViewModel
         ActiveApplication.Status = newStatus;
         ActiveApplication.UpdatedAt = DateTime.UtcNow;
         await AppServices.Applications.UpdateAsync(ActiveApplication);
-        UpdateActiveChecklist();
+        _ = RefreshActiveChecklistAsync();
+        if (SelectedSession != null)
+        {
+            SelectedSession.NotifyLinkedApplicationChanged();
+        }
         OnPropertyChanged(nameof(ActiveApplication));
     }
 
@@ -158,12 +210,15 @@ public partial class SessionsViewModel : StatusViewModel
         if (app == null || SelectedSession?.Customer == null) return;
         app.CustomerId = SelectedSession.Customer.Id;
         app.CustomerName = SelectedSession.Customer.Name;
+        app.SessionId = SelectedSession.Session.Id;
         var created = await AppServices.Applications.CreateAsync(app);
         CustomerApplications.Add(created);
         ActiveApplication = created;
+        SelectedSession.LinkedApplication = created;
+        SelectedSession.NotifyLinkedApplicationChanged();
         IsApplicationCardCollapsed = false;
         OnPropertyChanged(nameof(HasMultipleApplications));
-        UpdateActiveChecklist();
+        _ = RefreshActiveChecklistAsync();
 
         // Also ensure an application folder exists for this scheme
         if (!string.IsNullOrWhiteSpace(created.Title))
@@ -173,6 +228,7 @@ public partial class SessionsViewModel : StatusViewModel
             RefreshApplicationFolders();
         }
     }
+
 
     public void RefreshApplicationFolders()
     {
@@ -236,18 +292,95 @@ public partial class SessionsViewModel : StatusViewModel
     }
 
     [RelayCommand]
-    public async Task LoadSessionsAsync()
+    public async Task LoadSessionsAsync(string? preferredSessionId = null)
     {
-        Sessions.Clear();
-        var activeSessions = await AppServices.Sessions.GetActiveSessionsAsync();
-        foreach (var s in activeSessions)
+        await _loadLock.WaitAsync();
+        try
         {
-            Sessions.Add(s);
-        }
+            var targetSessionId = preferredSessionId ?? PendingPreferredSessionId ?? SelectedSession?.Session.Id;
+            PendingPreferredSessionId = null;
 
-        ActiveCount = Sessions.Count(s => s.Session.Status == "Active");
-        PausedCount = Sessions.Count(s => s.Session.Status == "Paused");
-        SelectedSession = Sessions.FirstOrDefault();
+            var activeSessions = (await AppServices.Sessions.GetActiveSessionsAsync()).ToList();
+            var activeIds = new HashSet<string>(activeSessions.Select(s => s.Session.Id));
+
+            // 1. Remove closed or deleted sessions
+            for (int i = Sessions.Count - 1; i >= 0; i--)
+            {
+                if (!activeIds.Contains(Sessions[i].Session.Id))
+                {
+                    Sessions.RemoveAt(i);
+                }
+            }
+
+            // 2. Add or update active sessions without duplicates
+            for (int i = 0; i < activeSessions.Count; i++)
+            {
+                var fresh = activeSessions[i];
+                var existingIndex = -1;
+                for (int j = 0; j < Sessions.Count; j++)
+                {
+                    if (Sessions[j].Session.Id == fresh.Session.Id)
+                    {
+                        existingIndex = j;
+                        break;
+                    }
+                }
+
+                if (existingIndex == -1)
+                {
+                    if (i <= Sessions.Count)
+                    {
+                        Sessions.Insert(i, fresh);
+                    }
+                    else
+                    {
+                        Sessions.Add(fresh);
+                    }
+                }
+                else
+                {
+                    var existing = Sessions[existingIndex];
+                    existing.Session.Status = fresh.Session.Status;
+                    existing.Session.DurationSeconds = fresh.Session.DurationSeconds;
+                    existing.Session.StartedAt = fresh.Session.StartedAt;
+                    existing.Customer = fresh.Customer;
+                    existing.FolderPath = fresh.FolderPath;
+                    existing.FolderStats = fresh.FolderStats;
+                    existing.LinkedApplication = fresh.LinkedApplication;
+                    existing.NotifyStatusChanged();
+
+                    if (existingIndex != i && i < Sessions.Count)
+                    {
+                        Sessions.Move(existingIndex, i);
+                    }
+                }
+            }
+
+            ActiveCount = Sessions.Count(s => s.Session.Status == "Active");
+            PausedCount = Sessions.Count(s => s.Session.Status == "Paused");
+
+            // 3. Preserve or update selection
+            if (!string.IsNullOrEmpty(targetSessionId))
+            {
+                var matched = Sessions.FirstOrDefault(s => s.Session.Id == targetSessionId);
+                if (matched != null)
+                {
+                    SelectedSession = matched;
+                }
+                else if (SelectedSession == null || !Sessions.Contains(SelectedSession))
+                {
+                    SelectedSession = Sessions.FirstOrDefault();
+                }
+            }
+            else if (SelectedSession == null || !Sessions.Contains(SelectedSession))
+            {
+                SelectedSession = Sessions.FirstOrDefault();
+            }
+        }
+        finally
+        {
+            _loadLock.Release();
+        }
     }
 
     [RelayCommand]
@@ -294,6 +427,11 @@ public partial class SessionsViewModel : StatusViewModel
     public async Task CompleteSessionAsync(ActiveSessionItem item)
     {
         if (item == null) return;
+        if (ActiveApplication != null)
+        {
+            await ApplicationDocumentVerifier.CompleteApplicationAsync(ActiveApplication);
+            OnPropertyChanged(nameof(ActiveApplication));
+        }
         AppServices.FileWatcher.ClearAutoRouteIfSession(item.Session.Id);
         await AppServices.Sessions.CompleteSessionAsync(item.Session.Id);
         Sessions.Remove(item);
@@ -310,6 +448,13 @@ public partial class SessionsViewModel : StatusViewModel
     {
         if (item == null) return;
         AppServices.FileWatcher.ClearAutoRouteIfSession(item.Session.Id);
+
+        // Clean up empty scheme subfolder if created
+        if (item.LinkedApplication != null && !string.IsNullOrWhiteSpace(item.LinkedApplication.Title))
+        {
+            AppServices.FolderManager.CleanUpEmptyApplicationSubfolder(item.FolderPath, item.LinkedApplication.Title);
+        }
+
         await AppServices.Sessions.DeleteSessionAsync(item.Session.Id);
 
         if (item.Customer != null)
@@ -330,10 +475,24 @@ public partial class SessionsViewModel : StatusViewModel
     public async Task RemoveApplicationAsync(ApplicationItem app)
     {
         if (app == null) return;
+
+        // Clean up empty scheme subfolder if created
+        if (SelectedSession != null && !string.IsNullOrWhiteSpace(app.Title))
+        {
+            AppServices.FolderManager.CleanUpEmptyApplicationSubfolder(SelectedSession.FolderPath, app.Title);
+            RefreshApplicationFolders();
+        }
+
         await AppServices.Applications.DeleteAsync(app.Id);
         CustomerApplications.Remove(app);
         ActiveApplication = CustomerApplications.FirstOrDefault();
+        if (SelectedSession != null)
+        {
+            SelectedSession.LinkedApplication = ActiveApplication;
+            SelectedSession.NotifyLinkedApplicationChanged();
+        }
         OnPropertyChanged(nameof(HasMultipleApplications));
-        UpdateActiveChecklist();
+        _ = RefreshActiveChecklistAsync();
     }
+
 }

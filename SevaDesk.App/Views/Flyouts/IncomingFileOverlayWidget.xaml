@@ -19,13 +19,13 @@
         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
         BorderThickness="1"
         CornerRadius="14"
-        Padding="14,12,14,10"
+        Padding="14,12,14,12"
         PointerEntered="Widget_PointerEntered"
         PointerExited="Widget_PointerExited">
 
         <Grid>
             <!-- Mode 1: Standard File Detection Triage Panel -->
-            <Grid x:Name="TriageContentPanel" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+            <Grid x:Name="TriageContentPanel" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
                 <!-- 1. Header with Icon and Dismiss Button -->
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
@@ -50,20 +50,28 @@
                     </StackPanel>
                 </Grid>
 
-                <!-- 3. Auto-Move Checkbox -->
-                <CheckBox x:Name="ChkAutoRoute" Grid.Row="2"
+                <!-- 3. Quick Document Rename Chips -->
+                <StackPanel x:Name="QuickRenamePanel" Grid.Row="2" Spacing="4">
+                    <TextBlock x:Name="TxtRenamePrompt" Text="Quick Tag &amp; Move:" FontSize="10" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Auto" VerticalScrollMode="Disabled">
+                        <StackPanel x:Name="DocChipsPanel" Orientation="Horizontal" Spacing="6" />
+                    </ScrollViewer>
+                </StackPanel>
+
+                <!-- 4. Auto-Move Checkbox -->
+                <CheckBox x:Name="ChkAutoRoute" Grid.Row="3"
                           Content="Auto-move future files for this session"
                           FontSize="11" Margin="2,0,0,0"
                           ToolTipService.ToolTip="When checked, upcoming downloads and scans will automatically move to this customer" />
 
-                <!-- 4. Dynamic Customer Action Buttons Container -->
-                <Grid x:Name="ActionButtonsGrid" Grid.Row="3" Margin="0,2,0,0">
+                <!-- 5. Dynamic Customer Action Buttons Container -->
+                <Grid x:Name="ActionButtonsGrid" Grid.Row="4" Margin="0,2,0,0" MinHeight="34">
                     <!-- Populated dynamically in code-behind for 1, 2, or multiple sessions -->
                 </Grid>
 
-                <!-- 5. Countdown Progress Bar -->
+                <!-- 6. Countdown Progress Bar -->
                 <ProgressBar x:Name="TimeoutProgressBar"
-                             Grid.Row="4"
+                             Grid.Row="5"
                              Minimum="0"
                              Maximum="100"
                              Value="100"
@@ -73,7 +81,7 @@
             </Grid>
 
             <!-- Mode 2: Auto-Moved Undo Panel (Appears when file was auto-routed) -->
-            <Grid x:Name="AutoMovedUndoPanel" Visibility="Collapsed" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="10">
+            <Grid x:Name="AutoMovedUndoPanel" Visibility="Collapsed" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
                 <!-- 1. Header with Success Dot -->
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
@@ -92,8 +100,16 @@
                     <TextBlock x:Name="TxtAutoMovedTarget" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
                 </StackPanel>
 
-                <!-- 3. Undo / Dismiss Actions -->
-                <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <!-- 3. Quick Rename Tags (shown after file is auto-moved) -->
+                <StackPanel x:Name="AutoMovedRenamePanel" Grid.Row="2" Spacing="4">
+                    <TextBlock Text="Quick Rename:" FontSize="10" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Auto" VerticalScrollMode="Disabled">
+                        <StackPanel x:Name="AutoMovedChipsPanel" Orientation="Horizontal" Spacing="6" />
+                    </ScrollViewer>
+                </StackPanel>
+
+                <!-- 4. Undo / Dismiss Actions -->
+                <Grid Grid.Row="3" ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <Button Grid.Column="0" Style="{StaticResource AccentButtonStyle}" Background="#E11D48" Foreground="White" HorizontalAlignment="Stretch" Click="UndoAutoMove_Click">
                         <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                             <FontIcon Glyph="&#xE7A7;" FontSize="12" />
@@ -102,13 +118,13 @@
                     </Button>
 
                     <Button Grid.Column="1" Click="Dismiss_Click" Padding="12,5">
-                        <TextBlock Text="Keep" FontSize="12" />
+                        <TextBlock Text="Dismiss" FontSize="12" />
                     </Button>
                 </Grid>
 
-                <!-- 4. Quick Auto-Dismiss Bar -->
+                <!-- 5. Quick Auto-Dismiss Bar -->
                 <ProgressBar x:Name="UndoTimeoutProgressBar"
-                             Grid.Row="3"
+                             Grid.Row="4"
                              Minimum="0"
                              Maximum="100"
                              Value="100"

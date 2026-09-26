@@ -24,6 +24,7 @@ public sealed partial class WorkingFolderBrowserControl : UserControl
     public string SelectedSubfolderRelative { get; private set; } = string.Empty;
     public Customer? CurrentCustomer { get; private set; }
     public event Action<string>? CustomerPhotoUpdated;
+    public event Action? FilesChanged;
 
     public string CurrentSubfolderFullPath => string.IsNullOrEmpty(SelectedSubfolderRelative)
         ? CustomerFolderPath
@@ -73,7 +74,10 @@ public sealed partial class WorkingFolderBrowserControl : UserControl
 
                 RefreshSubfolderStrip();
                 LoadFilesForCurrentSubfolder();
+                CheckAndAutoDetectCustomerPhoto();
+                FilesChanged?.Invoke();
             };
+
 
             _watcher = new FileSystemWatcher(folderPath)
             {
@@ -99,6 +103,28 @@ public sealed partial class WorkingFolderBrowserControl : UserControl
         });
     }
 
+    private void CheckAndAutoDetectCustomerPhoto()
+    {
+        if (CurrentCustomer == null || string.IsNullOrWhiteSpace(CustomerFolderPath) || !Directory.Exists(CustomerFolderPath))
+            return;
+
+        try
+        {
+            var match = Directory.GetFiles(CustomerFolderPath, "*.*", SearchOption.AllDirectories)
+                .FirstOrDefault(f => SmartTagHelper.IsImageFile(f) && SmartTagHelper.IsPhotoTag(Path.GetFileNameWithoutExtension(f)));
+
+            if (!string.IsNullOrWhiteSpace(match) && !string.Equals(CurrentCustomer.PhotoPath, match, StringComparison.OrdinalIgnoreCase))
+            {
+                CurrentCustomer.PhotoPath = match;
+                _ = AppServices.Customers.UpdatePhotoAsync(CurrentCustomer.Id, match);
+                CustomerAvatarHelper.NotifyAvatarUpdated(match);
+                CustomerPhotoUpdated?.Invoke(match);
+            }
+        }
+        catch { }
+    }
+
+
     public void LoadCustomerFolder(string folderPath, Customer? customer = null)
     {
         CurrentCustomer = customer;
@@ -117,7 +143,9 @@ public sealed partial class WorkingFolderBrowserControl : UserControl
         SetupWatcher(CustomerFolderPath);
         RefreshSubfolderStrip();
         SelectSubfolder(string.Empty);
+        CheckAndAutoDetectCustomerPhoto();
     }
+
 
 
     public void RefreshSubfolderStrip()

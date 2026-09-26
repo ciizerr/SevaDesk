@@ -29,7 +29,17 @@ public class FolderManager : IFolderManager
         {
             _baseDirectory = Path.Combine(userProfile, "Desktop");
         }
+
+        // Guaranteed default backup directory in Documents\SevaDesk Backup
+        var docs = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        _backupDirectory = Path.Combine(docs, "SevaDesk Backup");
+        try
+        {
+            Directory.CreateDirectory(_backupDirectory);
+        }
+        catch { }
     }
+
 
     public string BaseDirectory => _baseDirectory;
 
@@ -157,9 +167,11 @@ public class FolderManager : IFolderManager
 
         if (!string.IsNullOrWhiteSpace(backupPath) && Directory.Exists(workingPath))
         {
+            Directory.CreateDirectory(backupPath);
             await CopyDirectoryAsync(workingPath, backupPath);
         }
     }
+
 
     public string EnsureCustomerWorkingFolder(string customerName, string customerCode)
     {
@@ -517,5 +529,64 @@ public class FolderManager : IFolderManager
 
         return false;
     }
+
+    public bool CleanUpEmptyApplicationSubfolder(string customerFolderPath, string applicationName)
+    {
+        if (string.IsNullOrWhiteSpace(customerFolderPath) || string.IsNullOrWhiteSpace(applicationName))
+            return false;
+
+        try
+        {
+            var safeAppName = SanitizeFolderName(applicationName);
+            var appPath = Path.Combine(customerFolderPath, safeAppName);
+            if (Directory.Exists(appPath))
+            {
+                var allFiles = Directory.GetFiles(appPath, "*", SearchOption.AllDirectories);
+                if (allFiles.Length == 0)
+                {
+                    Directory.Delete(appPath, recursive: true);
+                    return true;
+                }
+            }
+        }
+        catch { }
+
+        return false;
+    }
+
+    public bool DeleteCustomerWorkingFolder(string customerName, string customerCode)
+    {
+        var workingFolder = GetCustomerFolderPath(customerName, customerCode);
+        if (string.IsNullOrWhiteSpace(workingFolder) || !Directory.Exists(workingFolder))
+            return false;
+
+        try
+        {
+            Directory.Delete(workingFolder, recursive: true);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public bool DeleteCustomerBackupFolder(string customerName, string customerCode)
+    {
+        var backupFolder = GetCustomerBackupFolderPath(customerName, customerCode);
+        if (string.IsNullOrWhiteSpace(backupFolder) || !Directory.Exists(backupFolder))
+            return false;
+
+        try
+        {
+            Directory.Delete(backupFolder, recursive: true);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }
+
 

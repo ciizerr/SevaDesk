@@ -14,10 +14,11 @@ namespace SevaDesk_App.Views.Pages;
 
 public sealed partial class PaymentsPage : Page
 {
-    public PaymentsViewModel ViewModel { get; } = new();
+    public PaymentsViewModel ViewModel { get; } = PaymentsViewModel.SharedInstance;
 
     public PaymentsPage()
     {
+        NavigationCacheMode = Microsoft.UI.Xaml.Navigation.NavigationCacheMode.Required;
         InitializeComponent();
 
         ViewModel.RequestChartRedraw += () =>
@@ -101,6 +102,10 @@ public sealed partial class PaymentsPage : Page
         {
             ViewModel.ApplyBillingHandover(handover);
         }
+        else
+        {
+            _ = ViewModel.CheckAutoSelectActiveSessionAsync();
+        }
     }
 
     private async Task InitializePageAsync()
@@ -126,6 +131,30 @@ public sealed partial class PaymentsPage : Page
         if (string.Equals(activeFilter, currentFilter, StringComparison.OrdinalIgnoreCase))
         {
             return (Style)Application.Current.Resources["AccentButtonStyle"];
+        }
+        return null;
+    }
+
+    public Style? FlatDiscountToggleStyle(bool isPercentage)
+    {
+        if (!isPercentage)
+        {
+            if (Application.Current.Resources.TryGetValue("AccentButtonStyle", out var styleObj) && styleObj is Style style)
+            {
+                return style;
+            }
+        }
+        return null;
+    }
+
+    public Style? PercentDiscountToggleStyle(bool isPercentage)
+    {
+        if (isPercentage)
+        {
+            if (Application.Current.Resources.TryGetValue("AccentButtonStyle", out var styleObj) && styleObj is Style style)
+            {
+                return style;
+            }
         }
         return null;
     }
@@ -452,11 +481,131 @@ public sealed partial class PaymentsPage : Page
         }
     }
 
+    private void QtyBox_GotFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox tb)
+        {
+            tb.SelectAll();
+        }
+    }
+
+    private void QtyBox_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (sender is TextBox tb && tb.Tag is CartItem item)
+        {
+            if (e.Key == Windows.System.VirtualKey.Enter)
+            {
+                e.Handled = true;
+                CommitQuantity(tb, item);
+                this.Focus(FocusState.Programmatic);
+            }
+            else if (e.Key == Windows.System.VirtualKey.Escape)
+            {
+                e.Handled = true;
+                tb.Text = item.Quantity.ToString();
+                this.Focus(FocusState.Programmatic);
+            }
+        }
+    }
+
+    private void QtyBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox tb && tb.Tag is CartItem item)
+        {
+            CommitQuantity(tb, item);
+        }
+    }
+
+    private void CommitQuantity(TextBox tb, CartItem item)
+    {
+        if (int.TryParse(tb.Text, out var qty) && qty >= 1)
+        {
+            if (item.Quantity != qty)
+            {
+                ViewModel.UpdateItemQuantity(item, qty);
+            }
+        }
+        else
+        {
+            ViewModel.UpdateItemQuantity(item, 1);
+            tb.Text = "1";
+        }
+    }
+
     private void RemoveItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is Button btn && btn.Tag is CartItem item)
         {
             ViewModel.RemoveCartItemCommand.Execute(item);
+        }
+    }
+
+    private void DiscountTypeFlat_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.SetDiscountTypeCommand.Execute(false);
+    }
+
+    private void DiscountTypePercent_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.SetDiscountTypeCommand.Execute(true);
+    }
+
+    private void ClearDiscount_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.ClearDiscountCommand.Execute(null);
+    }
+
+    private void QuickDiscount_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string tag)
+        {
+            ViewModel.ApplyQuickDiscountCommand.Execute(tag);
+        }
+    }
+
+    private void EditRateButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement target && target.Tag is CartItem item)
+        {
+            FlyoutRateInput.Tag = item;
+            FlyoutServiceName.Text = item.ServiceName;
+            FlyoutRateInput.Text = item.Rate.ToString("N0");
+            FlyoutResetBtn.Visibility = item.IsRateModified ? Visibility.Visible : Visibility.Collapsed;
+            RateEditFlyout.ShowAt(target);
+            FlyoutRateInput.SelectAll();
+        }
+    }
+
+    private void FlyoutRateInput_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Enter)
+        {
+            e.Handled = true;
+            CommitFlyoutRate();
+        }
+    }
+
+    private void FlyoutApply_Click(object sender, RoutedEventArgs e)
+    {
+        CommitFlyoutRate();
+    }
+
+    private void CommitFlyoutRate()
+    {
+        if (FlyoutRateInput.Tag is CartItem item &&
+            decimal.TryParse(FlyoutRateInput.Text, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var newRate) && newRate >= 0)
+        {
+            ViewModel.UpdateItemRate(item, newRate);
+            RateEditFlyout.Hide();
+        }
+    }
+
+    private void FlyoutReset_Click(object sender, RoutedEventArgs e)
+    {
+        if (FlyoutRateInput.Tag is CartItem item)
+        {
+            ViewModel.ResetItemRate(item);
+            RateEditFlyout.Hide();
         }
     }
 
@@ -530,6 +679,22 @@ public sealed partial class PaymentsPage : Page
             sender.Text = customer.Name;
             ViewModel.CustomerName = customer.Name;
             ViewModel.CurrentCustomerId = customer.Id;
+
+            var matchingActive = ViewModel.ActiveSessions.FirstOrDefault(s => s.Customer.Id == customer.Id);
+            ViewModel.CurrentSessionId = matchingActive?.Session.Id;
         }
+    }
+
+    private void SelectActiveSessionChip_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is ActiveSessionItem session)
+        {
+            ViewModel.SelectActiveSession(session, autoSelected: false);
+        }
+    }
+
+    private void UnlinkSession_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.UnlinkSession();
     }
 }

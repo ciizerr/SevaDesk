@@ -7,6 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:loc="using:SevaDesk_App.Services"
     xmlns:models="using:SevaDesk.Core.Models"
+    xmlns:flyouts="using:SevaDesk_App.Views.Flyouts"
     Title="SevaDesk Sidebar"
     mc:Ignorable="d">
 
@@ -60,11 +61,14 @@
         <!-- Expanded Full Panel (Visible when expanded) -->
         <Grid x:Name="ExpandedPanel"
               Width="380"
+              MinWidth="380"
+              MaxWidth="380"
               HorizontalAlignment="Right"
               Background="{ThemeResource LayerOnAcrylicFillColorDefaultBrush}"
               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
               BorderThickness="1"
               CornerRadius="12"
+              Opacity="0"
               Visibility="Collapsed">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -116,15 +120,18 @@
                             <Border CornerRadius="8" Padding="12,10" Margin="0,0,0,8"
                                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                                <Grid RowDefinitions="Auto,Auto" RowSpacing="6">
+                                <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
                                     <!-- Top Row: Name, Status, Timer, and Actions -->
-                                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="6">
                                         <!-- Customer Name, Status Badge, Live Timer -->
                                         <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
                                             <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                                <TextBlock Text="{x:Bind Customer.Name}" FontWeight="SemiBold" FontSize="13" MaxWidth="150" TextTrimming="CharacterEllipsis" />
-                                                <Border CornerRadius="3" Padding="4,1" Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}" VerticalAlignment="Center">
-                                                    <TextBlock Text="{x:Bind StatusBadge}" FontSize="9" FontWeight="Bold" Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                                                <TextBlock Text="{x:Bind Customer.Name}" FontWeight="SemiBold" FontSize="13" MaxWidth="140" TextTrimming="CharacterEllipsis" />
+                                                <Border CornerRadius="3" Padding="4,1"
+                                                        Background="{x:Bind flyouts:DesktopSidebarWidget.SessionStatusBackground(IsPaused), Mode=OneWay}"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="{x:Bind StatusBadge, Mode=OneWay}" FontSize="9" FontWeight="Bold"
+                                                               Foreground="{x:Bind flyouts:DesktopSidebarWidget.SessionStatusForeground(IsPaused), Mode=OneWay}" />
                                                 </Border>
                                             </StackPanel>
 
@@ -137,23 +144,53 @@
                                             </Border>
                                         </StackPanel>
 
-                                        <!-- Actions: Pause/Resume Toggle & End Button -->
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top">
+                                        <!-- Actions: Folder, Pause/Resume, End & More Menu -->
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                                            <!-- Open Customer Working Folder in File Explorer -->
+                                            <Button Background="Transparent" BorderThickness="0" Padding="5,4"
+                                                    Click="OpenFolder_Click" Tag="{x:Bind Session.Id}"
+                                                    ToolTipService.ToolTip="Open working folder in File Explorer">
+                                                <FontIcon Glyph="&#xE8B7;" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            </Button>
+
                                             <!-- Pause / Resume Toggle -->
-                                            <Button Background="Transparent" BorderThickness="0" Padding="6,4"
+                                            <Button Background="Transparent" BorderThickness="0" Padding="5,4"
                                                     Click="TogglePauseSession_Click" Tag="{x:Bind Session.Id}"
                                                     ToolTipService.ToolTip="{x:Bind ToggleActionText, Mode=OneWay}">
                                                 <FontIcon Glyph="{x:Bind ToggleActionGlyph, Mode=OneWay}" FontSize="12" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                                             </Button>
 
                                             <!-- End Session Button -->
-                                            <Button Background="Transparent" BorderThickness="0" Padding="6,4"
+                                            <Button Background="Transparent" BorderThickness="0" Padding="5,4"
                                                     Click="EndSessionItem_Click" Tag="{x:Bind Session.Id}"
                                                     ToolTipService.ToolTip="End session &amp; proceed to billing">
-                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <StackPanel Orientation="Horizontal" Spacing="3">
                                                     <FontIcon Glyph="&#xE71A;" FontSize="11" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
-                                                    <TextBlock loc:Loc.Key="Widget.EndSession" Text="End" FontSize="11" />
+                                                    <TextBlock loc:Loc.Key="Widget.EndSession" Text="End" FontSize="11" Foreground="{ThemeResource SystemFillColorCriticalBrush}" FontWeight="SemiBold" />
                                                 </StackPanel>
+                                            </Button>
+
+                                            <!-- More Options Menu (...) -->
+                                            <Button Background="Transparent" BorderThickness="0" Padding="5,4"
+                                                    ToolTipService.ToolTip="More options">
+                                                <FontIcon Glyph="&#xE712;" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                <Button.Flyout>
+                                                    <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                                        <MenuFlyoutItem loc:Loc.Key="Widget.CustomerWorkspace" Text="Open Customer Workspace"
+                                                                        Click="OpenCustomerWorkspace_Click" Tag="{x:Bind Session.Id}">
+                                                            <MenuFlyoutItem.Icon>
+                                                                <FontIcon Glyph="&#xE7EE;" />
+                                                            </MenuFlyoutItem.Icon>
+                                                        </MenuFlyoutItem>
+                                                        <MenuFlyoutSeparator />
+                                                        <MenuFlyoutItem loc:Loc.Key="Widget.DeleteSession" Text="Delete Session"
+                                                                        Click="DeleteSession_Click" Tag="{x:Bind Session.Id}">
+                                                            <MenuFlyoutItem.Icon>
+                                                                <FontIcon Glyph="&#xE74D;" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                                                            </MenuFlyoutItem.Icon>
+                                                        </MenuFlyoutItem>
+                                                    </MenuFlyout>
+                                                </Button.Flyout>
                                             </Button>
                                         </StackPanel>
                                     </Grid>
@@ -168,7 +205,13 @@
                                                 HorizontalAlignment="Left">
                                             <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
                                                 <FontIcon Glyph="&#xE7C3;" FontSize="10" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                                <TextBlock Text="{x:Bind LinkedApplicationTitle, Mode=OneWay}" FontSize="11" FontWeight="Medium" MaxWidth="190" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{x:Bind LinkedApplicationTitle, Mode=OneWay}" FontSize="11" FontWeight="Medium" MaxWidth="140" TextTrimming="CharacterEllipsis" />
+                                                <Border CornerRadius="3" Padding="4,1" Margin="2,0,2,0"
+                                                        Background="{x:Bind flyouts:DesktopSidebarWidget.AppStatusBackground(LinkedApplicationStatus), Mode=OneWay}">
+                                                    <TextBlock Text="{x:Bind flyouts:DesktopSidebarWidget.AppStatusDisplay(LinkedApplicationStatus), Mode=OneWay}"
+                                                               FontSize="9" FontWeight="SemiBold"
+                                                               Foreground="{x:Bind flyouts:DesktopSidebarWidget.AppStatusForeground(LinkedApplicationStatus), Mode=OneWay}" />
+                                                </Border>
                                                 <Button Click="UnlinkApplication_Click" Tag="{x:Bind Session.Id}" Background="Transparent" BorderThickness="0" Padding="3,1"
                                                         ToolTipService.ToolTip="Remove linked application">
                                                     <FontIcon Glyph="&#xE711;" FontSize="9" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -204,29 +247,65 @@
             <Border Grid.Row="2" BorderThickness="0,1,0,0" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
                     Padding="14,10" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
                 <StackPanel Spacing="10">
-                    <!-- Quick Start Session -->
+                    <!-- Quick Start Session Section -->
                     <StackPanel Spacing="6">
                         <TextBlock loc:Loc.Key="Widget.QuickStart" Text="Quick Start Session" FontWeight="SemiBold" FontSize="12" />
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                            <AutoSuggestBox x:Name="TxtQuickCustomerName"
-                                             loc:Loc.PlaceholderKey="Widget.QuickStartPlaceholder"
-                                             PlaceholderText="Customer Name (e.g. Amit Kumar)..."
-                                             TextChanged="TxtQuickCustomerName_TextChanged"
-                                             SuggestionChosen="TxtQuickCustomerName_SuggestionChosen"
-                                             QuerySubmitted="TxtQuickCustomerName_QuerySubmitted"
-                                             TextMemberPath="Name">
-                                <AutoSuggestBox.ItemTemplate>
-                                    <DataTemplate x:DataType="models:Customer">
-                                        <StackPanel Padding="2,1">
-                                            <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="12" />
-                                            <TextBlock Text="{x:Bind Subtitle}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <!-- Input Box or Staged Customer Chip -->
+                            <Grid Grid.Column="0">
+                                <AutoSuggestBox x:Name="TxtQuickCustomerName"
+                                                 loc:Loc.PlaceholderKey="Widget.QuickStartPlaceholder"
+                                                 PlaceholderText="Customer Name (e.g. Amit Kumar)..."
+                                                 UpdateTextOnSelect="False"
+                                                 TextChanged="TxtQuickCustomerName_TextChanged"
+                                                 SuggestionChosen="TxtQuickCustomerName_SuggestionChosen"
+                                                 QuerySubmitted="TxtQuickCustomerName_QuerySubmitted"
+                                                 TextMemberPath="Name">
+                                    <AutoSuggestBox.ItemTemplate>
+                                        <DataTemplate x:DataType="models:Customer">
+                                            <StackPanel Padding="2,2">
+                                                <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="12" />
+                                                <TextBlock Text="{x:Bind Subtitle}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </AutoSuggestBox.ItemTemplate>
+                                </AutoSuggestBox>
+
+                                <!-- Staged Customer Preview Chip -->
+                                <Border x:Name="SelectedCustomerCard" Visibility="Collapsed"
+                                        Background="{ThemeResource LayerFillColorAltBrush}"
+                                        BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                                        BorderThickness="1" CornerRadius="6" Padding="8,4">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                        <!-- Avatar Initials -->
+                                        <Border Grid.Column="0" Width="26" Height="26" CornerRadius="13"
+                                                Background="{ThemeResource AccentFillColorDefaultBrush}" VerticalAlignment="Center">
+                                            <TextBlock x:Name="TxtSelectedCustomerInitials" Text="AK" FontSize="10" FontWeight="Bold"
+                                                       Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+
+                                        <!-- Name & Phone / Code -->
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                                            <TextBlock x:Name="TxtSelectedCustomerName" Text="Customer Name" FontWeight="SemiBold" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock x:Name="TxtSelectedCustomerSub" Text="+91 9876543210 · CUST-101" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
-                                    </DataTemplate>
-                                </AutoSuggestBox.ItemTemplate>
-                            </AutoSuggestBox>
-                            <Button Grid.Column="1" Style="{StaticResource AccentButtonStyle}" Click="QuickStart_Click">
+
+                                        <!-- Clear Button -->
+                                        <Button Grid.Column="2" Click="ClearSelectedCustomer_Click"
+                                                loc:Loc.Key="Widget.ChangeCustomer"
+                                                Background="Transparent" BorderThickness="0" Padding="4"
+                                                ToolTipService.ToolTip="Change customer">
+                                            <FontIcon Glyph="&#xE711;" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+
+                            <!-- Start Button -->
+                            <Button Grid.Column="1" x:Name="BtnQuickStart" Style="{StaticResource AccentButtonStyle}" Click="QuickStart_Click">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <FontIcon Glyph="&#xE724;" FontSize="12" />
+                                    <FontIcon Glyph="&#xE768;" FontSize="12" />
                                     <TextBlock loc:Loc.Key="Widget.StartBtn" Text="Start" FontSize="12" />
                                 </StackPanel>
                             </Button>

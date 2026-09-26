@@ -9,12 +9,21 @@ public class SessionRepository : ISessionRepository
     private readonly DatabaseInitializer _db;
     private readonly ICustomerRepository _customerRepo;
     private readonly IFolderManager _folderManager;
+    private readonly IApplicationRepository? _appRepo;
 
-    public SessionRepository(DatabaseInitializer db, ICustomerRepository customerRepo, IFolderManager folderManager)
+    public event EventHandler? SessionsChanged;
+
+    private void NotifySessionsChanged()
+    {
+        SessionsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    public SessionRepository(DatabaseInitializer db, ICustomerRepository customerRepo, IFolderManager folderManager, IApplicationRepository? appRepo = null)
     {
         _db = db;
         _customerRepo = customerRepo;
         _folderManager = folderManager;
+        _appRepo = appRepo;
     }
 
     public async Task<IEnumerable<ActiveSessionItem>> GetActiveSessionsAsync()
@@ -40,7 +49,22 @@ public class SessionRepository : ISessionRepository
         foreach (var (session, customer) in rows)
         {
             var folderPath = _folderManager.GetCustomerFolderPath(customer.Name, customer.Code);
+            if (!Directory.Exists(folderPath))
+            {
+                _folderManager.EnsureCustomerWorkingFolder(customer.Name, customer.Code);
+                try { await _folderManager.SyncToWorkingAsync(customer.Name, customer.Code); } catch { }
+            }
             var stats = _folderManager.GetFolderStats(folderPath);
+
+            if (string.IsNullOrWhiteSpace(customer.PhotoPath) || !File.Exists(customer.PhotoPath))
+            {
+                var discovered = DiscoverCustomerPhoto(folderPath, customer.Name, customer.Code);
+                if (!string.IsNullOrWhiteSpace(discovered))
+                {
+                    customer.PhotoPath = discovered;
+                    _ = _customerRepo.UpdatePhotoAsync(customer.Id, discovered);
+                }
+            }
 
             var item = new ActiveSessionItem
             {
@@ -55,6 +79,7 @@ public class SessionRepository : ISessionRepository
 
         return items;
     }
+
 
     public async Task<ActiveSessionItem> StartSessionAsync(string customerId, string? notes = null)
     {
@@ -79,6 +104,7 @@ public class SessionRepository : ISessionRepository
             }
 
             var fPath = _folderManager.EnsureCustomerWorkingFolder(customer.Name, customer.Code);
+            NotifySessionsChanged();
             return new ActiveSessionItem
             {
                 Session = existing,
@@ -112,6 +138,18 @@ public class SessionRepository : ISessionRepository
 
         var folderPath = _folderManager.EnsureCustomerWorkingFolder(customer.Name, customer.Code);
 
+        if (string.IsNullOrWhiteSpace(customer.PhotoPath) || !File.Exists(customer.PhotoPath))
+        {
+            var discovered = DiscoverCustomerPhoto(folderPath, customer.Name, customer.Code);
+            if (!string.IsNullOrWhiteSpace(discovered))
+            {
+                customer.PhotoPath = discovered;
+                _ = _customerRepo.UpdatePhotoAsync(customer.Id, discovered);
+            }
+        }
+
+        NotifySessionsChanged();
+
         return new ActiveSessionItem
         {
             Session = newSession,
@@ -120,6 +158,7 @@ public class SessionRepository : ISessionRepository
             FolderStats = _folderManager.GetFolderStats(folderPath)
         };
     }
+
 
     public async Task PauseSessionAsync(string sessionId, int? knownDurationSeconds = null)
     {
@@ -131,6 +170,7 @@ public class SessionRepository : ISessionRepository
             await connection.ExecuteAsync(
                 "UPDATE sessions SET status = 'Paused', duration_seconds = @Duration WHERE id = @Id",
                 new { Id = sessionId, Duration = knownDurationSeconds.Value });
+            NotifySessionsChanged();
             return;
         }
 
@@ -159,6 +199,7 @@ public class SessionRepository : ISessionRepository
         {
             await connection.ExecuteAsync("UPDATE sessions SET status = 'Paused' WHERE id = @Id", new { Id = sessionId });
         }
+        NotifySessionsChanged();
     }
 
     public async Task ResumeSessionAsync(string sessionId)
@@ -169,6 +210,7 @@ public class SessionRepository : ISessionRepository
         await connection.ExecuteAsync(
             "UPDATE sessions SET status = 'Active', started_at = @StartedAt WHERE id = @Id",
             new { Id = sessionId, StartedAt = now });
+        NotifySessionsChanged();
     }
 
     public async Task CompleteSessionAsync(string sessionId)
@@ -242,12 +284,25 @@ public class SessionRepository : ISessionRepository
                 }
             }
         }
+        NotifySessionsChanged();
     }
 
     public async Task DeleteSessionAsync(string sessionId)
     {
         using var connection = _db.CreateConnection();
         await connection.OpenAsync();
+
+        // 0. Cascade delete in-progress/draft applications linked to this session
+        await connection.ExecuteAsync(
+            "DELETE FROM applications WHERE session_id = @Id AND status != 'Completed'",
+            new { Id = sessionId }
+        );
+
+        // If any completed applications were linked, unlink session_id
+        await connection.ExecuteAsync(
+            "UPDATE applications SET session_id = NULL WHERE session_id = @Id",
+            new { Id = sessionId }
+        );
 
         // 1. Unlink any payments referencing this session
         await connection.ExecuteAsync(
@@ -266,6 +321,9 @@ public class SessionRepository : ISessionRepository
             "DELETE FROM sessions WHERE id = @Id",
             new { Id = sessionId }
         );
+
+        _appRepo?.NotifyApplicationsChanged();
+        NotifySessionsChanged();
     }
 
     public async Task<IEnumerable<Session>> GetCustomerSessionsAsync(string customerId)
@@ -280,4 +338,46 @@ public class SessionRepository : ISessionRepository
 
         return await connection.QueryAsync<Session>(sql, new { CustomerId = customerId });
     }
+
+    private string? DiscoverCustomerPhoto(string workingFolder, string customerName, string customerCode)
+    {
+        static bool IsPhotoFile(string path)
+        {
+            var ext = Path.GetExtension(path).ToLowerInvariant();
+            if (ext is not (".jpg" or ".jpeg" or ".png" or ".bmp" or ".webp")) return false;
+            var name = Path.GetFileNameWithoutExtension(path).ToLowerInvariant();
+            return name == "photo" || name.StartsWith("photo_") || name.EndsWith("_photo") || name.Contains("passport");
+        }
+
+        try
+        {
+            if (Directory.Exists(workingFolder))
+            {
+                var match = Directory.GetFiles(workingFolder, "*.*", SearchOption.AllDirectories)
+                                     .FirstOrDefault(IsPhotoFile);
+                if (match != null) return match;
+            }
+
+            var backupFolder = _folderManager.GetCustomerBackupFolderPath(customerName, customerCode);
+            if (!string.IsNullOrWhiteSpace(backupFolder) && Directory.Exists(backupFolder))
+            {
+                var match = Directory.GetFiles(backupFolder, "*.*", SearchOption.AllDirectories)
+                                     .FirstOrDefault(IsPhotoFile);
+                if (match != null) return match;
+            }
+        }
+        catch { }
+
+        return null;
+    }
+
+    public async Task<int> GetTodayCompletedVisitsCountAsync()
+    {
+        using var connection = _db.CreateConnection();
+        await connection.OpenAsync();
+        var todayLocalStart = DateTime.Today.ToUniversalTime().ToString("o");
+        const string sql = "SELECT COUNT(*) FROM sessions WHERE status = 'Completed' AND (ended_at >= @TodayStart OR started_at >= @TodayStart)";
+        return await connection.ExecuteScalarAsync<int>(sql, new { TodayStart = todayLocalStart });
+    }
 }
+

@@ -41,6 +41,13 @@ public class CustomerRepository : ICustomerRepository
         return await connection.QuerySingleOrDefaultAsync<Customer>(sql, new { Id = id });
     }
 
+    public async Task<IEnumerable<Customer>> GetAllAsync()
+    {
+        using var connection = _db.CreateConnection();
+        await connection.OpenAsync();
+        return await connection.QueryAsync<Customer>("SELECT * FROM customers ORDER BY name ASC");
+    }
+
     public async Task<IEnumerable<Customer>> SearchAsync(string query)
     {
         using var connection = _db.CreateConnection();
@@ -150,6 +157,28 @@ public class CustomerRepository : ICustomerRepository
             PhotoPath = photoPath,
             UpdatedAt = DateTime.UtcNow.ToString("o")
         });
+    }
+
+    public async Task DeleteCustomerAsync(string customerId)
+    {
+        using var connection = _db.CreateConnection();
+        await connection.OpenAsync();
+        using var transaction = connection.BeginTransaction();
+
+        try
+        {
+            await connection.ExecuteAsync("DELETE FROM charges WHERE customer_id = @CustomerId", new { CustomerId = customerId }, transaction);
+            await connection.ExecuteAsync("DELETE FROM sessions WHERE customer_id = @CustomerId", new { CustomerId = customerId }, transaction);
+            await connection.ExecuteAsync("DELETE FROM applications WHERE customer_id = @CustomerId", new { CustomerId = customerId }, transaction);
+            await connection.ExecuteAsync("DELETE FROM customers WHERE id = @CustomerId", new { CustomerId = customerId }, transaction);
+
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 }
 

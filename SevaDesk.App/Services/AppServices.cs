@@ -9,11 +9,12 @@ public static class AppServices
     public static DatabaseInitializer Database { get; } = new();
     public static IFolderManager FolderManager { get; } = new FolderManager();
     public static ICustomerRepository Customers { get; } = new CustomerRepository(Database);
-    public static ISessionRepository Sessions { get; } = new SessionRepository(Database, Customers, FolderManager);
+    public static IApplicationRepository Applications { get; } = new ApplicationRepository(Database);
+    public static ISessionRepository Sessions { get; } = new SessionRepository(Database, Customers, FolderManager, Applications);
     public static IPaymentRepository Payments { get; } = new PaymentRepository(Database);
     public static IServiceRateRepository ServiceRates { get; } = new ServiceRateRepository(Database);
-    public static IApplicationRepository Applications { get; } = new ApplicationRepository(Database);
     public static IResourceRepository Resources { get; } = new ResourceRepository(Database);
+    public static ICustomTagRepository CustomTags { get; } = new CustomTagRepository(Database);
     public static LocalizationService Localization { get; } = new();
     public static IncomingFileWatcherService FileWatcher => IncomingFileWatcherService.Instance;
     public static IDialogService Dialogs { get; } = new DialogService();

@@ -21,7 +21,7 @@ public sealed partial class CompleteSessionDialog : ContentDialog
         var template = AppServices.Localization.GetString("Dialog.CompleteSession.Subtitle");
         if (string.IsNullOrWhiteSpace(template) || template == "Dialog.CompleteSession.Subtitle")
         {
-            template = "Save contact or ID details for {0} to easily locate documents and records on future visits:";
+            template = "Save details for {0} for future visits:";
         }
         TxtPromptSubtitle.Text = string.Format(template, customer.Name);
 

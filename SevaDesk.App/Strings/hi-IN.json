@@ -241,6 +241,11 @@
   "Widget.CopyUpi": "UPI कॉपी करें",
   "Widget.RunningBill": "बिल",
   "Widget.EndSession": "समाप्त",
+  "Widget.OpenFolder": "फ़ोल्डर खोलें",
+  "Widget.More": "अधिक विकल्प",
+  "Widget.CustomerWorkspace": "ग्राहक कार्यक्षेत्र खोलें",
+  "Widget.DeleteSession": "सत्र हटाएं",
+  "Widget.ChangeCustomer": "ग्राहक बदलें",
 
   "Dialog.CloseTitle": "सेवाडेस्क बंद करें?",
   "Dialog.ClosePrompt": "क्या आप सक्रिय सत्रों को चालू रखने के लिए सेवाडेस्क को सिस्टम ट्रे में छोटा करना चाहते हैं, या पूरी तरह बाहर निकलना चाहते हैं?",
@@ -346,8 +351,8 @@
   "FolderBrowser.DeleteConfirmMessage": "क्या आप वाकई इस फ़ाइल को हमेशा के लिए हटाना चाहते हैं?",
   "FolderBrowser.SaveRename": "सहेजें",
   "FolderBrowser.CancelRename": "रद्द करें",
-  "PreviewDialog.Title": "फ़ाइल त्वरित पूर्वावलोकन",
-  "PreviewDialog.OpenDefault": "डिफ़ॉल्ट ऐप में खोलें",
-  "PreviewDialog.OpenFolder": "एक्सप्लोरर में फ़ोल्डर खोलें"
+  "PreviewDialog.Title": "फ़ाइल पूर्वावलोकन",
+  "PreviewDialog.OpenDefault": "ऐप में खोलें",
+  "PreviewDialog.OpenFolder": "फ़ोल्डर खोलें"
 }
 

@@ -10,18 +10,20 @@ public sealed partial class LinkApplicationDialog : ContentDialog
 {
     private readonly string _customerId;
     private readonly string _customerName;
+    private readonly string? _sessionId;
 
     public ApplicationTemplate? SelectedTemplate { get; private set; }
     public string AppNumberText => TxtAppNumber.Text.Trim();
     public string NotesText => TxtNotes.Text.Trim();
     public bool IsConfirmed { get; private set; }
 
-    public LinkApplicationDialog(string customerName, string customerId)
+    public LinkApplicationDialog(string customerName, string customerId, string? sessionId = null)
     {
         InitializeComponent();
         this.EnableLightDismiss();
         _customerName = customerName;
         _customerId = customerId;
+        _sessionId = sessionId;
         TxtCustomerBanner.Text = $"Applying for: {customerName}";
 
         PrimaryButtonClick += LinkApplicationDialog_PrimaryButtonClick;
@@ -144,6 +146,7 @@ public sealed partial class LinkApplicationDialog : ContentDialog
             return new ApplicationItem
             {
                 CustomerId = _customerId,
+                SessionId = _sessionId,
                 CustomerName = _customerName,
                 Title = SelectedTemplate.Title,
                 PortalName = SelectedTemplate.PortalUrl,
@@ -162,6 +165,7 @@ public sealed partial class LinkApplicationDialog : ContentDialog
         return new ApplicationItem
         {
             CustomerId = _customerId,
+            SessionId = _sessionId,
             CustomerName = _customerName,
             Title = fallbackTitle,
             PortalName = "gov.in",

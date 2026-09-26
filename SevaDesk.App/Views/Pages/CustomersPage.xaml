@@ -73,6 +73,28 @@
                                       PointerEntered="Row_PointerEntered"
                                       BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
 
+                                    <Grid.ContextFlyout>
+                                        <MenuFlyout>
+                                            <MenuFlyoutItem Text="Open Folder" Click="OpenFolder_Click" Tag="{x:Bind Customer}">
+                                                <MenuFlyoutItem.Icon>
+                                                    <FontIcon Glyph="&#xED25;" />
+                                                </MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutItem Text="Start Session" Click="StartSession_Click" Tag="{x:Bind Customer.Id}">
+                                                <MenuFlyoutItem.Icon>
+                                                    <FontIcon Glyph="&#xE768;" />
+                                                </MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                            <MenuFlyoutSeparator />
+                                            <MenuFlyoutItem Text="Delete Customer" Click="DeleteCustomer_Click" Tag="{x:Bind Customer}"
+                                                            Foreground="{ThemeResource SystemFillColorCriticalBrush}">
+                                                <MenuFlyoutItem.Icon>
+                                                    <FontIcon Glyph="&#xE74D;" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                                                </MenuFlyoutItem.Icon>
+                                            </MenuFlyoutItem>
+                                        </MenuFlyout>
+                                    </Grid.ContextFlyout>
+
                                     <!-- Column 0: Avatar + Name + Code + ID chip -->
                                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                                         <PersonPicture Width="34" Height="34"
@@ -152,6 +174,33 @@
                                                 <FontIcon Glyph="&#xE768;" FontSize="12" />
                                                 <TextBlock Text="Start Session" />
                                             </StackPanel>
+                                        </Button>
+                                        <!-- More Options button with Delete Customer -->
+                                        <Button Width="32" Height="32" Padding="0" CornerRadius="4"
+                                                ToolTipService.ToolTip="More options"
+                                                Tag="{x:Bind Customer}">
+                                            <FontIcon Glyph="&#xE712;" FontSize="13" />
+                                            <Button.Flyout>
+                                                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                                    <MenuFlyoutItem Text="Open Folder" Click="OpenFolder_Click" Tag="{x:Bind Customer}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <FontIcon Glyph="&#xED25;" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    <MenuFlyoutItem Text="Start Session" Click="StartSession_Click" Tag="{x:Bind Customer.Id}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <FontIcon Glyph="&#xE768;" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                    <MenuFlyoutSeparator />
+                                                    <MenuFlyoutItem Text="Delete Customer" Click="DeleteCustomer_Click" Tag="{x:Bind Customer}"
+                                                                    Foreground="{ThemeResource SystemFillColorCriticalBrush}">
+                                                        <MenuFlyoutItem.Icon>
+                                                            <FontIcon Glyph="&#xE74D;" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                                                        </MenuFlyoutItem.Icon>
+                                                    </MenuFlyoutItem>
+                                                </MenuFlyout>
+                                            </Button.Flyout>
                                         </Button>
                                     </StackPanel>
                                 </Grid>

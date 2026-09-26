@@ -90,24 +90,31 @@
                                   SelectionMode="Single">
                             <ListView.ItemTemplate>
                                 <DataTemplate x:DataType="models:DocumentItem">
-                                    <Grid ColumnDefinitions="Auto,*,Auto" Padding="8,10" VerticalAlignment="Center">
-                                        <FontIcon Grid.Column="0" Glyph="{x:Bind Glyph}" FontSize="20"
+                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" Padding="8,10" VerticalAlignment="Center">
+                                        <FontIcon Grid.Column="0" Glyph="{x:Bind Glyph, Mode=OneWay}" FontSize="20"
                                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Margin="0,0,12,0" />
 
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                            <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="13"
+                                            <TextBlock Text="{x:Bind Name, Mode=OneWay}" FontWeight="SemiBold" FontSize="13"
                                                        TextTrimming="CharacterEllipsis" MaxLines="1" />
                                             <StackPanel Orientation="Horizontal" Spacing="8">
                                                 <TextBlock Text="{x:Bind CustomerName}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                                 <TextBlock Text="•" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                                <TextBlock Text="{x:Bind FileSize}" FontSize="11" FontWeight="SemiBold" Foreground="#F59E0B" />
+                                                <TextBlock Text="{x:Bind FileSize, Mode=OneWay}" FontSize="11" FontWeight="SemiBold" Foreground="#F59E0B" />
                                             </StackPanel>
                                         </StackPanel>
 
-                                        <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="4" Padding="6,2"
+                                        <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="4" Padding="6,2" Margin="0,0,6,0"
                                                 Background="{ThemeResource SubtleFillColorSecondaryBrush}">
-                                            <TextBlock Text="{x:Bind Extension}" FontSize="10" FontFamily="Consolas" FontWeight="Bold" />
+                                            <TextBlock Text="{x:Bind Extension, Mode=OneWay}" FontSize="10" FontFamily="Consolas" FontWeight="Bold" />
                                         </Border>
+
+                                        <!-- Quick Tag & Rename Flyout Button -->
+                                        <Button Grid.Column="3" Click="RowTagButton_Click" Tag="{x:Bind}" Padding="6"
+                                                Background="Transparent" BorderBrush="Transparent"
+                                                ToolTipService.ToolTip="Quick Tag &amp; Rename">
+                                            <FontIcon Glyph="&#xE8EC;" FontSize="13" Foreground="#F59E0B" />
+                                        </Button>
                                     </Grid>
                                 </DataTemplate>
                             </ListView.ItemTemplate>
@@ -175,7 +182,7 @@
                             Padding="20" CornerRadius="8"
                             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                        <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="16">
+                        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="14">
                             <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
                                 <Border Grid.Column="0" Width="48" Height="48" CornerRadius="8"
                                         Background="{ThemeResource SubtleFillColorSecondaryBrush}" Margin="0,0,16,0">
@@ -185,8 +192,35 @@
                                 </Border>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
-                                    <TextBlock Text="{x:Bind ViewModel.SelectedDocument.Name, Mode=OneWay}"
-                                               Style="{StaticResource SubtitleTextBlockStyle}" FontWeight="Bold" FontSize="16" />
+                                    <!-- Filename View / Inline Edit Mode -->
+                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
+                                                Visibility="{x:Bind local:DocumentsPage.CollapsedIf(ViewModel.SelectedDocument.IsRenaming), Mode=OneWay}">
+                                        <TextBlock Text="{x:Bind ViewModel.SelectedDocument.Name, Mode=OneWay}"
+                                                   Style="{StaticResource SubtitleTextBlockStyle}" FontWeight="Bold" FontSize="16"
+                                                   TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                        <Button Click="StartInspectorRename_Click" Padding="4" Background="Transparent" BorderBrush="Transparent"
+                                                ToolTipService.ToolTip="Rename File (Custom)">
+                                            <FontIcon Glyph="&#xE70F;" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </Button>
+                                    </StackPanel>
+
+                                    <!-- Inline Edit Mode -->
+                                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6"
+                                          Visibility="{x:Bind local:DocumentsPage.VisibleIf(ViewModel.SelectedDocument.IsRenaming), Mode=OneWay}">
+                                        <TextBox x:Name="TxtInspectorRename"
+                                                 Text="{x:Bind ViewModel.SelectedDocument.EditName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                 KeyDown="InspectorRename_KeyDown"
+                                                 FontSize="14" VerticalAlignment="Center" />
+                                        <Button Grid.Column="1" Click="SaveInspectorRename_Click"
+                                                Style="{StaticResource AccentButtonStyle}" Padding="8,4" ToolTipService.ToolTip="Save (Enter)">
+                                            <FontIcon Glyph="&#xE73E;" FontSize="11" />
+                                        </Button>
+                                        <Button Grid.Column="2" Click="CancelInspectorRename_Click"
+                                                Padding="8,4" ToolTipService.ToolTip="Cancel (Esc)">
+                                            <FontIcon Glyph="&#xE711;" FontSize="11" />
+                                        </Button>
+                                    </Grid>
+
                                     <StackPanel Orientation="Horizontal" Spacing="12">
                                         <TextBlock Text="{x:Bind ViewModel.SelectedDocument.CustomerName, Mode=OneWay}"
                                                    FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -208,8 +242,23 @@
 
                             <Border Grid.Row="1" Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
 
+                            <!-- 2. Quick Rename Tag Chips Strip -->
+                            <StackPanel Grid.Row="2" Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE8EC;" FontSize="14" Foreground="#F59E0B" />
+                                    <TextBlock Text="Quick Rename:" FontWeight="SemiBold" FontSize="13" />
+                                    <TextBlock Text="(1-click rename preserving extension)" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+
+                                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled">
+                                    <StackPanel x:Name="InspectorChipsPanel" Orientation="Horizontal" Spacing="8" />
+                                </ScrollViewer>
+                            </StackPanel>
+
+                            <Border Grid.Row="3" Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+
                             <!-- Dynamic Subfolder Move Destination Buttons & New Subfolder Action -->
-                            <StackPanel Grid.Row="2" Spacing="10">
+                            <StackPanel Grid.Row="4" Spacing="10">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                         <FontIcon Glyph="&#xE8DE;" FontSize="14" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />

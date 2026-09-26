@@ -5,12 +5,14 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:SevaDesk.Core.Models"
+    xmlns:dialogs="using:SevaDesk_App.Views.Dialogs"
     Title="Visit &amp; Billing Details"
     CloseButtonText="Close"
     DefaultButton="Close"
     mc:Ignorable="d">
 
-    <StackPanel Spacing="16" Margin="0,0,16,0" MinWidth="420" MaxWidth="480">
+    <StackPanel Spacing="16" MinWidth="420" MaxWidth="480">
         <!-- Visit Overview Header Card -->
         <Border Background="{ThemeResource LayerFillColorAltBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
@@ -66,10 +68,75 @@
 
                     <Border Grid.Row="1" Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-                    <!-- Services / Work Done Items -->
-                    <StackPanel Grid.Row="2" Spacing="4">
-                        <TextBlock Text="Work Done / Items Billed:" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <TextBlock x:Name="TxtItemsSummary" FontSize="13" TextWrapping="Wrap" FontWeight="Medium" />
+                    <!-- Services / Work Done Itemized Breakdown -->
+                    <StackPanel Grid.Row="2" Spacing="8">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="Work Done &amp; Billed Items" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                            <Border x:Name="BadgeItemsCount" CornerRadius="10" Padding="8,2"
+                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                <TextBlock x:Name="TxtItemsCount" FontSize="10" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </Border>
+                        </Grid>
+
+                        <!-- Itemized Breakdown Cards -->
+                        <ScrollViewer MaxHeight="220"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      HorizontalScrollMode="Disabled"
+                                      Padding="0,0,6,0">
+                            <ItemsControl x:Name="ItemsSummaryList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:BilledServiceItem">
+                                        <Border Margin="0,2" Padding="10,8" CornerRadius="8"
+                                                Background="{ThemeResource LayerFillColorAltBrush}"
+                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" VerticalAlignment="Center">
+                                                <!-- Icon Badge -->
+                                                <Border Grid.Column="0" Width="28" Height="28" CornerRadius="6"
+                                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                                    <FontIcon Glyph="{x:Bind Glyph}" FontSize="12"
+                                                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+
+                                                <!-- Service Name & Unit Rate -->
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                                    <TextBlock Text="{x:Bind ServiceName}" FontWeight="SemiBold" FontSize="12"
+                                                               TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{x:Bind FormattedRate}" FontSize="10"
+                                                               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                               Visibility="{x:Bind dialogs:SessionDetailsDialog.VisibleIf(HasRate)}" />
+                                                </StackPanel>
+
+                                                <!-- Right Side: Quantity Pill + Line Total -->
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                                    <!-- Quantity / Type Pill -->
+                                                    <Border CornerRadius="4" Padding="6,2"
+                                                            Background="{x:Bind dialogs:SessionDetailsDialog.ItemBadgeBackground(IsDiscount)}"
+                                                            VerticalAlignment="Center">
+                                                        <TextBlock Text="{x:Bind FormattedQty}" FontSize="11" FontWeight="Bold"
+                                                                   Foreground="{x:Bind dialogs:SessionDetailsDialog.ItemBadgeForeground(IsDiscount)}" />
+                                                    </Border>
+
+                                                    <!-- Line Total -->
+                                                    <TextBlock Text="{x:Bind FormattedTotal}"
+                                                               FontWeight="Bold" FontSize="13"
+                                                               Foreground="{x:Bind dialogs:SessionDetailsDialog.ItemTotalForeground(IsDiscount)}"
+                                                               MinWidth="52" TextAlignment="Right"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                        <!-- Fallback for unstructured text -->
+                        <TextBlock x:Name="TxtItemsSummaryFallback" FontSize="12" TextWrapping="Wrap" Visibility="Collapsed"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     </StackPanel>
                 </Grid>
             </Border>

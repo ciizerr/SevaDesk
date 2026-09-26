@@ -5,13 +5,9 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:loc="using:SevaDesk_App.Services"
     xmlns:models="using:SevaDesk.Core.Models"
-    loc:Loc.Key="Dialog.LinkApp.Title"
-    Title="Link Application"
-    loc:Loc.PrimaryButtonKey="Dialog.LinkApp.PrimaryBtn"
-    PrimaryButtonText="Link Application"
-    loc:Loc.CloseButtonKey="Common.Cancel"
+    Title="Link Scheme / Form"
+    PrimaryButtonText="Link"
     CloseButtonText="Cancel"
     DefaultButton="Primary"
     mc:Ignorable="d">
@@ -20,7 +16,7 @@
         <!-- Customer Target Banner -->
         <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="6" Padding="10,6">
             <StackPanel Orientation="Horizontal" Spacing="8">
-                <FontIcon Glyph="&#xE77B;" FontSize="14" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Center" />
+                <FontIcon Glyph="&#xE77B;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Center" />
                 <TextBlock x:Name="TxtCustomerBanner"
                            FontSize="12"
                            FontWeight="SemiBold"
@@ -32,12 +28,17 @@
         <!-- Real-Time Catalog AutoSuggest Search -->
         <AutoSuggestBox
             x:Name="SearchSuggestBox"
-            Header="Search Scheme / Form Catalog *"
-            PlaceholderText="Type scheme (e.g. SSC, PAN, Scholarship, Kisan)..."
+            PlaceholderText="Search scheme (e.g. SSC, PAN, Kisan)..."
             TextChanged="SearchSuggestBox_TextChanged"
             SuggestionChosen="SearchSuggestBox_SuggestionChosen"
             QuerySubmitted="SearchSuggestBox_QuerySubmitted"
             TextMemberPath="Title">
+            <AutoSuggestBox.Header>
+                <TextBlock FontSize="12">
+                    <Run Text="Scheme / Form Name" />
+                    <Run Text=" *" Foreground="#EF4444" FontWeight="Bold" />
+                </TextBlock>
+            </AutoSuggestBox.Header>
             <AutoSuggestBox.ItemTemplate>
                 <DataTemplate x:DataType="models:ApplicationTemplate">
                     <Grid ColumnDefinitions="*,Auto" Padding="4,4">
@@ -75,7 +76,7 @@
                 <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
 
                 <StackPanel Spacing="2">
-                    <TextBlock Text="Required Documents Checklist:" FontSize="10" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                    <TextBlock Text="Required Documents:" FontSize="10" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                     <TextBlock x:Name="TxtMatchedDocs" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
                 </StackPanel>
             </StackPanel>
@@ -84,7 +85,7 @@
         <!-- Not-Found Quick Link Banner -->
         <Border x:Name="NotFoundCard"
                 Visibility="Collapsed"
-                Background="{ThemeResource SystemFillColorAttentionBackgroundBrush}"
+                Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1"
                 CornerRadius="6"
@@ -92,27 +93,23 @@
             <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
                     <TextBlock x:Name="TxtNotFoundPrompt" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap" />
-                    <TextBlock Text="You can quick-link now and flesh out portal/fees later in Application Manager."
+                    <TextBlock Text="You can quick-link now and set fees later in Application Manager."
                                FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
                 </StackPanel>
                 <Button Grid.Column="1" Style="{StaticResource AccentButtonStyle}" Click="QuickAddFallback_Click" Margin="8,0,0,0">
-                    <TextBlock loc:Loc.Key="Dialog.LinkApp.QuickAddBtn" Text="Quick Link &amp; Start" FontSize="11" />
+                    <TextBlock Text="Quick Link" FontSize="11" />
                 </Button>
             </Grid>
         </Border>
 
-        <!-- Optional Registration / Ack Number -->
+        <!-- Registration / Ack Number -->
         <TextBox x:Name="TxtAppNumber"
-                 loc:Loc.HeaderKey="Dialog.LinkApp.AppNoHeader"
-                 Header="Reg / Ack Number (Optional)"
-                 loc:Loc.PlaceholderKey="Dialog.LinkApp.AppNoPlaceholder"
-                 PlaceholderText="e.g. SSC-2026-89412 or leave blank" />
+                 Header="Application / Ack No"
+                 PlaceholderText="e.g. REG-2026-001" />
 
-        <!-- Optional Notes -->
+        <!-- Notes -->
         <TextBox x:Name="TxtNotes"
-                 loc:Loc.HeaderKey="Dialog.LinkApp.NotesHeader"
-                 Header="Notes / Remarks (Optional)"
-                 loc:Loc.PlaceholderKey="Dialog.LinkApp.NotesPlaceholder"
-                 PlaceholderText="e.g. Category OBC, needs certificate scan" />
+                 Header="Notes"
+                 PlaceholderText="Remarks or instructions" />
     </StackPanel>
 </ContentDialog>

@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using SevaDesk.Core.Models;
@@ -23,10 +24,27 @@ public sealed partial class CustomerWorkspacePage : Page
     private DispatcherTimer? _debounceTimer;
     private string? _currentWatchedPath;
 
+    private readonly Action<string> _avatarUpdatedHandler;
+
     public CustomerWorkspacePage()
     {
         InitializeComponent();
-        Unloaded += (s, e) => CleanupWatcher();
+        _avatarUpdatedHandler = (photo) =>
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (ViewModel.Customer != null)
+                {
+                    ViewModel.Customer.NotifyPhotoUpdated();
+                }
+            });
+        };
+        CustomerAvatarHelper.AvatarUpdated += _avatarUpdatedHandler;
+        Unloaded += (s, e) =>
+        {
+            CustomerAvatarHelper.AvatarUpdated -= _avatarUpdatedHandler;
+            CleanupWatcher();
+        };
         ViewModel.PropertyChanged += (s, args) =>
         {
             if (args.PropertyName == nameof(CustomerWorkspaceViewModel.IsShowingBackup))
@@ -43,6 +61,7 @@ public sealed partial class CustomerWorkspacePage : Page
         {
             await ViewModel.InitializeAsync(customer);
             SetupWatcher();
+            CheckCustomerPhoto();
         }
     }
 
@@ -68,6 +87,7 @@ public sealed partial class CustomerWorkspacePage : Page
                 _debounceTimer.Stop();
                 ViewModel.RefreshFiles();
                 ViewModel.NotifyStatsChanged();
+                CheckCustomerPhoto();
             };
 
             _watcher = new FileSystemWatcher(folderPath)
@@ -107,6 +127,29 @@ public sealed partial class CustomerWorkspacePage : Page
         catch { }
     }
 
+    private void CheckCustomerPhoto()
+    {
+        if (ViewModel.Customer == null) return;
+        try
+        {
+            var detectedPhoto = CustomerAvatarHelper.FindPhotoInCustomerFolders(ViewModel.Customer.Name, ViewModel.Customer.Code);
+            if (!string.IsNullOrWhiteSpace(detectedPhoto))
+            {
+                if (!string.Equals(ViewModel.Customer.PhotoPath, detectedPhoto, StringComparison.OrdinalIgnoreCase))
+                {
+                    ViewModel.Customer.PhotoPath = detectedPhoto;
+                    _ = AppServices.Customers.UpdatePhotoAsync(ViewModel.Customer.Id, detectedPhoto);
+                    CustomerAvatarHelper.NotifyAvatarUpdated(detectedPhoto);
+                }
+                else
+                {
+                    ViewModel.Customer.NotifyPhotoUpdated();
+                }
+            }
+        }
+        catch { }
+    }
+
     public static Visibility EmptyListVisibility(int count) =>
         count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
@@ -132,6 +175,21 @@ public sealed partial class CustomerWorkspacePage : Page
 
     public static Thickness SessionHighlightThickness(bool isHighlighted) =>
         isHighlighted ? new Thickness(2) : new Thickness(0, 0, 0, 1);
+
+    public static Brush ItemBadgeBackground(bool isDiscount) =>
+        isDiscount
+            ? new SolidColorBrush(Color.FromArgb(30, 16, 185, 129))
+            : (Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
+
+    public static Brush ItemGlyphForeground(bool isDiscount) =>
+        isDiscount
+            ? new SolidColorBrush(Color.FromArgb(255, 16, 185, 129))
+            : (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"];
+
+    public static Brush ItemTextForeground(bool isDiscount) =>
+        isDiscount
+            ? new SolidColorBrush(Color.FromArgb(255, 16, 185, 129))
+            : (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"];
 
     private void PaymentItem_Click(object sender, ItemClickEventArgs e)
     {
@@ -279,20 +337,55 @@ public sealed partial class CustomerWorkspacePage : Page
         }
     }
 
+    private static TextBlock CreateRequiredHeader(string label)
+    {
+        var tb = new TextBlock { FontSize = 12 };
+        tb.Inlines.Add(new Run { Text = label + " " });
+        tb.Inlines.Add(new Run { Text = "*", Foreground = new SolidColorBrush(Color.FromArgb(255, 239, 68, 68)), FontWeight = Microsoft.UI.Text.FontWeights.Bold });
+        return tb;
+    }
+
     private async void EditCustomer_Click(object sender, RoutedEventArgs e)
     {
         var cust = ViewModel.Customer;
         if (cust == null) return;
 
-        var nameBox = new TextBox { Header = "Name", Text = cust.Name };
-        var mobileBox = new TextBox { Header = "Mobile", Text = cust.Mobile ?? string.Empty };
-        var villageBox = new TextBox { Header = "Village / Area", Text = cust.Village ?? string.Empty };
-        var idRefBox = new TextBox { Header = "ID Reference (Aadhaar/PAN)", Text = cust.IdReference ?? string.Empty };
-        var notesBox = new TextBox { Header = "Notes / Remarks", Text = cust.Notes ?? string.Empty, AcceptsReturn = true, Height = 60 };
+        var nameBox = new TextBox
+        {
+            Header = CreateRequiredHeader("Customer Name"),
+            Text = cust.Name,
+            PlaceholderText = "Full name"
+        };
+        var mobileBox = new TextBox
+        {
+            Header = "Mobile Number",
+            Text = cust.Mobile ?? string.Empty,
+            PlaceholderText = "10-digit number"
+        };
+        var villageBox = new TextBox
+        {
+            Header = "Village / City",
+            Text = cust.Village ?? string.Empty,
+            PlaceholderText = "Village, town, or area"
+        };
+        var idRefBox = new TextBox
+        {
+            Header = "ID Reference / Aadhaar",
+            Text = cust.IdReference ?? string.Empty,
+            PlaceholderText = "Aadhaar or ID ref"
+        };
+        var notesBox = new TextBox
+        {
+            Header = "Notes",
+            Text = cust.Notes ?? string.Empty,
+            PlaceholderText = "Special notes or remarks",
+            AcceptsReturn = true,
+            Height = 60
+        };
 
         var dialog = new ContentDialog
         {
-            Title = "Edit Customer Details",
+            Title = "Edit Customer",
             Content = new ScrollViewer
             {
                 Content = new StackPanel
@@ -301,7 +394,7 @@ public sealed partial class CustomerWorkspacePage : Page
                     Children = { nameBox, mobileBox, villageBox, idRefBox, notesBox }
                 }
             },
-            PrimaryButtonText = "Save Changes",
+            PrimaryButtonText = "Save",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = XamlRoot
@@ -319,6 +412,56 @@ public sealed partial class CustomerWorkspacePage : Page
             await AppServices.Customers.UpdateAsync(cust);
             ViewModel.NotifyStatsChanged();
             ViewModel.ShowSuccess("Customer details updated");
+        }
+    }
+
+    private async void DeleteCustomer_Click(object sender, RoutedEventArgs e)
+    {
+        var customer = ViewModel.Customer;
+        if (customer == null) return;
+
+        // 1. Safeguard: Check if customer has an active or paused session
+        var activeSessions = await AppServices.Sessions.GetActiveSessionsAsync();
+        if (activeSessions.Any(s => s.Customer?.Id == customer.Id || s.Session.CustomerId == customer.Id))
+        {
+            await AppServices.Dialogs.ShowAlertAsync(
+                "Active Session Running",
+                $"An active or paused session is currently in progress for '{customer.Name}'.\n\nPlease complete or delete the ongoing session first before deleting this customer profile.");
+            return;
+        }
+
+        // 2. Prompt confirmation dialog
+        var action = await AppServices.Dialogs.PromptDeleteCustomerAsync(customer, XamlRoot);
+        if (action == DeleteCustomerAction.Cancel) return;
+
+        try
+        {
+            // 3. Clean up disk folders according to choice
+            AppServices.FolderManager.DeleteCustomerWorkingFolder(customer.Name, customer.Code);
+            if (action == DeleteCustomerAction.DeleteAndWipeAll)
+            {
+                AppServices.FolderManager.DeleteCustomerBackupFolder(customer.Name, customer.Code);
+            }
+
+            // 4. Delete from database
+            await AppServices.Customers.DeleteCustomerAsync(customer.Id);
+
+            // 5. Toast feedback
+            if (action == DeleteCustomerAction.DeleteAndWipeAll)
+            {
+                MainWindow.Instance?.ShowToast($"Customer '{customer.Name}' and all files permanently deleted.", InfoBarSeverity.Success);
+            }
+            else
+            {
+                MainWindow.Instance?.ShowToast($"Customer '{customer.Name}' deleted. Backup files preserved.", InfoBarSeverity.Success);
+            }
+
+            // 6. Navigate back
+            MainWindow.Instance?.GoBack();
+        }
+        catch (Exception ex)
+        {
+            ViewModel.ShowError($"Error deleting customer: {ex.Message}");
         }
     }
 }

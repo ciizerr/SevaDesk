@@ -59,6 +59,40 @@ public static class CustomerAvatarHelper
         return null;
     }
 
+    public static event Action<string>? AvatarUpdated;
+    public static void NotifyAvatarUpdated(string photoPath) => AvatarUpdated?.Invoke(photoPath);
+
+    public static string? FindPhotoInCustomerFolders(string? customerName, string? customerCode)
+    {
+        if (string.IsNullOrWhiteSpace(customerName)) return null;
+
+        try
+        {
+            var folderMgr = AppServices.FolderManager;
+            if (folderMgr != null)
+            {
+                var workingPath = folderMgr.GetCustomerFolderPath(customerName, customerCode ?? string.Empty);
+                if (Directory.Exists(workingPath))
+                {
+                    var match = Directory.GetFiles(workingPath, "*.*", SearchOption.AllDirectories)
+                        .FirstOrDefault(f => SmartTagHelper.IsImageFile(f) && SmartTagHelper.IsPhotoTag(Path.GetFileNameWithoutExtension(f)));
+                    if (match != null) return match;
+                }
+
+                var backupPath = folderMgr.GetCustomerBackupFolderPath(customerName, customerCode ?? string.Empty);
+                if (!string.IsNullOrWhiteSpace(backupPath) && Directory.Exists(backupPath))
+                {
+                    var match = Directory.GetFiles(backupPath, "*.*", SearchOption.AllDirectories)
+                        .FirstOrDefault(f => SmartTagHelper.IsImageFile(f) && SmartTagHelper.IsPhotoTag(Path.GetFileNameWithoutExtension(f)));
+                    if (match != null) return match;
+                }
+            }
+        }
+        catch { }
+
+        return null;
+    }
+
     public static ImageSource? GetProfilePicture(string? photoPath)
     {
         var resolved = ResolvePhotoPath(photoPath);
@@ -70,7 +104,8 @@ public static class CustomerAvatarHelper
             var bitmap = new BitmapImage
             {
                 UriSource = new Uri(resolved),
-                DecodePixelWidth = 160
+                DecodePixelWidth = 160,
+                CreateOptions = BitmapCreateOptions.IgnoreImageCache
             };
             return bitmap;
         }
@@ -79,6 +114,7 @@ public static class CustomerAvatarHelper
             return null;
         }
     }
+
 
     /// <summary>Visible when string is non-empty, Collapsed otherwise.</summary>
     public static Visibility VisibleIfNotEmpty(string? value) =>

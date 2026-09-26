@@ -1,18 +1,41 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace SevaDesk.Core.Models;
 
-public class DocumentItem
+public partial class DocumentItem : ObservableObject
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    private string _name = string.Empty;
+
     public string CustomerName { get; set; } = string.Empty;
+    public string? CustomerId { get; set; }
     public string Category { get; set; } = "Unorganised"; // Unorganised, Identity, Education, PrintReady
-    public string FileSize { get; set; } = "240 KB";
-    public string Extension { get; set; } = ".pdf";
-    public string Status { get; set; } = "Pending Review";
-    public string Glyph { get; set; } = "\uE8A5"; // Document glyph
-    public string? FilePath { get; set; }
+
+    [ObservableProperty]
+    private string _fileSize = "240 KB";
+
+    [ObservableProperty]
+    private string _extension = ".pdf";
+
+    [ObservableProperty]
+    private string _status = "Pending Review";
+
+    [ObservableProperty]
+    private string _glyph = "\uE8A5"; // Document glyph
+
+    [ObservableProperty]
+    private string? _filePath;
+
     public string? CustomerFolderPath { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+    [ObservableProperty]
+    private bool _isRenaming;
+
+    [ObservableProperty]
+    private string _editName = string.Empty;
 }
 
 public class CompressionPreset

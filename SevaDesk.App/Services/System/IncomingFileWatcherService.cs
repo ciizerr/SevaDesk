@@ -308,6 +308,70 @@ public sealed class IncomingFileWatcherService : IDisposable
         return (success, destPath);
     }
 
+    public async Task<(bool Success, string DestPath)> RouteFileWithRenameAndUndoTrackingAsync(
+        string sourceFilePath,
+        string targetCustomerFolderPath,
+        string targetBaseName,
+        string customerName,
+        string sessionId = "")
+    {
+        try
+        {
+            if (!File.Exists(sourceFilePath)) return (false, string.Empty);
+            if (!Directory.Exists(targetCustomerFolderPath))
+            {
+                Directory.CreateDirectory(targetCustomerFolderPath);
+            }
+
+            var ext = Path.GetExtension(sourceFilePath);
+            var uniqueFileName = SmartTagHelper.GenerateUniqueFileName(targetCustomerFolderPath, targetBaseName, ext);
+            var destPath = Path.Combine(targetCustomerFolderPath, uniqueFileName);
+
+            await Task.Run(() => File.Move(sourceFilePath, destPath));
+
+            LastAutoMovedFile = (sourceFilePath, destPath, sessionId, customerName);
+            return (true, destPath);
+        }
+        catch
+        {
+            return (false, string.Empty);
+        }
+    }
+
+    public async Task<(bool Success, string NewDestPath)> RenameAutoMovedFileAsync(string currentDestPath, string targetBaseName)
+    {
+        try
+        {
+            if (!File.Exists(currentDestPath)) return (false, string.Empty);
+            var folder = Path.GetDirectoryName(currentDestPath) ?? string.Empty;
+            var ext = Path.GetExtension(currentDestPath);
+            var uniqueFileName = SmartTagHelper.GenerateUniqueFileName(folder, targetBaseName, ext);
+            var newDestPath = Path.Combine(folder, uniqueFileName);
+
+            if (string.Equals(currentDestPath, newDestPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return (true, currentDestPath);
+            }
+
+            await Task.Run(() => File.Move(currentDestPath, newDestPath));
+
+            if (LastAutoMovedFile.HasValue)
+            {
+                var current = LastAutoMovedFile.Value;
+                if (string.Equals(current.DestPath, currentDestPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    LastAutoMovedFile = (current.SourcePath, newDestPath, current.SessionId, current.CustomerName);
+                }
+            }
+
+            return (true, newDestPath);
+        }
+        catch
+        {
+            return (false, string.Empty);
+        }
+    }
+
     public async Task<(bool Success, string RestoredPath)> UndoLastAutoMoveAsync()
     {
         if (LastAutoMovedFile == null) return (false, string.Empty);

@@ -147,28 +147,44 @@ public partial class ApplicationsViewModel : StatusViewModel
         }
 
         SelectedApplication = Applications.FirstOrDefault();
-        UpdateChecklistForSelected();
+        _ = RefreshChecklistForSelectedAsync();
     }
 
     partial void OnSelectedApplicationChanged(ApplicationItem? value)
     {
-        UpdateChecklistForSelected();
+        _ = RefreshChecklistForSelectedAsync();
     }
 
-    private void UpdateChecklistForSelected()
+    public async Task RefreshChecklistForSelectedAsync()
     {
         SelectedChecklist.Clear();
         if (SelectedApplication == null || string.IsNullOrWhiteSpace(SelectedApplication.RequiredDocs)) return;
 
-        var docs = SelectedApplication.RequiredDocs.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        foreach (var doc in docs)
+        var result = await ApplicationDocumentVerifier.CheckAndAutoUpdateStatusAsync(SelectedApplication);
+        foreach (var doc in result.Checklist)
         {
-            SelectedChecklist.Add(new ApplicationChecklistItem
-            {
-                Title = doc,
-                IsCompleted = SelectedApplication.Status != "Draft",
-                Category = "Document"
-            });
+            SelectedChecklist.Add(doc);
+        }
+        OnPropertyChanged(nameof(SelectedApplication));
+    }
+
+    public async Task OnChecklistItemToggledAsync()
+    {
+        if (SelectedApplication == null) return;
+        bool allChecked = SelectedChecklist.Count > 0 && SelectedChecklist.All(i => i.IsCompleted);
+        if (allChecked && SelectedApplication.Status == "Draft")
+        {
+            SelectedApplication.Status = "Docs Ready";
+            SelectedApplication.UpdatedAt = DateTime.UtcNow;
+            await AppServices.Applications.UpdateAsync(SelectedApplication);
+            OnPropertyChanged(nameof(SelectedApplication));
+        }
+        else if (!allChecked && SelectedApplication.Status == "Docs Ready")
+        {
+            SelectedApplication.Status = "Draft";
+            SelectedApplication.UpdatedAt = DateTime.UtcNow;
+            await AppServices.Applications.UpdateAsync(SelectedApplication);
+            OnPropertyChanged(nameof(SelectedApplication));
         }
     }
 
@@ -195,7 +211,7 @@ public partial class ApplicationsViewModel : StatusViewModel
         SelectedApplication.UpdatedAt = DateTime.UtcNow;
         await AppServices.Applications.UpdateAsync(SelectedApplication);
         ShowSuccess($"Status updated to '{newStatus}' for {SelectedApplication.Title}.");
-        UpdateChecklistForSelected();
+        _ = RefreshChecklistForSelectedAsync();
         OnPropertyChanged(nameof(Applications));
     }
 

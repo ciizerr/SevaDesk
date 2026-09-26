@@ -4,12 +4,15 @@ namespace SevaDesk.Core.Interfaces;
 
 public interface IApplicationRepository
 {
+    event EventHandler? ApplicationsChanged;
+
     Task<IEnumerable<ApplicationItem>> GetAllAsync(string? status = null);
     Task<IEnumerable<ApplicationItem>> GetByCustomerIdAsync(string customerId);
     Task<ApplicationItem?> GetByIdAsync(string id);
     Task<ApplicationItem> CreateAsync(ApplicationItem app);
     Task UpdateAsync(ApplicationItem app);
     Task DeleteAsync(string id);
+    void NotifyApplicationsChanged();
 
     Task<IEnumerable<ApplicationTemplate>> GetAllTemplatesAsync(string? category = null);
     Task<ApplicationTemplate?> GetTemplateByIdAsync(string id);

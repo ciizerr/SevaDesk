@@ -23,9 +23,15 @@ public partial class DocumentsViewModel : StatusViewModel
 
     public bool HasSelectedDocument => SelectedDocument != null;
 
+    public event Action? SelectedDocumentTagsChanged;
+
+    [ObservableProperty]
+    private ObservableCollection<DocumentTagItem> _currentDocumentTags = [];
+
     partial void OnSelectedDocumentChanged(DocumentItem? value)
     {
         RefreshCustomerSubfolders();
+        _ = LoadTagsForSelectedDocumentAsync();
     }
 
     [ObservableProperty]
@@ -93,6 +99,7 @@ public partial class DocumentsViewModel : StatusViewModel
         ProcessedDocuments.Clear();
 
         var activeSessions = (await AppServices.Sessions.GetActiveSessionsAsync()).ToList();
+        var allCustomers = (await AppServices.Customers.GetAllAsync()).ToList();
         var scannedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // 1. Scan folders for active sessions
@@ -101,7 +108,7 @@ public partial class DocumentsViewModel : StatusViewModel
             if (Directory.Exists(s.FolderPath))
             {
                 scannedPaths.Add(s.FolderPath);
-                ScanCustomerFolder(s.FolderPath, $"{s.Customer.Name} ({s.Customer.Code})");
+                ScanCustomerFolder(s.FolderPath, $"{s.Customer.Name} ({s.Customer.Code})", s.Customer.Id);
             }
         }
 
@@ -115,7 +122,13 @@ public partial class DocumentsViewModel : StatusViewModel
                 if (!scannedPaths.Contains(dir))
                 {
                     var dirName = Path.GetFileName(dir);
-                    ScanCustomerFolder(dir, dirName);
+                    var matched = allCustomers.FirstOrDefault(c =>
+                        dirName.Contains(c.Code, StringComparison.OrdinalIgnoreCase) ||
+                        dirName.StartsWith(c.Name, StringComparison.OrdinalIgnoreCase));
+
+                    string displayName = matched != null ? $"{matched.Name} ({matched.Code})" : dirName;
+                    string? cId = matched?.Id;
+                    ScanCustomerFolder(dir, displayName, cId);
                 }
             }
         }
@@ -124,7 +137,120 @@ public partial class DocumentsViewModel : StatusViewModel
         SelectedDocument = PendingDocuments.FirstOrDefault();
     }
 
-    private void ScanCustomerFolder(string customerFolderPath, string customerDisplayName)
+    public async Task LoadTagsForSelectedDocumentAsync()
+    {
+        CurrentDocumentTags.Clear();
+        if (SelectedDocument != null)
+        {
+            var tags = await GetTagsForDocumentAsync(SelectedDocument);
+            foreach (var t in tags)
+            {
+                CurrentDocumentTags.Add(t);
+            }
+        }
+        SelectedDocumentTagsChanged?.Invoke();
+    }
+
+    public async Task<List<DocumentTagItem>> GetTagsForDocumentAsync(DocumentItem doc)
+    {
+        var result = new List<DocumentTagItem>();
+        var seenKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // 1. Try to find customer's active or latest completed linked application
+        ApplicationItem? linkedApp = null;
+        Customer? customer = null;
+        if (!string.IsNullOrWhiteSpace(doc.CustomerId))
+        {
+            try
+            {
+                customer = await AppServices.Customers.GetByIdAsync(doc.CustomerId);
+                var apps = await AppServices.Applications.GetByCustomerIdAsync(doc.CustomerId);
+                linkedApp = apps.FirstOrDefault();
+            }
+            catch { }
+        }
+
+        // 2. If customerId wasn't set, try resolving customer by CustomerFolderPath
+        if (customer == null && !string.IsNullOrWhiteSpace(doc.CustomerFolderPath))
+        {
+            try
+            {
+                var folderName = Path.GetFileName(doc.CustomerFolderPath);
+                var allCustomers = await AppServices.Customers.GetAllAsync();
+                var matched = allCustomers.FirstOrDefault(c =>
+                    folderName.Contains(c.Code, StringComparison.OrdinalIgnoreCase) ||
+                    folderName.StartsWith(c.Name, StringComparison.OrdinalIgnoreCase));
+
+                if (matched != null)
+                {
+                    customer = matched;
+                    doc.CustomerId = matched.Id;
+                    var apps = await AppServices.Applications.GetByCustomerIdAsync(matched.Id);
+                    linkedApp = apps.FirstOrDefault();
+                }
+            }
+            catch { }
+        }
+
+        return SmartTagHelper.GetDocumentTags(doc.CustomerFolderPath, linkedApp, customer);
+    }
+
+    public async Task<(bool Success, string NewFileName)> RenameDocumentAsync(DocumentItem doc, string targetBaseName)
+    {
+        if (doc == null || string.IsNullOrWhiteSpace(doc.FilePath) || !File.Exists(doc.FilePath))
+        {
+            ShowError("File does not exist or has been moved.");
+            return (false, string.Empty);
+        }
+
+        try
+        {
+            var folder = Path.GetDirectoryName(doc.FilePath) ?? string.Empty;
+            var ext = Path.GetExtension(doc.FilePath);
+            var cleanBase = SmartTagHelper.NormalizeTagKey(targetBaseName);
+            var uniqueFileName = SmartTagHelper.GenerateUniqueFileName(folder, cleanBase, ext);
+            var newPath = Path.Combine(folder, uniqueFileName);
+
+            if (string.Equals(doc.FilePath, newPath, StringComparison.OrdinalIgnoreCase))
+            {
+                doc.IsRenaming = false;
+                return (true, uniqueFileName);
+            }
+
+            await Task.Run(() => File.Move(doc.FilePath, newPath));
+
+            doc.FilePath = newPath;
+            doc.Name = uniqueFileName;
+            doc.Extension = ext.ToLowerInvariant();
+            doc.IsRenaming = false;
+
+            if (doc == SelectedDocument)
+            {
+                await LoadTagsForSelectedDocumentAsync();
+            }
+
+            if (SmartTagHelper.IsPhotoTag(cleanBase) && SmartTagHelper.IsImageFile(newPath) && !string.IsNullOrWhiteSpace(doc.CustomerId))
+            {
+                var cust = await AppServices.Customers.GetByIdAsync(doc.CustomerId);
+                if (cust != null)
+                {
+                    await SmartTagHelper.TryAssignCustomerPhotoAsync(cust, newPath);
+                }
+            }
+
+            MainWindow.Instance?.NotifyIncomingFileRouted();
+            ShowSuccess($"Renamed to '{uniqueFileName}' ✓");
+
+            return (true, uniqueFileName);
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Failed to rename: {ex.Message}");
+            return (false, string.Empty);
+        }
+    }
+
+    private void ScanCustomerFolder(string customerFolderPath, string customerDisplayName, string? customerId = null)
     {
         try
         {
@@ -151,6 +277,7 @@ public partial class DocumentsViewModel : StatusViewModel
                     Id = file.FullName,
                     Name = file.Name,
                     CustomerName = customerDisplayName,
+                    CustomerId = customerId,
                     Category = "Loose Files",
                     FileSize = sizeStr,
                     Extension = ext,
@@ -187,6 +314,7 @@ public partial class DocumentsViewModel : StatusViewModel
                             Id = file.FullName,
                             Name = file.Name,
                             CustomerName = customerDisplayName,
+                            CustomerId = customerId,
                             Category = "Unorganised",
                             FileSize = sizeStr,
                             Extension = ext,
@@ -220,6 +348,7 @@ public partial class DocumentsViewModel : StatusViewModel
                         Id = file.FullName,
                         Name = file.Name,
                         CustomerName = customerDisplayName,
+                        CustomerId = customerId,
                         Category = subDir.Name,
                         FileSize = sizeStr,
                         Extension = ext,

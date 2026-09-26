@@ -243,6 +243,44 @@ public partial class ResourcesViewModel : StatusViewModel
         ShowSuccess($"Added \"{created.Title}\" to template catalog.");
     }
 
+    [RelayCommand]
+    public async Task DeleteResourceAsync(ResourceItem? item)
+    {
+        var target = item ?? SelectedResource;
+        if (target == null) return;
+
+        try
+        {
+            // 1. Delete from database
+            await AppServices.Resources.DeleteAsync(target.Id);
+
+            // 2. Permanently delete physical file if exists on disk
+            if (!string.IsNullOrWhiteSpace(target.FilePath) && File.Exists(target.FilePath))
+            {
+                try
+                {
+                    File.Delete(target.FilePath);
+                }
+                catch (Exception ex)
+                {
+                    ShowWarning($"Template record deleted, but could not delete physical file: {ex.Message}");
+                }
+            }
+
+            // 3. Remove from collections & refresh filter
+            var existing = AllResources.FirstOrDefault(r => r.Id == target.Id) ?? target;
+            AllResources.Remove(existing);
+            ApplyFilter();
+
+            ShowSuccess($"Deleted \"{target.Title}\" successfully.");
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Failed to delete template: {ex.Message}");
+        }
+    }
+
+
     private void ApplyFilter()
     {
         var filtered = AllResources.AsEnumerable();

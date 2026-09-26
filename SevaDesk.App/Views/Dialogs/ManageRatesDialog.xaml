@@ -6,7 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:SevaDesk.Core.Models"
-    Title="Service Rate Card Management"
+    Title="Rate Card"
     CloseButtonText="Done"
     DefaultButton="Close"
     mc:Ignorable="d">
@@ -98,20 +98,34 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="10">
                     <StackPanel Spacing="1">
-                        <TextBlock x:Name="TxtFormHeader" Text="Add New Service" FontWeight="Bold" FontSize="14" />
-                        <TextBlock x:Name="TxtFormSubtitle" Text="Configure pricing, category, and unit"
+                        <TextBlock x:Name="TxtFormHeader" Text="Add Service" FontWeight="Bold" FontSize="14" />
+                        <TextBlock x:Name="TxtFormSubtitle" Text="Set price and details"
                                    FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     </StackPanel>
 
                     <!-- Service Name -->
-                    <TextBox x:Name="TxtServiceName" Header="Service Name *" PlaceholderText="e.g. Color Xerox / Print" />
+                    <TextBox x:Name="TxtServiceName" PlaceholderText="e.g. Color Xerox / Print">
+                        <TextBox.Header>
+                            <TextBlock FontSize="12">
+                                <Run Text="Service Name" />
+                                <Run Text=" *" Foreground="#EF4444" FontWeight="Bold" />
+                            </TextBlock>
+                        </TextBox.Header>
+                    </TextBox>
 
                     <!-- Category -->
                     <ComboBox x:Name="CmbCategory" Header="Category" IsEditable="True" HorizontalAlignment="Stretch" />
 
                     <!-- Price & Unit -->
                     <Grid ColumnDefinitions="*,8,*" ColumnSpacing="0">
-                        <NumberBox x:Name="NumRate" Grid.Column="0" Header="Rate (₹) *" Value="10" Minimum="0" SpinButtonPlacementMode="Compact" />
+                        <NumberBox x:Name="NumRate" Grid.Column="0" Value="10" Minimum="0" SpinButtonPlacementMode="Compact">
+                            <NumberBox.Header>
+                                <TextBlock FontSize="12">
+                                    <Run Text="Rate (₹)" />
+                                    <Run Text=" *" Foreground="#EF4444" FontWeight="Bold" />
+                                </TextBlock>
+                            </NumberBox.Header>
+                        </NumberBox>
                         <ComboBox x:Name="CmbUnit" Grid.Column="2" Header="Unit" IsEditable="True" HorizontalAlignment="Stretch" />
                     </Grid>
 
@@ -127,7 +141,7 @@
                     <!-- Form Action Buttons -->
                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,4,0,0">
                         <Button x:Name="BtnSaveService" Grid.Column="0" HorizontalAlignment="Stretch"
-                                Style="{StaticResource AccentButtonStyle}" Content="Save Service" Click="SaveService_Click" />
+                                Style="{StaticResource AccentButtonStyle}" Content="Save" Click="SaveService_Click" />
                         <Button x:Name="BtnCancelEdit" Grid.Column="1" HorizontalAlignment="Stretch"
                                 Content="Reset" Click="CancelEdit_Click" />
                     </Grid>

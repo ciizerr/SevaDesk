@@ -38,11 +38,21 @@ public partial class ActiveSessionItem : ObservableObject
 
     public bool HasLinkedApplication => LinkedApplication != null;
     public string LinkedApplicationTitle => LinkedApplication?.Title ?? string.Empty;
+    public string LinkedApplicationStatus => LinkedApplication?.Status ?? "Draft";
 
     partial void OnLinkedApplicationChanged(ApplicationItem? value)
     {
         OnPropertyChanged(nameof(HasLinkedApplication));
         OnPropertyChanged(nameof(LinkedApplicationTitle));
+        OnPropertyChanged(nameof(LinkedApplicationStatus));
+    }
+
+    public void NotifyLinkedApplicationChanged()
+    {
+        OnPropertyChanged(nameof(LinkedApplication));
+        OnPropertyChanged(nameof(HasLinkedApplication));
+        OnPropertyChanged(nameof(LinkedApplicationTitle));
+        OnPropertyChanged(nameof(LinkedApplicationStatus));
     }
 
     public void NotifyStatusChanged()

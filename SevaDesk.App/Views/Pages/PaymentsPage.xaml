@@ -12,6 +12,33 @@
     xmlns:vm="using:SevaDesk_App.ViewModels.Pages"
     mc:Ignorable="d">
 
+    <Page.Resources>
+        <Flyout x:Name="RateEditFlyout" Placement="BottomEdgeAlignedLeft">
+            <StackPanel Spacing="10" Width="210">
+                <StackPanel Spacing="2">
+                    <TextBlock Text="Custom Unit Rate" FontWeight="SemiBold" FontSize="12" />
+                    <TextBlock x:Name="FlyoutServiceName" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
+                    <TextBlock Text="₹" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" />
+                    <TextBox x:Name="FlyoutRateInput"
+                             PlaceholderText="Rate"
+                             InputScope="Number"
+                             KeyDown="FlyoutRateInput_KeyDown" />
+                </Grid>
+                
+                <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                    <Button x:Name="FlyoutResetBtn" Content="Reset" FontSize="11" Padding="8,4" MinWidth="0" Height="28"
+                            Click="FlyoutReset_Click" />
+                    <Button Content="Apply" FontSize="11" Padding="12,4" MinWidth="0" Height="28"
+                            Style="{StaticResource AccentButtonStyle}"
+                            Click="FlyoutApply_Click" />
+                </StackPanel>
+            </StackPanel>
+        </Flyout>
+    </Page.Resources>
+
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Spacing="16" Padding="24">
 
@@ -276,36 +303,116 @@
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
                             Padding="18">
                         <StackPanel Spacing="14">
-                            <!-- Bill Header -->
-                            <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Grid.Column="0" Spacing="2">
-                                    <AutoSuggestBox x:Name="CustomerAutoSuggest"
-                                                    Text="{x:Bind ViewModel.CustomerName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                    PlaceholderText="Customer name / walk-in..."
-                                                    TextChanged="CustomerAutoSuggest_TextChanged"
-                                                    SuggestionChosen="CustomerAutoSuggest_SuggestionChosen"
-                                                    QueryIcon="Contact" Margin="0,6,0,0">
-                                        <AutoSuggestBox.ItemTemplate>
-                                            <DataTemplate x:DataType="models:Customer">
-                                                <StackPanel Spacing="1">
-                                                    <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="13" />
-                                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                                        <TextBlock Text="{x:Bind Code}" FontFamily="Consolas" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                        <TextBlock Text="·" FontSize="10" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                                        <TextBlock Text="{x:Bind Mobile}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                    </StackPanel>
+                            <!-- Bill Header: Card Title & Clear Action -->
+                            <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <Border Width="30" Height="30" CornerRadius="6" Background="{ThemeResource LayerFillColorAltBrush}"
+                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                        <FontIcon Glyph="&#xE8A1;" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" FontSize="13"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Spacing="0" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                            <TextBlock Text="Current Bill" FontWeight="Bold" FontSize="15" />
+                                            <Border Visibility="{x:Bind local:PaymentsPage.VisibleIf(ViewModel.HasCartItems), Mode=OneWay}"
+                                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                                    CornerRadius="10" Padding="8,2">
+                                                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                    <Border Width="6" Height="6" CornerRadius="3" Background="#F59E0B" />
+                                                    <TextBlock Text="{x:Bind ViewModel.DraftItemsCountText, Mode=OneWay}"
+                                                               FontSize="10" FontWeight="SemiBold"
+                                                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                                                 </StackPanel>
-                                            </DataTemplate>
-                                        </AutoSuggestBox.ItemTemplate>
-                                    </AutoSuggestBox>
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Text="Customer &amp; checkout" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    </StackPanel>
                                 </StackPanel>
-                                <Button Grid.Column="1" VerticalAlignment="Top" Click="ClearBill_Click" ToolTipService.ToolTip="Clear current bill">
-                                    <FontIcon Glyph="&#xE74D;" FontSize="12" />
+
+                                <Button Grid.Column="1" VerticalAlignment="Center" Click="ClearBill_Click"
+                                        ToolTipService.ToolTip="Clear current bill"
+                                        Padding="8,5" MinWidth="0" Height="30">
+                                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                        <FontIcon Glyph="&#xE74D;" FontSize="11" Foreground="#EF4444" />
+                                        <TextBlock Text="Clear" FontSize="11" Foreground="#EF4444" FontWeight="SemiBold" />
+                                    </StackPanel>
                                 </Button>
                             </Grid>
 
+                            <!-- Active Sessions Quick Picker (visible when 2+ sessions are active) -->
+                            <StackPanel Visibility="{x:Bind local:PaymentsPage.VisibleIf(ViewModel.HasMultipleActiveSessions), Mode=OneWay}"
+                                        Spacing="6">
+                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE71D;" FontSize="11" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                    <TextBlock Text="Active Sessions (Click to link):" FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                                              HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled">
+                                    <ItemsControl ItemsSource="{x:Bind ViewModel.ActiveSessions, Mode=OneWay}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" Spacing="6" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="models:ActiveSessionItem">
+                                                <Button Click="SelectActiveSessionChip_Click" Tag="{x:Bind}"
+                                                        Padding="8,4" MinWidth="0" Height="28" CornerRadius="14">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                        <Border Width="6" Height="6" CornerRadius="3" Background="#10B981" />
+                                                        <TextBlock Text="{x:Bind Customer.Name}" FontSize="11" FontWeight="SemiBold" />
+                                                        <TextBlock Text="{x:Bind ElapsedDisplay, Mode=OneWay}" FontSize="10"
+                                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                    </StackPanel>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </StackPanel>
+
+                            <!-- Customer Selection Field -->
+                            <AutoSuggestBox x:Name="CustomerAutoSuggest"
+                                            Text="{x:Bind ViewModel.CustomerName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            PlaceholderText="Search customer name, code or walk-in..."
+                                            TextChanged="CustomerAutoSuggest_TextChanged"
+                                            SuggestionChosen="CustomerAutoSuggest_SuggestionChosen"
+                                            QueryIcon="Contact" HorizontalAlignment="Stretch">
+                                <AutoSuggestBox.ItemTemplate>
+                                    <DataTemplate x:DataType="models:Customer">
+                                        <StackPanel Spacing="1">
+                                            <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="13" />
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{x:Bind Code}" FontFamily="Consolas" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                <TextBlock Text="·" FontSize="10" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                                <TextBlock Text="{x:Bind Mobile}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </AutoSuggestBox.ItemTemplate>
+                            </AutoSuggestBox>
+
+                            <!-- Linked Active Session Indicator Badge -->
+                            <Border Visibility="{x:Bind local:PaymentsPage.VisibleIf(ViewModel.HasLinkedActiveSession), Mode=OneWay}"
+                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="6" Padding="8,4">
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" VerticalAlignment="Center">
+                                    <Border Grid.Column="0" Width="8" Height="8" CornerRadius="4" Background="#10B981" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <TextBlock Text="Active Session Linked" FontSize="11" FontWeight="SemiBold" Foreground="#10B981" />
+                                        <TextBlock Text="{x:Bind ViewModel.LinkedSessionDurationText, Mode=OneWay}" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="2" Padding="4,1" MinWidth="0" Height="22" Background="Transparent" BorderThickness="0"
+                                            ToolTipService.ToolTip="Unlink session from this bill"
+                                            Click="UnlinkSession_Click">
+                                        <FontIcon Glyph="&#xE711;" FontSize="9" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    </Button>
+                                </Grid>
+                            </Border>
+
                             <!-- Divider -->
-                            <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+                            <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" Margin="0,4" />
 
                             <!-- Empty Cart Placeholder -->
                             <Border Visibility="{x:Bind local:PaymentsPage.CollapsedIf(ViewModel.HasCartItems), Mode=OneWay}"
@@ -323,29 +430,57 @@
                                       ItemsSource="{x:Bind ViewModel.CartItems, Mode=OneWay}" SelectionMode="None" MaxHeight="220">
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="models:CartItem">
-                                        <Grid ColumnDefinitions="*,Auto,Auto,Auto" Padding="0,6" VerticalAlignment="Center">
-                                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8" Padding="0,6" VerticalAlignment="Center">
+                                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="1">
                                                 <TextBlock Text="{x:Bind ServiceName}" FontWeight="SemiBold" FontSize="12" />
-                                                <TextBlock Text="{x:Bind Rate, Mode=OneWay}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                <Button Padding="4,1" Margin="-4,0,0,0" Height="24" MinWidth="0"
+                                                        Background="Transparent" BorderThickness="0" CornerRadius="4"
+                                                        ToolTipService.ToolTip="Click to edit unit rate for this bill"
+                                                        Click="EditRateButton_Click" Tag="{x:Bind}"
+                                                        HorizontalAlignment="Left">
+                                                    <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                        <TextBlock Text="{x:Bind FormattedRate, Mode=OneWay}" FontSize="11"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                        <TextBlock Text="{x:Bind FormattedOriginalRate, Mode=OneWay}" FontSize="10"
+                                                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                                   TextDecorations="Strikethrough"
+                                                                   Visibility="{x:Bind local:PaymentsPage.VisibleIf(IsRateModified), Mode=OneWay}" />
+                                                        <FontIcon Glyph="&#xE70F;" FontSize="9" Foreground="{ThemeResource TextFillColorTertiaryBrush}" Margin="1,0,0,0" />
+                                                    </StackPanel>
+                                                </Button>
                                             </StackPanel>
 
                                             <!-- Qty Controls -->
-                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Margin="8,0">
-                                                <Button Padding="6,2" Click="DecreaseQty_Click" Tag="{x:Bind}">
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                <Button Width="26" Height="28" Padding="0" MinWidth="0" Click="DecreaseQty_Click" Tag="{x:Bind}"
+                                                        ToolTipService.ToolTip="Decrease quantity">
                                                     <TextBlock Text="-" FontWeight="Bold" FontSize="12" />
                                                 </Button>
-                                                <TextBlock Text="{x:Bind Quantity, Mode=OneWay}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Width="22" TextAlignment="Center" />
-                                                <Button Padding="6,2" Click="IncreaseQty_Click" Tag="{x:Bind}">
+                                                <TextBox Width="44" Height="28" Padding="2,0"
+                                                         TextAlignment="Center" FontSize="12" FontWeight="SemiBold"
+                                                         Text="{x:Bind Quantity, Mode=OneWay}"
+                                                         InputScope="Number"
+                                                         Tag="{x:Bind}"
+                                                         GotFocus="QtyBox_GotFocus"
+                                                         KeyDown="QtyBox_KeyDown"
+                                                         LostFocus="QtyBox_LostFocus"
+                                                         ToolTipService.ToolTip="Enter quantity (e.g. 50)" />
+                                                <Button Width="26" Height="28" Padding="0" MinWidth="0" Click="IncreaseQty_Click" Tag="{x:Bind}"
+                                                        ToolTipService.ToolTip="Increase quantity">
                                                     <TextBlock Text="+" FontWeight="Bold" FontSize="12" />
                                                 </Button>
                                             </StackPanel>
 
-                                            <TextBlock Grid.Column="2" VerticalAlignment="Center" FontWeight="Bold" FontSize="13" Margin="8,0"
+                                            <TextBlock Grid.Column="2" VerticalAlignment="Center" FontWeight="Bold" FontSize="13"
+                                                       MinWidth="50" TextAlignment="Right"
                                                        Text="{x:Bind FormattedTotal, Mode=OneWay}" />
 
-                                            <Button Grid.Column="3" Padding="4" Background="Transparent" BorderThickness="0"
+                                            <Button Grid.Column="3" Width="28" Height="28" Padding="0" MinWidth="0"
+                                                    Background="Transparent" BorderThickness="0" CornerRadius="6"
+                                                    ToolTipService.ToolTip="Remove item from bill"
                                                     Click="RemoveItem_Click" Tag="{x:Bind}">
-                                                <FontIcon Glyph="&#xE711;" FontSize="10" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                                <FontIcon Glyph="&#xE711;" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                             </Button>
                                         </Grid>
                                     </DataTemplate>
@@ -353,7 +488,76 @@
                             </ListView>
 
                             <!-- Divider -->
-                            <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+                            <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" Margin="0,4" />
+
+                            <!-- Subtotal Row -->
+                            <Grid ColumnDefinitions="*,Auto" Visibility="{x:Bind local:PaymentsPage.VisibleIf(ViewModel.HasCartItems), Mode=OneWay}">
+                                <TextBlock Grid.Column="0" Text="Subtotal:" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.FormattedSubTotal, Mode=OneWay}"
+                                           FontSize="13" FontWeight="SemiBold" />
+                            </Grid>
+
+                            <!-- Discount Controls Section -->
+                            <StackPanel Spacing="6" Visibility="{x:Bind local:PaymentsPage.VisibleIf(ViewModel.HasCartItems), Mode=OneWay}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <FontIcon Glyph="&#xE8C0;" FontSize="12" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                        <TextBlock Text="Discount" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    </StackPanel>
+
+                                    <!-- ₹ / % Segmented Toggle -->
+                                    <Border Grid.Column="1" Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="6" Padding="2">
+                                        <StackPanel Orientation="Horizontal" Spacing="2">
+                                            <Button Content="₹" Padding="0" MinWidth="32" Height="26" FontSize="11" FontWeight="Bold"
+                                                    Click="DiscountTypeFlat_Click"
+                                                    Style="{x:Bind FlatDiscountToggleStyle(ViewModel.IsPercentageDiscount), Mode=OneWay}" />
+                                            <Button Content="%" Padding="0" MinWidth="32" Height="26" FontSize="11" FontWeight="Bold"
+                                                    Click="DiscountTypePercent_Click"
+                                                    Style="{x:Bind PercentDiscountToggleStyle(ViewModel.IsPercentageDiscount), Mode=OneWay}" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Custom Discount Input & Clear Button -->
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                                    <TextBox Text="{x:Bind ViewModel.DiscountInputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             PlaceholderText="{x:Bind ViewModel.DiscountPlaceholder, Mode=OneWay}"
+                                             InputScope="Number"
+                                             FontSize="12"
+                                             Height="32"
+                                             Padding="8,4" />
+                                    <Button Grid.Column="1" Content="Clear" FontSize="11" Padding="8,4" MinWidth="0" Height="32"
+                                            Visibility="{x:Bind local:PaymentsPage.VisibleIf(ViewModel.HasDiscount), Mode=OneWay}"
+                                            Click="ClearDiscount_Click" />
+                                </Grid>
+
+                                <!-- Quick Discount Preset Chips -->
+                                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                                              HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <Button Content="₹5" Padding="8,2" FontSize="11" MinWidth="0" Height="26" CornerRadius="13" Click="QuickDiscount_Click" Tag="₹5" />
+                                        <Button Content="₹10" Padding="8,2" FontSize="11" MinWidth="0" Height="26" CornerRadius="13" Click="QuickDiscount_Click" Tag="₹10" />
+                                        <Button Content="₹20" Padding="8,2" FontSize="11" MinWidth="0" Height="26" CornerRadius="13" Click="QuickDiscount_Click" Tag="₹20" />
+                                        <Button Content="₹50" Padding="8,2" FontSize="11" MinWidth="0" Height="26" CornerRadius="13" Click="QuickDiscount_Click" Tag="₹50" />
+                                        <Button Content="5%" Padding="8,2" FontSize="11" MinWidth="0" Height="26" CornerRadius="13" Click="QuickDiscount_Click" Tag="5%" />
+                                        <Button Content="10%" Padding="8,2" FontSize="11" MinWidth="0" Height="26" CornerRadius="13" Click="QuickDiscount_Click" Tag="10%" />
+                                    </StackPanel>
+                                </ScrollViewer>
+
+                                <!-- Active Discount Deduction Display -->
+                                <Grid ColumnDefinitions="*,Auto" Visibility="{x:Bind local:PaymentsPage.VisibleIf(ViewModel.HasDiscount), Mode=OneWay}"
+                                      Margin="0,2,0,0">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock Text="Discount Applied" FontSize="11" Foreground="#10B981" FontWeight="SemiBold" />
+                                        <TextBlock Text="{x:Bind ViewModel.DiscountSummaryText, Mode=OneWay}" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.FormattedDiscount, Mode=OneWay}"
+                                               FontSize="12" FontWeight="Bold" Foreground="#10B981" VerticalAlignment="Center" />
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Divider -->
+                            <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" Margin="0,4" />
 
                             <!-- Grand Total Row -->
                             <Grid ColumnDefinitions="*,Auto">
@@ -402,16 +606,16 @@
 
                             <!-- Payment Settlement Action Buttons -->
                             <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                                <Button Grid.Column="0" HorizontalAlignment="Stretch" Click="PayCash_Click">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button Grid.Column="0" HorizontalAlignment="Stretch" Height="36" Click="PayCash_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <FontIcon Glyph="&#xE717;" FontSize="14" Foreground="#10B981" />
-                                        <TextBlock loc:Loc.Key="Payments.MarkCashPaidBtn" Text="Mark Paid (Cash)" />
+                                        <TextBlock loc:Loc.Key="Payments.MarkCashPaidBtn" Text="Mark Paid (Cash)" FontWeight="SemiBold" />
                                     </StackPanel>
                                 </Button>
-                                <Button Grid.Column="1" HorizontalAlignment="Stretch" Style="{StaticResource AccentButtonStyle}" Click="PayUpi_Click">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button Grid.Column="1" HorizontalAlignment="Stretch" Height="36" Style="{StaticResource AccentButtonStyle}" Click="PayUpi_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <FontIcon Glyph="&#xE8C7;" FontSize="14" />
-                                        <TextBlock loc:Loc.Key="Payments.GenerateQrBtn" Text="Mark Paid (UPI)" />
+                                        <TextBlock loc:Loc.Key="Payments.GenerateQrBtn" Text="Mark Paid (UPI)" FontWeight="SemiBold" />
                                     </StackPanel>
                                 </Button>
                             </Grid>
@@ -785,11 +989,7 @@
 
                             <!-- Search Filter Box -->
                             <TextBox Text="{x:Bind ViewModel.SearchFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     PlaceholderText="Filter customer, invoice..." Width="220">
-                                <TextBox.Header>
-                                    <TextBlock Text="" />
-                                </TextBox.Header>
-                            </TextBox>
+                                     PlaceholderText="Filter customer, invoice..." Width="220" />
                         </StackPanel>
                     </StackPanel>
                 </Border>

@@ -1,6 +1,7 @@
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using SevaDesk.Core.Models;
@@ -144,7 +145,7 @@ public sealed partial class ResourcesPage : Page
 
     private void ListItemOpen_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button btn && btn.Tag is ResourceItem item)
+        if (sender is FrameworkElement elem && elem.Tag is ResourceItem item)
         {
             ViewModel.OpenDocument(item);
         }
@@ -152,9 +153,25 @@ public sealed partial class ResourcesPage : Page
 
     private void QuickPrint_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button btn && btn.Tag is ResourceItem item)
+        if (sender is FrameworkElement elem && elem.Tag is ResourceItem item)
         {
             ViewModel.QuickPrint(item);
+        }
+    }
+
+    private async void ListItemCopyToFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement elem && elem.Tag is ResourceItem item)
+        {
+            await ViewModel.CopyToActiveSessionAsync(item);
+        }
+    }
+
+    private async void ListItemDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement elem && elem.Tag is ResourceItem item)
+        {
+            await ShowDeleteConfirmationAsync(item);
         }
     }
 
@@ -199,10 +216,146 @@ public sealed partial class ResourcesPage : Page
         }
     }
 
+    private async void InspectorDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedResource != null)
+        {
+            await ShowDeleteConfirmationAsync(ViewModel.SelectedResource);
+        }
+    }
+
     private async void SaveDetails_Click(object sender, RoutedEventArgs e)
     {
         await ViewModel.SaveSelectedResourceAsync();
         UpdateRequiredDocsChips();
+    }
+
+    private async Task ShowDeleteConfirmationAsync(ResourceItem item)
+    {
+        if (item == null) return;
+
+        var panel = new StackPanel { Spacing = 12, Width = 460 };
+
+        // Caution / Danger Alert Card
+        var alertBorder = new Border
+        {
+            Background = (Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"],
+            BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(14, 12, 14, 12)
+        };
+
+        var grid = new Grid { ColumnSpacing = 12 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        var icon = new FontIcon
+        {
+            Glyph = "\uE7BA",
+            FontSize = 20,
+            Foreground = (Brush)Application.Current.Resources["SystemFillColorCriticalBrush"],
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 2, 0, 0)
+        };
+        Grid.SetColumn(icon, 0);
+        grid.Children.Add(icon);
+
+        var headerStack = new StackPanel
+        {
+            Spacing = 4,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = $"Delete \"{item.Title}\"?",
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    FontSize = 13,
+                    TextWrapping = TextWrapping.Wrap
+                },
+                new TextBlock
+                {
+                    Text = $"{item.Category} • {item.FileType}",
+                    FontSize = 11,
+                    Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+                }
+            }
+        };
+        Grid.SetColumn(headerStack, 1);
+        grid.Children.Add(headerStack);
+        alertBorder.Child = grid;
+        panel.Children.Add(alertBorder);
+
+        // Attached physical document file card
+        if (item.HasFile && !string.IsNullOrWhiteSpace(item.FilePath))
+        {
+            var fileCard = new Border
+            {
+                Background = (Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"],
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(12, 10, 12, 10),
+                Child = new StackPanel
+                {
+                    Spacing = 4,
+                    Children =
+                    {
+                        new StackPanel
+                        {
+                            Orientation = Orientation.Horizontal,
+                            Spacing = 6,
+                            Children =
+                            {
+                                new FontIcon { Glyph = "\uE8B7", FontSize = 12, Foreground = (Brush)Application.Current.Resources["SystemFillColorCriticalBrush"] },
+                                new TextBlock { Text = "Physical File Will Be Deleted", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12 }
+                            }
+                        },
+                        new TextBlock
+                        {
+                            Text = item.FilePath,
+                            FontSize = 11,
+                            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+                            TextWrapping = TextWrapping.Wrap,
+                            MaxLines = 2,
+                            TextTrimming = TextTrimming.CharacterEllipsis
+                        }
+                    }
+                }
+            };
+            panel.Children.Add(fileCard);
+        }
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = "This will permanently delete the template and its file from disk.",
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 12,
+            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"]
+        });
+
+        var dialog = new ContentDialog
+        {
+            XamlRoot = this.XamlRoot ?? MainWindow.Instance?.Content?.XamlRoot,
+            Title = "Delete Template",
+            Content = panel,
+            PrimaryButtonText = "Delete",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Close // Focused on Cancel for safety
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            await ViewModel.DeleteResourceAsync(item);
+            UpdateRequiredDocsChips();
+        }
+    }
+
+    private static TextBlock CreateRequiredHeader(string label)
+    {
+        var tb = new TextBlock { FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };
+        tb.Inlines.Add(new Run { Text = label + " " });
+        tb.Inlines.Add(new Run { Text = "*", Foreground = new SolidColorBrush(Color.FromArgb(255, 239, 68, 68)), FontWeight = Microsoft.UI.Text.FontWeights.Bold });
+        return tb;
     }
 
     // --- Add New Resource Dialog with File Picker & Hierarchy ---
@@ -291,7 +444,7 @@ public sealed partial class ResourcesPage : Page
         var dialog = new ContentDialog
         {
             XamlRoot = this.XamlRoot,
-            Title = "Add Offline Template or Form",
+            Title = "New Template",
             Content = new ScrollViewer
             {
                 Content = new StackPanel
@@ -300,25 +453,25 @@ public sealed partial class ResourcesPage : Page
                     Width = 420,
                     Children =
                     {
-                        new TextBlock { Text = "Document File", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12 },
+                        new TextBlock { Text = "Template File", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12 },
                         btnPickFile,
                         lblChosenFile,
 
-                        new TextBlock { Text = "Template / Form Title *", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12 },
+                        CreateRequiredHeader("Template / Form Title"),
                         txtTitle,
 
-                        new TextBlock { Text = "Category *", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12 },
+                        CreateRequiredHeader("Category"),
                         cmbCategory,
 
-                        new TextBlock { Text = "Required Supporting Documents (comma-separated)", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12 },
+                        new TextBlock { Text = "Required Documents (comma-separated)", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12 },
                         txtRequiredDocs,
 
-                        new TextBlock { Text = "Operator Guidelines & Notes (Optional)", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12 },
+                        new TextBlock { Text = "Operator Notes", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12 },
                         txtNotes
                     }
                 }
             },
-            PrimaryButtonText = "Add to Catalog",
+            PrimaryButtonText = "Save",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };

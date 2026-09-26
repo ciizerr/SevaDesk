@@ -1,5 +1,8 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
+using Microsoft.UI.Xaml.Media;
+using Windows.UI;
 using SevaDesk_App.ViewModels.Pages;
 using SevaDesk_App.Services;
 using SevaDesk.Core.Models;
@@ -19,6 +22,59 @@ public sealed partial class ApplicationsPage : Page
     public static bool HasStatus(string status) => !string.IsNullOrWhiteSpace(status);
     public static Visibility VisibleIf(bool condition) => condition ? Visibility.Visible : Visibility.Collapsed;
     public static Visibility CollapsedIf(bool condition) => condition ? Visibility.Collapsed : Visibility.Visible;
+
+    public static Brush AppStatusBackground(string? status) =>
+        status switch
+        {
+            "Docs Ready" or "Docs Uploaded" => new SolidColorBrush(Color.FromArgb(35, 59, 130, 246)),
+            "Completed" => new SolidColorBrush(Color.FromArgb(35, 16, 185, 129)),
+            _ => new SolidColorBrush(Color.FromArgb(35, 245, 158, 11)) // Amber for Draft
+        };
+
+    public static Brush AppStatusBorder(string? status) =>
+        status switch
+        {
+            "Docs Ready" or "Docs Uploaded" => new SolidColorBrush(Color.FromArgb(200, 59, 130, 246)),
+            "Completed" => new SolidColorBrush(Color.FromArgb(200, 16, 185, 129)),
+            _ => new SolidColorBrush(Color.FromArgb(200, 245, 158, 11))
+        };
+
+    public static Brush AppStatusForeground(string? status) =>
+        status switch
+        {
+            "Docs Ready" or "Docs Uploaded" => new SolidColorBrush(Color.FromArgb(255, 59, 130, 246)),
+            "Completed" => new SolidColorBrush(Color.FromArgb(255, 16, 185, 129)),
+            _ => new SolidColorBrush(Color.FromArgb(255, 217, 119, 6)) // Amber
+        };
+
+    public static string AppStatusGlyph(string? status) =>
+        status switch
+        {
+            "Docs Ready" or "Docs Uploaded" => "\uE73E",
+            "Completed" => "\uE930",
+            _ => "\uE8A5"
+        };
+
+    public static string AppStatusDisplay(string? status) =>
+        status switch
+        {
+            "Docs Ready" or "Docs Uploaded" => "Docs Ready",
+            "Completed" => "Completed",
+            _ => "Draft"
+        };
+
+    public static Brush ChecklistBadgeBackground(bool hasFile) =>
+        hasFile
+            ? new SolidColorBrush(Color.FromArgb(35, 16, 185, 129))
+            : (Brush)Application.Current.Resources["SubtleFillColorTertiaryBrush"];
+
+    public static Brush ChecklistBadgeForeground(bool hasFile) =>
+        hasFile
+            ? new SolidColorBrush(Color.FromArgb(255, 16, 185, 129))
+            : (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+
+    public static string ChecklistBadgeText(bool hasFile, string category) =>
+        hasFile ? "Verified" : category;
 
     public static string GetHeaderButtonText(int tabIndex) => tabIndex == 0 ? "New Template" : "New Application";
 
@@ -119,10 +175,20 @@ public sealed partial class ApplicationsPage : Page
         }
     }
 
-    private async void SetDraft_Click(object sender, RoutedEventArgs e) => await ViewModel.UpdateApplicationStatusAsync("Draft");
-    private async void SetDocsReady_Click(object sender, RoutedEventArgs e) => await ViewModel.UpdateApplicationStatusAsync("Docs Uploaded");
-    private async void SetSubmitted_Click(object sender, RoutedEventArgs e) => await ViewModel.UpdateApplicationStatusAsync("Submitted");
-    private async void SetCompleted_Click(object sender, RoutedEventArgs e) => await ViewModel.UpdateApplicationStatusAsync("Completed");
+    private async void StatusDraft_Click(object sender, RoutedEventArgs e) => await ViewModel.UpdateApplicationStatusAsync("Draft");
+    private async void StatusDocsReady_Click(object sender, RoutedEventArgs e) => await ViewModel.UpdateApplicationStatusAsync("Docs Ready");
+    private async void StatusCompleted_Click(object sender, RoutedEventArgs e) => await ViewModel.UpdateApplicationStatusAsync("Completed");
+
+    private async void ChecklistItem_Checked(object sender, RoutedEventArgs e) => await ViewModel.OnChecklistItemToggledAsync();
+    private async void ChecklistItem_Unchecked(object sender, RoutedEventArgs e) => await ViewModel.OnChecklistItemToggledAsync();
+
+    private static TextBlock CreateRequiredHeader(string label)
+    {
+        var tb = new TextBlock { FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold };
+        tb.Inlines.Add(new Run { Text = label + " " });
+        tb.Inlines.Add(new Run { Text = "*", Foreground = new SolidColorBrush(Color.FromArgb(255, 239, 68, 68)), FontWeight = Microsoft.UI.Text.FontWeights.Bold });
+        return tb;
+    }
 
     private async void NewApplication_Click(object sender, RoutedEventArgs e)
     {
@@ -136,7 +202,7 @@ public sealed partial class ApplicationsPage : Page
 
         var dialog = new ContentDialog
         {
-            Title = "Register New Application",
+            Title = "New Application",
             Content = new ScrollViewer
             {
                 MaxHeight = 450,
@@ -145,24 +211,24 @@ public sealed partial class ApplicationsPage : Page
                     Spacing = 4,
                     Children =
                     {
-                        new TextBlock { Text = "Scheme / Exam Title *", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                        CreateRequiredHeader("Scheme / Exam Title"),
                         txtTitle,
-                        new TextBlock { Text = "Customer Name *", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                        CreateRequiredHeader("Customer Name"),
                         txtCustomer,
-                        new TextBlock { Text = "Portal URL / Name", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                        new TextBlock { Text = "Portal URL / Name", FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                         txtPortal,
-                        new TextBlock { Text = "Application / Registration No.", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                        new TextBlock { Text = "Application / Registration No.", FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                         txtAppNo,
-                        new TextBlock { Text = "Service Charge (₹)", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                        new TextBlock { Text = "Service Charge (₹)", FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                         txtServiceFee,
-                        new TextBlock { Text = "Govt Fee (₹)", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                        new TextBlock { Text = "Govt Fee (₹)", FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                         txtGovtFee,
-                        new TextBlock { Text = "Required Documents (comma separated)", FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
+                        new TextBlock { Text = "Required Documents (comma separated)", FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold },
                         txtDocs
                     }
                 }
             },
-            PrimaryButtonText = "Save Application",
+            PrimaryButtonText = "Save",
             CloseButtonText = "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };

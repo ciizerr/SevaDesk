@@ -10,6 +10,8 @@ using SevaDesk_App.ViewModels.Pages;
 using SevaDesk_App.Views.Pages;
 using SevaDesk.Core.Models;
 using System.IO;
+using Microsoft.UI.Text;
+using Microsoft.UI.Xaml.Media;
 using SevaDesk_App.Views.Flyouts;
 
 namespace SevaDesk_App;
@@ -59,11 +61,13 @@ public sealed partial class MainWindow : Window
             SystemTrayService.Instance.Initialize(this);
             AppWindow.Closing += AppWindow_Closing;
 
-            RootGrid.Loaded += (s, e) => 
+            RootGrid.Loaded += async (s, e) => 
             {
                 var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
                 PickerService.Initialize(hwnd);
                 DialogService.Initialize(RootGrid.XamlRoot);
+
+                await CheckAndNotifyRestoredSessionsAsync();
             };
 
             // Initialize Global File Watcher Listener
@@ -288,6 +292,20 @@ public sealed partial class MainWindow : Window
             BringWindowToTop(hwnd);
             SetForegroundWindow(hwnd);
         }
+
+        // Seamless handoff from desktop widget if it was showing a file
+        if (IncomingFileOverlayWidget.Instance.IsWidgetVisible)
+        {
+            var pending = IncomingFileOverlayWidget.Instance.CurrentFile;
+            IncomingFileOverlayWidget.Instance.HideWidget();
+            if (pending != null)
+            {
+                _currentIncomingFile = pending;
+                _selectedTriageTag = null;
+                _selectedTriageChipBtn = null;
+                _ = UpdateTriageBarAsync();
+            }
+        }
     }
 
     public void NavigateTo(Type pageType, object? parameter = null)
@@ -303,8 +321,46 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private async Task CheckAndNotifyRestoredSessionsAsync()
+    {
+        try
+        {
+            var activeItems = (await AppServices.Sessions.GetActiveSessionsAsync()).ToList();
+            if (activeItems.Count == 0) return;
+
+            var names = string.Join(", ", activeItems.Select(s => s.Customer.Name));
+            string message = activeItems.Count == 1
+                ? $"Restored ongoing session for {names}. Working folder is ready on Desktop."
+                : $"Restored {activeItems.Count} ongoing sessions ({names}). Working folders are ready on Desktop.";
+
+            ToastService.Instance.ShowInfo(message);
+        }
+        catch { }
+    }
+
+    private async Task PauseAndBackupActiveSessionsAsync(List<ActiveSessionItem> activeSessions)
+    {
+        foreach (var item in activeSessions)
+        {
+            try
+            {
+                if (item.IsActive)
+                {
+                    await AppServices.Sessions.PauseSessionAsync(item.Session.Id);
+                }
+                if (item.Customer != null && !string.IsNullOrWhiteSpace(item.Customer.Name))
+                {
+                    await AppServices.FolderManager.SyncToBackupAsync(item.Customer.Name, item.Customer.Code);
+                }
+            }
+            catch { }
+        }
+    }
+
     private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
+        var activeSessions = (await AppServices.Sessions.GetActiveSessionsAsync()).ToList();
+
         var behavior = SettingsViewModel.CloseActionBehavior;
         if (behavior == 1) // Minimize to tray
         {
@@ -316,7 +372,8 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        if (behavior == 2) // Exit completely
+        // Only auto-exit without prompt if user configured it AND no active sessions are running
+        if (behavior == 2 && activeSessions.Count == 0)
         {
             SystemTrayService.Instance.RemoveTrayIcon();
             DesktopSidebarWidget.Instance.Close();
@@ -324,43 +381,108 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        // Behavior == 0: Always Prompt
+        // Behavior == 0 (Always Prompt) OR active sessions are running: prompt user!
         args.Cancel = true;
-        await ShowCloseConfirmationDialogAsync();
+        await ShowCloseConfirmationDialogAsync(activeSessions);
     }
 
-    private async Task ShowCloseConfirmationDialogAsync()
+    private async Task ShowCloseConfirmationDialogAsync(List<ActiveSessionItem> activeSessions)
     {
-        var chkRemember = new CheckBox
-        {
-            Content = AppServices.Localization.GetString("Dialog.RememberChoice"),
-            Margin = new Thickness(0, 12, 0, 0)
-        };
+        var panel = new StackPanel { Spacing = 12, Width = 460 };
 
-        var panel = new StackPanel { Spacing = 8 };
+        if (activeSessions.Count > 0)
+        {
+            var names = string.Join(", ", activeSessions.Select(s => s.Customer.Name));
+            var alertBorder = new Border
+            {
+                Background = (Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"],
+                BorderBrush = (Brush)Application.Current.Resources["SystemFillColorCautionBrush"],
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(14, 12, 14, 12)
+            };
+
+            var grid = new Grid { ColumnSpacing = 12 };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var icon = new FontIcon
+            {
+                Glyph = "\uE7BA",
+                FontSize = 18,
+                Foreground = (Brush)Application.Current.Resources["SystemFillColorCautionBrush"],
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 2, 0, 0)
+            };
+            Grid.SetColumn(icon, 0);
+            grid.Children.Add(icon);
+
+            var infoStack = new StackPanel
+            {
+                Spacing = 4,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = activeSessions.Count == 1
+                            ? $"Ongoing Session: {names}"
+                            : $"{activeSessions.Count} Ongoing Sessions ({names})",
+                        FontWeight = FontWeights.SemiBold,
+                        FontSize = 13
+                    },
+                    new TextBlock
+                    {
+                        Text = "Exiting will pause session timers and back up customer files to prevent data loss. Choose 'Minimize to Tray' to keep sessions running in the background.",
+                        FontSize = 12,
+                        Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+                        TextWrapping = TextWrapping.Wrap
+                    }
+                }
+            };
+            Grid.SetColumn(infoStack, 1);
+            grid.Children.Add(infoStack);
+            alertBorder.Child = grid;
+
+            panel.Children.Add(alertBorder);
+        }
+
+        string promptText = activeSessions.Count > 0
+            ? "What would you like to do with the application?"
+            : (AppServices.Localization.GetString("Dialog.ClosePrompt") ?? "Do you want to minimize SevaDesk to the system tray or exit completely?");
+
         panel.Children.Add(new TextBlock
         {
-            Text = AppServices.Localization.GetString("Dialog.ClosePrompt"),
+            Text = promptText,
             TextWrapping = TextWrapping.Wrap,
             FontSize = 13
         });
-        panel.Children.Add(chkRemember);
+
+        CheckBox? chkRemember = null;
+        if (activeSessions.Count == 0)
+        {
+            chkRemember = new CheckBox
+            {
+                Content = AppServices.Localization.GetString("Dialog.RememberChoice") ?? "Remember this choice in Settings",
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+            panel.Children.Add(chkRemember);
+        }
 
         var dialog = new ContentDialog
         {
             XamlRoot = Content.XamlRoot,
-            Title = AppServices.Localization.GetString("Dialog.CloseTitle"),
+            Title = AppServices.Localization.GetString("Dialog.CloseTitle") ?? "Close SevaDesk",
             Content = panel,
-            PrimaryButtonText = AppServices.Localization.GetString("Dialog.MinimizeToTray"),
-            SecondaryButtonText = AppServices.Localization.GetString("Dialog.ExitApp"),
-            CloseButtonText = AppServices.Localization.GetString("Common.Cancel"),
+            PrimaryButtonText = "Minimize to Tray",
+            SecondaryButtonText = activeSessions.Count > 0 ? "Pause & Exit" : (AppServices.Localization.GetString("Dialog.ExitApp") ?? "Exit"),
+            CloseButtonText = AppServices.Localization.GetString("Common.Cancel") ?? "Cancel",
             DefaultButton = ContentDialogButton.Primary
         };
 
         var result = await dialog.ShowAsync();
         if (result == ContentDialogResult.Primary)
         {
-            if (chkRemember.IsChecked == true)
+            if (chkRemember?.IsChecked == true)
             {
                 SettingsViewModel.CloseActionBehavior = 1;
             }
@@ -371,9 +493,13 @@ public sealed partial class MainWindow : Window
         }
         else if (result == ContentDialogResult.Secondary)
         {
-            if (chkRemember.IsChecked == true)
+            if (chkRemember?.IsChecked == true)
             {
                 SettingsViewModel.CloseActionBehavior = 2;
+            }
+            if (activeSessions.Count > 0)
+            {
+                await PauseAndBackupActiveSessionsAsync(activeSessions);
             }
             SystemTrayService.Instance.RemoveTrayIcon();
             DesktopSidebarWidget.Instance.Close();
@@ -385,6 +511,9 @@ public sealed partial class MainWindow : Window
     #region Global Incoming File Triage
 
     private IncomingFileItem? _currentIncomingFile;
+    private string? _selectedTriageTag = null;
+    private Button? _selectedTriageChipBtn = null;
+    private bool _suppressTriageChipClick = false;
 
     private void InitializeFileWatcherListener()
     {
@@ -420,7 +549,8 @@ public sealed partial class MainWindow : Window
                                 item.FileName,
                                 targetSession.Customer.Name,
                                 destPath,
-                                item.FilePath);
+                                item.FilePath,
+                                targetSession);
                         }
                         else
                         {
@@ -456,15 +586,23 @@ public sealed partial class MainWindow : Window
             var hwndWin = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
             bool isMin = IsIconic(hwndWin);
             bool isBg = GetForegroundWindow() != hwndWin;
+            bool appIsInFocus = !isMin && !isBg;
 
-            if ((isMin || isBg) && SettingsViewModel.IsOverlayWidgetEnabledSetting)
+            if (appIsInFocus)
             {
-                IncomingFileOverlayWidget.Instance.ShowForFile(item);
+                IncomingFileOverlayWidget.Instance.HideWidget();
+                _currentIncomingFile = item;
+                _selectedTriageTag = null;
+                _selectedTriageChipBtn = null;
+                await UpdateTriageBarAsync();
             }
             else
             {
-                _currentIncomingFile = item;
-                await UpdateTriageBarAsync();
+                GlobalTriageBar.IsOpen = false;
+                if (SettingsViewModel.IsOverlayWidgetEnabledSetting)
+                {
+                    IncomingFileOverlayWidget.Instance.ShowForFile(item);
+                }
             }
         });
     }
@@ -507,17 +645,239 @@ public sealed partial class MainWindow : Window
 
         var activeSessions = (await AppServices.Sessions.GetActiveSessionsAsync()).ToList();
 
+        // Clear existing chips
+        InAppTriageChipsPanel.Children.Clear();
+
+        if (activeSessions.Count == 0)
+        {
+            InAppTriageChipsScrollViewer.Visibility = Visibility.Collapsed;
+            BtnTriageAction.Flyout = null;
+            TxtTriageAction.Text = AppServices.Localization.GetString("Triage.CreateSession", "Create a new session?");
+            BtnTriageAction.Tag = "new_session";
+            BtnTriageAction.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            InAppTriageChipsScrollViewer.Visibility = Visibility.Visible;
+            var docTags = SmartTagHelper.GetDocumentTagsForSessions(activeSessions);
+
+            InAppTriageChipsPanel.Children.Clear();
+
+            // 1. Unused tags first (standard & custom)
+            foreach (var tag in docTags.Where(t => !t.IsUsed))
+            {
+                var chip = CreateInAppDocChip(tag, activeSessions);
+                InAppTriageChipsPanel.Children.Add(chip);
+            }
+
+            // 2. [+ Custom...] chip
+            var customChip = CreateInAppCustomDocChip(activeSessions);
+            InAppTriageChipsPanel.Children.Add(customChip);
+
+            // 3. Already-existing tags at the very end
+            foreach (var tag in docTags.Where(t => t.IsUsed))
+            {
+                var chip = CreateInAppDocChip(tag, activeSessions);
+                InAppTriageChipsPanel.Children.Add(chip);
+            }
+
+            RefreshInAppTriageActionButton(activeSessions);
+        }
+
+        GlobalTriageBar.IsOpen = true;
+    }
+
+    private Button CreateInAppDocChip(DocumentTagItem tag, List<ActiveSessionItem> activeSessions)
+    {
+        var chip = new Button
+        {
+            Height = 28,
+            CornerRadius = new CornerRadius(14),
+            Padding = new Thickness(8, 2, tag.IsCustom ? 4 : 8, 2),
+            Tag = tag.TagKey
+        };
+
+        var sp = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5, VerticalAlignment = VerticalAlignment.Center };
+        var icon = new FontIcon { FontSize = 10 };
+        var text = new TextBlock { FontSize = 11 };
+
+        if (tag.IsUsed)
+        {
+            icon.Glyph = "\uE73E"; // Checkmark
+            icon.Foreground = (Brush)Application.Current.Resources["SystemFillColorSuccessBrush"];
+            text.Text = $"✓ {tag.DisplayName}";
+            chip.Opacity = 0.6;
+            string tipTarget = activeSessions.Count == 1
+                ? activeSessions[0].Customer.Name
+                : "all active customers";
+            ToolTipService.SetToolTip(chip, $"Already collected for {tipTarget}. Click to save as an additional copy ({tag.TagKey}_2).");
+        }
+        else
+        {
+            icon.Glyph = tag.Glyph;
+            text.Text = tag.DisplayName;
+            ToolTipService.SetToolTip(chip, $"Rename to '{tag.TagKey}' and move");
+        }
+
+        sp.Children.Add(icon);
+        sp.Children.Add(text);
+
+        if (tag.IsCustom)
+        {
+            var delBtn = new Button
+            {
+                Width = 18,
+                Height = 18,
+                Padding = new Thickness(0),
+                CornerRadius = new CornerRadius(9),
+                Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+                BorderThickness = new Thickness(0),
+                Margin = new Thickness(4, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Content = new FontIcon { Glyph = "\uE711", FontSize = 8, Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"] }
+            };
+            ToolTipService.SetToolTip(delBtn, $"Delete saved tag '{tag.DisplayName}'");
+            delBtn.Click += async (s, e) =>
+            {
+                _suppressTriageChipClick = true;
+                try
+                {
+                    await AppServices.CustomTags.DeleteAsync(tag.TagKey);
+                    InAppTriageChipsPanel.Children.Remove(chip);
+                    ToastService.Instance.ShowInfo($"Removed custom tag '{tag.DisplayName}'");
+                }
+                finally
+                {
+                    await Task.Delay(150);
+                    _suppressTriageChipClick = false;
+                }
+            };
+            sp.Children.Add(delBtn);
+        }
+
+        chip.Content = sp;
+
+        chip.Click += async (s, e) =>
+        {
+            if (_suppressTriageChipClick) return;
+
+            if (activeSessions.Count == 1)
+            {
+                // 1-Click: Rename & Move immediately!
+                await RouteIncomingFileWithTagAsync(activeSessions[0], tag.TagKey);
+            }
+            else
+            {
+                // Multi-session: Toggle selected tag and update triage action button
+                if (_selectedTriageTag == tag.TagKey)
+                {
+                    _selectedTriageTag = null;
+                    _selectedTriageChipBtn = null;
+                    chip.ClearValue(Button.BackgroundProperty);
+                    chip.ClearValue(Button.BorderBrushProperty);
+                }
+                else
+                {
+                    if (_selectedTriageChipBtn != null)
+                    {
+                        _selectedTriageChipBtn.ClearValue(Button.BackgroundProperty);
+                        _selectedTriageChipBtn.ClearValue(Button.BorderBrushProperty);
+                    }
+                    _selectedTriageTag = tag.TagKey;
+                    _selectedTriageChipBtn = chip;
+                    chip.Background = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
+                    chip.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
+                    icon.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
+                }
+                RefreshInAppTriageActionButton(activeSessions);
+            }
+        };
+
+        return chip;
+    }
+
+    private Button CreateInAppCustomDocChip(List<ActiveSessionItem> activeSessions)
+    {
+        var customBtn = new Button
+        {
+            Height = 28,
+            CornerRadius = new CornerRadius(14),
+            Padding = new Thickness(8, 2, 8, 2)
+        };
+
+        var sp = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
+        sp.Children.Add(new FontIcon { Glyph = "\uE710", FontSize = 10 });
+        sp.Children.Add(new TextBlock { Text = "Custom...", FontSize = 11 });
+        customBtn.Content = sp;
+        ToolTipService.SetToolTip(customBtn, "Enter custom document name (saved automatically)");
+
+        var flyout = new Flyout();
+        var flyoutStack = new StackPanel { Width = 220, Spacing = 8 };
+        flyoutStack.Children.Add(new TextBlock { Text = "Custom Document Name", FontWeight = FontWeights.SemiBold, FontSize = 12 });
+
+        var tb = new TextBox { PlaceholderText = "e.g. voter_id, affidavit", FontSize = 12 };
+        flyoutStack.Children.Add(tb);
+
+        var applyBtn = new Button
+        {
+            Content = activeSessions.Count == 1 ? "Rename & Move" : "Select Name",
+            Style = (Style)Application.Current.Resources["AccentButtonStyle"],
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+
+        applyBtn.Click += async (s, e) =>
+        {
+            var raw = tb.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(raw)) return;
+            var saved = await SmartTagHelper.SaveCustomTagAsync(raw);
+            var cleanTag = saved?.TagKey ?? SmartTagHelper.NormalizeTagKey(raw);
+            flyout.Hide();
+
+            if (activeSessions.Count == 1)
+            {
+                await RouteIncomingFileWithTagAsync(activeSessions[0], cleanTag);
+            }
+            else
+            {
+                _selectedTriageTag = cleanTag;
+                RefreshInAppTriageActionButton(activeSessions);
+            }
+        };
+
+        flyoutStack.Children.Add(applyBtn);
+        flyout.Content = flyoutStack;
+        customBtn.Flyout = flyout;
+
+        return customBtn;
+    }
+
+    private void RefreshInAppTriageActionButton(List<ActiveSessionItem> activeSessions)
+    {
         if (activeSessions.Count == 1)
         {
             var singleSession = activeSessions[0];
             BtnTriageAction.Flyout = null;
-            TxtTriageAction.Text = string.Format(AppServices.Localization.GetString("Triage.MoveToSingle") ?? "Move to {0}", singleSession.Customer.Name);
+            if (_selectedTriageTag != null)
+            {
+                TxtTriageAction.Text = $"Move as '{_selectedTriageTag}' to {singleSession.Customer.Name}";
+            }
+            else
+            {
+                TxtTriageAction.Text = string.Format(AppServices.Localization.GetString("Triage.MoveToSingle") ?? "Move to {0}", singleSession.Customer.Name);
+            }
             BtnTriageAction.Tag = singleSession;
             BtnTriageAction.Visibility = Visibility.Visible;
         }
         else if (activeSessions.Count > 1)
         {
-            TxtTriageAction.Text = AppServices.Localization.GetString("Triage.SelectCustomer") ?? "Move to Customer...";
+            if (_selectedTriageTag != null)
+            {
+                TxtTriageAction.Text = $"Move as '{_selectedTriageTag}' to...";
+            }
+            else
+            {
+                TxtTriageAction.Text = AppServices.Localization.GetString("Triage.SelectCustomer") ?? "Move to Customer...";
+            }
             BtnTriageAction.Tag = null;
             BtnTriageAction.Visibility = Visibility.Visible;
 
@@ -525,29 +885,30 @@ public sealed partial class MainWindow : Window
             foreach (var session in activeSessions)
             {
                 var s = session;
+                var itemText = _selectedTriageTag != null
+                    ? $"{s.Customer.Name} ({_selectedTriageTag})"
+                    : $"{s.Customer.Name} ({s.Customer.Code})";
+
                 var menuItem = new MenuFlyoutItem
                 {
-                    Text = $"{s.Customer.Name} ({s.Customer.Code})",
+                    Text = itemText,
                     Icon = new FontIcon { Glyph = "\uE77B" }
                 };
                 menuItem.Click += async (sender, args) =>
                 {
-                    await RouteIncomingFileToSessionAsync(s);
+                    if (_selectedTriageTag != null)
+                    {
+                        await RouteIncomingFileWithTagAsync(s, _selectedTriageTag);
+                    }
+                    else
+                    {
+                        await RouteIncomingFileToSessionAsync(s);
+                    }
                 };
                 flyout.Items.Add(menuItem);
             }
             BtnTriageAction.Flyout = flyout;
         }
-        else
-        {
-            // No active customer sessions
-            BtnTriageAction.Flyout = null;
-            TxtTriageAction.Text = AppServices.Localization.GetString("Triage.CreateSession", "Create a new session?");
-            BtnTriageAction.Tag = "new_session";
-            BtnTriageAction.Visibility = Visibility.Visible;
-        }
-
-        GlobalTriageBar.IsOpen = true;
     }
 
     private async void TriageAction_Click(object sender, RoutedEventArgs e)
@@ -601,29 +962,42 @@ public sealed partial class MainWindow : Window
             newSession.FolderPath = folder;
             newSession.Customer = customer;
 
+            NavFrame.Navigate(typeof(SessionsPage));
+
             if (_currentIncomingFile != null)
             {
-                await AppServices.FileWatcher.RouteFileToCustomerAsync(_currentIncomingFile.FilePath, folder, deleteSource: true);
+                // Refresh GlobalTriageBar with the new session and its quick rename chips!
+                await UpdateTriageBarAsync();
             }
-            
-            _currentIncomingFile = null;
-            NotifyIncomingFileRouted();
-            NavFrame.Navigate(typeof(SessionsPage));
         }
     }
 
-    private async Task RouteIncomingFileToSessionAsync(ActiveSessionItem session)
+    private async Task RouteIncomingFileWithTagAsync(ActiveSessionItem session, string tagKey)
     {
         if (_currentIncomingFile == null) return;
         var file = _currentIncomingFile;
 
-        var success = await AppServices.FileWatcher.RouteFileToCustomerAsync(file.FilePath, session.FolderPath, deleteSource: true);
+        var (success, destPath) = await AppServices.FileWatcher.RouteFileWithRenameAndUndoTrackingAsync(
+            file.FilePath,
+            session.FolderPath,
+            tagKey,
+            session.Customer.Name,
+            session.Session.Id);
+
         if (success)
         {
+            if (SmartTagHelper.IsPhotoTag(tagKey) && SmartTagHelper.IsImageFile(destPath))
+            {
+                await SmartTagHelper.TryAssignCustomerPhotoAsync(session.Customer, destPath);
+            }
+
             GlobalTriageBar.Severity = InfoBarSeverity.Success;
             GlobalTriageBar.Title = AppServices.Localization.GetString("Common.Success") ?? "Success";
-            GlobalTriageBar.Message = string.Format(AppServices.Localization.GetString("Triage.SuccessMoved") ?? "Moved '{0}' to {1}'s folder.", file.FileName, session.Customer.Name);
+
+            var newFileName = Path.GetFileName(destPath);
+            GlobalTriageBar.Message = $"Renamed and moved to {session.Customer.Name}'s folder as '{newFileName}'.";
             BtnTriageAction.Visibility = Visibility.Collapsed;
+            InAppTriageChipsScrollViewer.Visibility = Visibility.Collapsed;
 
             // Notify active page if it is SessionsPage or DocumentsPage
             if (NavFrame.Content is SessionsPage sessionsPage)
@@ -636,6 +1010,55 @@ public sealed partial class MainWindow : Window
             }
 
             _currentIncomingFile = null;
+            _selectedTriageTag = null;
+            _selectedTriageChipBtn = null;
+
+            // Auto-hide after 3.5 seconds
+            await Task.Delay(3500);
+            if (_currentIncomingFile == null)
+            {
+                GlobalTriageBar.IsOpen = false;
+            }
+        }
+        else
+        {
+            ToastService.Instance.ShowError("Could not move or rename file.");
+        }
+    }
+
+    private async Task RouteIncomingFileToSessionAsync(ActiveSessionItem session)
+    {
+        if (_selectedTriageTag != null)
+        {
+            await RouteIncomingFileWithTagAsync(session, _selectedTriageTag);
+            return;
+        }
+
+        if (_currentIncomingFile == null) return;
+        var file = _currentIncomingFile;
+
+        var success = await AppServices.FileWatcher.RouteFileToCustomerAsync(file.FilePath, session.FolderPath, deleteSource: true);
+        if (success)
+        {
+            GlobalTriageBar.Severity = InfoBarSeverity.Success;
+            GlobalTriageBar.Title = AppServices.Localization.GetString("Common.Success") ?? "Success";
+            GlobalTriageBar.Message = string.Format(AppServices.Localization.GetString("Triage.SuccessMoved") ?? "Moved '{0}' to {1}'s folder.", file.FileName, session.Customer.Name);
+            BtnTriageAction.Visibility = Visibility.Collapsed;
+            InAppTriageChipsScrollViewer.Visibility = Visibility.Collapsed;
+
+            // Notify active page if it is SessionsPage or DocumentsPage
+            if (NavFrame.Content is SessionsPage sessionsPage)
+            {
+                sessionsPage.ViewModel.RefreshApplicationFolders();
+            }
+            else if (NavFrame.Content is DocumentsPage docsPage)
+            {
+                _ = docsPage.ViewModel.LoadDocumentsAsync();
+            }
+
+            _currentIncomingFile = null;
+            _selectedTriageTag = null;
+            _selectedTriageChipBtn = null;
 
             // Auto-hide after 3.5 seconds
             await Task.Delay(3500);
@@ -649,7 +1072,10 @@ public sealed partial class MainWindow : Window
     private void GlobalTriageBar_CloseButtonClick(InfoBar sender, object args)
     {
         _currentIncomingFile = null;
+        _selectedTriageTag = null;
+        _selectedTriageChipBtn = null;
     }
+
 
     public void ShowToast(string message, InfoBarSeverity severity = InfoBarSeverity.Informational)
     {

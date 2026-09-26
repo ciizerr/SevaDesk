@@ -372,21 +372,41 @@
                                         </StackPanel>
                                     </StackPanel>
 
-                                    <!-- Status transition buttons -->
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                                        <Button Click="SetDraft_Click">
-                                            <TextBlock Text="Draft" FontSize="11" />
-                                        </Button>
-                                        <Button Click="SetDocsReady_Click">
-                                            <TextBlock Text="Docs Ready" FontSize="11" />
-                                        </Button>
-                                        <Button Click="SetSubmitted_Click">
-                                            <TextBlock Text="Submitted" FontSize="11" />
-                                        </Button>
-                                        <Button Style="{StaticResource AccentButtonStyle}" Click="SetCompleted_Click">
-                                            <TextBlock loc:Loc.Key="Common.Finish" Text="Complete" FontSize="11" />
-                                        </Button>
-                                    </StackPanel>
+                                    <!-- Automatic Visual Status Badge with Manual Override Menu -->
+                                    <DropDownButton Grid.Column="1" VerticalAlignment="Center" Padding="10,5" CornerRadius="6"
+                                                    Background="{x:Bind local:ApplicationsPage.AppStatusBackground(ViewModel.SelectedApplication.Status), Mode=OneWay}"
+                                                    BorderBrush="{x:Bind local:ApplicationsPage.AppStatusBorder(ViewModel.SelectedApplication.Status), Mode=OneWay}"
+                                                    BorderThickness="1">
+                                        <DropDownButton.Content>
+                                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                <FontIcon Glyph="{x:Bind local:ApplicationsPage.AppStatusGlyph(ViewModel.SelectedApplication.Status), Mode=OneWay}"
+                                                          FontSize="12"
+                                                          Foreground="{x:Bind local:ApplicationsPage.AppStatusForeground(ViewModel.SelectedApplication.Status), Mode=OneWay}" />
+                                                <TextBlock Text="{x:Bind local:ApplicationsPage.AppStatusDisplay(ViewModel.SelectedApplication.Status), Mode=OneWay}"
+                                                           FontWeight="SemiBold" FontSize="12"
+                                                           Foreground="{x:Bind local:ApplicationsPage.AppStatusForeground(ViewModel.SelectedApplication.Status), Mode=OneWay}" />
+                                            </StackPanel>
+                                        </DropDownButton.Content>
+                                        <DropDownButton.Flyout>
+                                            <MenuFlyout Placement="Bottom">
+                                                <MenuFlyoutItem Text="Draft" Click="StatusDraft_Click">
+                                                    <MenuFlyoutItem.Icon>
+                                                        <FontIcon Glyph="&#xE8A5;" Foreground="#F59E0B" />
+                                                    </MenuFlyoutItem.Icon>
+                                                </MenuFlyoutItem>
+                                                <MenuFlyoutItem Text="Docs Ready" Click="StatusDocsReady_Click">
+                                                    <MenuFlyoutItem.Icon>
+                                                        <FontIcon Glyph="&#xE73E;" Foreground="#3B82F6" />
+                                                    </MenuFlyoutItem.Icon>
+                                                </MenuFlyoutItem>
+                                                <MenuFlyoutItem Text="Completed" Click="StatusCompleted_Click">
+                                                    <MenuFlyoutItem.Icon>
+                                                        <FontIcon Glyph="&#xE930;" Foreground="#10B981" />
+                                                    </MenuFlyoutItem.Icon>
+                                                </MenuFlyoutItem>
+                                            </MenuFlyout>
+                                        </DropDownButton.Flyout>
+                                    </DropDownButton>
                                 </Grid>
                             </Grid>
                         </Border>
@@ -408,11 +428,23 @@
                                         <DataTemplate x:DataType="models:ApplicationChecklistItem">
                                             <Grid ColumnDefinitions="Auto,*,Auto" Padding="14,10" VerticalAlignment="Center"
                                                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
-                                                <CheckBox Grid.Column="0" IsChecked="{x:Bind IsCompleted, Mode=TwoWay}" Margin="0,0,8,0" />
-                                                <TextBlock Grid.Column="1" Text="{x:Bind Title}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" />
+                                                <CheckBox Grid.Column="0" IsChecked="{x:Bind IsCompleted, Mode=TwoWay}"
+                                                          Checked="ChecklistItem_Checked" Unchecked="ChecklistItem_Unchecked" Margin="0,0,8,0" />
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                                    <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" FontSize="13" />
+                                                    <StackPanel Orientation="Horizontal" Spacing="4"
+                                                                Visibility="{x:Bind local:ApplicationsPage.VisibleIf(HasMatchedFile), Mode=OneWay}">
+                                                        <FontIcon Glyph="&#xE73E;" FontSize="10" Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                                                        <TextBlock Text="{x:Bind MatchedFileName, Mode=OneWay}" FontSize="10"
+                                                                   Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                                                   TextTrimming="CharacterEllipsis" />
+                                                    </StackPanel>
+                                                </StackPanel>
                                                 <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="4" Padding="6,2"
-                                                        Background="{ThemeResource SubtleFillColorSecondaryBrush}">
-                                                    <TextBlock Text="{x:Bind Category}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                        Background="{x:Bind local:ApplicationsPage.ChecklistBadgeBackground(HasMatchedFile), Mode=OneWay}">
+                                                    <TextBlock Text="{x:Bind local:ApplicationsPage.ChecklistBadgeText(HasMatchedFile, Category), Mode=OneWay}"
+                                                               FontSize="11"
+                                                               Foreground="{x:Bind local:ApplicationsPage.ChecklistBadgeForeground(HasMatchedFile), Mode=OneWay}" />
                                                 </Border>
                                             </Grid>
                                         </DataTemplate>

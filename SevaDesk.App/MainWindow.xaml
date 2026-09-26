@@ -132,6 +132,11 @@
                          Severity="Informational"
                          Title="Incoming File Detected"
                          Margin="16,8,16,0">
+                    <InfoBar.Content>
+                        <ScrollViewer x:Name="InAppTriageChipsScrollViewer" HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Auto" VerticalScrollMode="Disabled" Margin="0,4,0,2">
+                            <StackPanel x:Name="InAppTriageChipsPanel" Orientation="Horizontal" Spacing="6" />
+                        </ScrollViewer>
+                    </InfoBar.Content>
                     <InfoBar.ActionButton>
                         <Button x:Name="BtnTriageAction" Style="{StaticResource AccentButtonStyle}" Click="TriageAction_Click">
                             <StackPanel Orientation="Horizontal" Spacing="6">

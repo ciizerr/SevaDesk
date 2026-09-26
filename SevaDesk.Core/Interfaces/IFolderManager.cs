@@ -24,4 +24,8 @@ public interface IFolderManager
     bool DeleteFile(string filePath, out string errorMessage);
     void OpenFileWithDefaultApp(string filePath);
     bool CleanUpEmptyCustomerWorkingFolder(string customerName, string customerCode);
+    bool CleanUpEmptyApplicationSubfolder(string customerFolderPath, string applicationName);
+    bool DeleteCustomerWorkingFolder(string customerName, string customerCode);
+    bool DeleteCustomerBackupFolder(string customerName, string customerCode);
 }
+

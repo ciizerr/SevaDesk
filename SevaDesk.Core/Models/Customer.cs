@@ -67,4 +67,9 @@ public partial class Customer : ObservableObject
             return $"{label}: •••• {last4}";
         }
     }
+
+    public void NotifyPhotoUpdated()
+    {
+        OnPropertyChanged(nameof(PhotoPath));
+    }
 }

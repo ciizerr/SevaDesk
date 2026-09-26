@@ -97,7 +97,33 @@
                         <DataTemplate x:DataType="models:ResourceItem">
                             <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" Padding="14,12" VerticalAlignment="Center"
                                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                                <Grid.ContextFlyout>
+                                    <MenuFlyout>
+                                        <MenuFlyoutItem Text="Open Document" Click="ListItemOpen_Click" Tag="{x:Bind}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE8A7;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem Text="Quick Print" Click="QuickPrint_Click" Tag="{x:Bind}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE749;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutItem Text="Copy to Active Customer Folder" Click="ListItemCopyToFolder_Click" Tag="{x:Bind}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE8DE;" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                        <MenuFlyoutSeparator />
+                                        <MenuFlyoutItem Text="Delete Template..." Click="ListItemDelete_Click" Tag="{x:Bind}">
+                                            <MenuFlyoutItem.Icon>
+                                                <FontIcon Glyph="&#xE74D;" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                                            </MenuFlyoutItem.Icon>
+                                        </MenuFlyoutItem>
+                                    </MenuFlyout>
+                                </Grid.ContextFlyout>
                                 <Border Grid.Column="0" Width="36" Height="36" CornerRadius="6"
+
                                         Background="{ThemeResource SubtleFillColorSecondaryBrush}" Margin="0,0,12,0">
                                     <FontIcon Glyph="{x:Bind Glyph}" FontSize="18"
                                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
@@ -288,16 +314,28 @@
                                      AutomationProperties.AutomationId="TxtResourceNotes" />
                         </StackPanel>
 
-                        <!-- Save Details Button -->
-                        <Button HorizontalAlignment="Stretch" Style="{StaticResource AccentButtonStyle}"
-                                Click="SaveDetails_Click"
-                                AutomationProperties.Name="Save Template Details"
-                                AutomationProperties.AutomationId="BtnSaveResourceDetails">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE73E;" FontSize="13" />
-                                <TextBlock Text="Save Changes &amp; Checklist" FontSize="12" FontWeight="SemiBold" />
-                            </StackPanel>
-                        </Button>
+                        <!-- Save & Delete Action Row -->
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,4,0,0">
+                            <Button Grid.Column="0" HorizontalAlignment="Stretch" Style="{StaticResource AccentButtonStyle}"
+                                    Click="SaveDetails_Click"
+                                    AutomationProperties.Name="Save Template Details"
+                                    AutomationProperties.AutomationId="BtnSaveResourceDetails">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE73E;" FontSize="13" />
+                                    <TextBlock Text="Save Changes &amp; Checklist" FontSize="12" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button Grid.Column="1" Click="InspectorDelete_Click"
+                                    ToolTipService.ToolTip="Permanently delete this offline template"
+                                    AutomationProperties.Name="Delete Template"
+                                    AutomationProperties.AutomationId="BtnDeleteResource">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE74D;" FontSize="13" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                                    <TextBlock Text="Delete" FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
 
                     </StackPanel>
                 </ScrollViewer>
