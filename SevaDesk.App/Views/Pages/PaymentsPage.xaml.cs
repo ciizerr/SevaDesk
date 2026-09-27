@@ -36,17 +36,7 @@ public sealed partial class PaymentsPage : Page
 
         ViewModel.PropertyChanged += (s, e) =>
         {
-            if (e.PropertyName == nameof(PaymentsViewModel.QrCodeBitmap))
-            {
-                DispatcherQueue.TryEnqueue(() =>
-                {
-                    if (InlineQrImage != null)
-                    {
-                        InlineQrImage.Source = ViewModel.QrCodeBitmap;
-                    }
-                });
-            }
-            else if (e.PropertyName == nameof(PaymentsViewModel.SelectedCategory))
+            if (e.PropertyName == nameof(PaymentsViewModel.SelectedCategory))
             {
                 DispatcherQueue.TryEnqueue(UpdateCategoryChipStyles);
             }
@@ -87,11 +77,6 @@ public sealed partial class PaymentsPage : Page
     {
         base.OnNavigatedTo(e);
         _ = InitializePageAsync();
-
-        if (InlineQrImage != null)
-        {
-            InlineQrImage.Source = ViewModel.QrCodeBitmap;
-        }
 
         if (ViewSelector != null && PosTab != null)
         {
@@ -158,6 +143,35 @@ public sealed partial class PaymentsPage : Page
         }
         return null;
     }
+
+    public Style? CashModeToggleStyle(bool isCash)
+    {
+        if (isCash)
+        {
+            if (Application.Current.Resources.TryGetValue("AccentButtonStyle", out var styleObj) && styleObj is Style style)
+            {
+                return style;
+            }
+        }
+        return null;
+    }
+
+    public Style? UpiModeToggleStyle(bool isUpi)
+    {
+        if (isUpi)
+        {
+            if (Application.Current.Resources.TryGetValue("AccentButtonStyle", out var styleObj) && styleObj is Style style)
+            {
+                return style;
+            }
+        }
+        return null;
+    }
+
+    public string CashButtonLabel(string formattedTotal) => $"Record Cash Payment ({formattedTotal})";
+    public string UpiButtonLabel(string formattedTotal) => $"Confirm UPI Payment ({formattedTotal})";
+    public string UpiScanNotice(string formattedTotal) => $"Encodes {formattedTotal} in QR";
+
 
     // --- Navigation & Filter Handlers ---
     private void ViewSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
@@ -609,6 +623,88 @@ public sealed partial class PaymentsPage : Page
         }
     }
 
+    // --- Checkout Mode & Cash Tender Event Handlers ---
+    private void PaymentModeCash_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.SwitchPaymentMode("Cash");
+    }
+
+    private void PaymentModeUpi_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.SwitchPaymentMode("UPI");
+    }
+
+    private void CashExact_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.SetExactCash();
+    }
+
+    private void CashPreset_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string str && decimal.TryParse(str, out var amt))
+        {
+            ViewModel.SetCashReceived(amt);
+        }
+    }
+
+    private void CashClear_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.SetCashReceived(0);
+    }
+
+    private void TxtCashReceived_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (sender is TextBox tb)
+        {
+            ViewModel.UpdateCashReceivedInput(tb.Text);
+        }
+    }
+
+    private async void TxtCashReceived_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Enter && ViewModel.HasCartItems)
+        {
+            e.Handled = true;
+            await ViewModel.CompletePaymentAsync("Cash");
+        }
+    }
+
+    private void WalkIn_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.SelectWalkInCustomer();
+        CustomerAutoSuggest.Text = "Walk-in Customer";
+    }
+
+    private async void ShowRecentReceipt_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.LastCompletedReceipt != null)
+        {
+            var dialog = new ReceiptDialog(ViewModel.LastCompletedReceipt);
+            dialog.XamlRoot = this.XamlRoot;
+            await dialog.ShowAsync();
+        }
+    }
+
+    private async void ViewReceiptFromTransaction_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is TransactionItem tx)
+        {
+            var receipt = new CompletedReceiptInfo
+            {
+                InvoiceNo = tx.InvoiceNo,
+                CustomerName = tx.CustomerName,
+                PaymentDate = tx.Time,
+                SubTotal = tx.Amount,
+                GrandTotal = tx.Amount,
+                PaymentMode = tx.PaymentMode,
+                ItemsSummary = tx.ItemsSummary ?? string.Empty
+            };
+            var dialog = new ReceiptDialog(receipt);
+            dialog.XamlRoot = this.XamlRoot;
+            await dialog.ShowAsync();
+        }
+    }
+
     private async void PayCash_Click(object sender, RoutedEventArgs e)
     {
         await ViewModel.CompletePaymentAsync("Cash");
@@ -622,13 +718,7 @@ public sealed partial class PaymentsPage : Page
             return;
         }
 
-        var dialog = new UpiQrDialog(ViewModel.ShopUpiId, ViewModel.PayeeName, ViewModel.GrandTotal, ViewModel.CustomerName);
-        dialog.XamlRoot = this.XamlRoot;
-        var result = await dialog.ShowAsync();
-        if (result == ContentDialogResult.Primary)
-        {
-            await ViewModel.CompletePaymentAsync("UPI");
-        }
+        await ViewModel.CompletePaymentAsync("UPI");
     }
 
     private async void ShowQrDialog_Click(object sender, RoutedEventArgs e)
@@ -678,6 +768,7 @@ public sealed partial class PaymentsPage : Page
         {
             sender.Text = customer.Name;
             ViewModel.CustomerName = customer.Name;
+            ViewModel.CustomerMobile = customer.Mobile ?? string.Empty;
             ViewModel.CurrentCustomerId = customer.Id;
 
             var matchingActive = ViewModel.ActiveSessions.FirstOrDefault(s => s.Customer.Id == customer.Id);

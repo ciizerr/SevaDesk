@@ -102,6 +102,7 @@ public sealed partial class SessionDetailsDialog : ContentDialog
         {
             CustomerId = _customer?.Id ?? _row.Session.CustomerId,
             CustomerName = _customer?.Name ?? "Customer",
+            CustomerAddress = _customer?.Village,
             SessionId = _row.Session.Id,
             Items = []
         };

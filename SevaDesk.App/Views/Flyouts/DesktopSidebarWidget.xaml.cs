@@ -839,7 +839,7 @@ public sealed partial class DesktopSidebarWidget : Window
             MainWindow.Instance?.RestoreWindow();
 
             // 2. Prompt for missing customer info on MainWindow if applicable
-            if (customer != null && (string.IsNullOrWhiteSpace(customer.Mobile) || string.IsNullOrWhiteSpace(customer.IdReference)))
+            if (customer != null && string.IsNullOrWhiteSpace(customer.Mobile))
             {
                 var mainRoot = MainWindow.Instance?.Content?.XamlRoot;
                 if (mainRoot != null)
@@ -868,6 +868,7 @@ public sealed partial class DesktopSidebarWidget : Window
             {
                 CustomerId = customer?.Id,
                 CustomerName = customer?.Name ?? "Customer",
+                CustomerAddress = customer?.Village,
                 SessionId = sessionId,
                 Items = []
             };

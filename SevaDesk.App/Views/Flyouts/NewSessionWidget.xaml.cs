@@ -73,6 +73,7 @@ public sealed partial class NewSessionWidget : Window
         };
 
         PositionWidget();
+        MobileBox.ConfigureNumericMobileInput(_ => ValidateInputs());
     }
 
     private void PositionWidget()
@@ -173,6 +174,23 @@ public sealed partial class NewSessionWidget : Window
         }
         TxtBadgeInfo.Text = string.Format(template, customer.Code);
         ExistingCustomerBadge.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+        ValidateInputs();
+    }
+
+    private void ValidateInputs()
+    {
+        var mobile = MobileBox.Text?.Trim() ?? string.Empty;
+        if (mobile.Length > 0 && mobile.Length < 10)
+        {
+            TxtMobileError.Text = $"Please enter 10 digits ({mobile.Length}/10 entered)";
+            TxtMobileError.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+            BtnStartSession.IsEnabled = false;
+        }
+        else
+        {
+            TxtMobileError.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+            BtnStartSession.IsEnabled = true;
+        }
     }
 
     private async void StartSession_Click(object sender, RoutedEventArgs e)
@@ -185,6 +203,13 @@ public sealed partial class NewSessionWidget : Window
         }
 
         var mobile = MobileBox.Text?.Trim();
+        if (!string.IsNullOrWhiteSpace(mobile) && mobile.Length != 10)
+        {
+            ValidateInputs();
+            MobileBox.Focus(FocusState.Programmatic);
+            return;
+        }
+
         var village = VillageBox.Text?.Trim();
         var idRef = IdRefBox.Text?.Trim();
         var notes = NotesBox.Text?.Trim();

@@ -152,10 +152,15 @@ public sealed partial class WorkingFolderBrowserControl : UserControl
     {
         if (string.IsNullOrWhiteSpace(CustomerFolderPath) || !Directory.Exists(CustomerFolderPath)) return;
 
-        // 1. Unorganised Files count (top directory files)
+        // 1. Unorganised Files count (top directory files + legacy 00_Unorganised if present)
         try
         {
             var unorganisedCount = Directory.GetFiles(CustomerFolderPath, "*", SearchOption.TopDirectoryOnly).Length;
+            var unorganisedSubPath = Path.Combine(CustomerFolderPath, "00_Unorganised");
+            if (Directory.Exists(unorganisedSubPath))
+            {
+                unorganisedCount += Directory.GetFiles(unorganisedSubPath, "*", SearchOption.TopDirectoryOnly).Length;
+            }
             TxtUnorganisedBadge.Text = unorganisedCount.ToString();
         }
         catch
@@ -263,6 +268,20 @@ public sealed partial class WorkingFolderBrowserControl : UserControl
         }
 
         var loaded = AppServices.FolderManager.GetFolderFiles(targetDir).ToList();
+        if (string.IsNullOrEmpty(SelectedSubfolderRelative))
+        {
+            var legacySub = Path.Combine(CustomerFolderPath, "00_Unorganised");
+            if (Directory.Exists(legacySub))
+            {
+                foreach (var f in AppServices.FolderManager.GetFolderFiles(legacySub))
+                {
+                    if (!loaded.Any(x => string.Equals(x.FullPath, f.FullPath, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        loaded.Add(f);
+                    }
+                }
+            }
+        }
         foreach (var item in loaded)
         {
             Files.Add(item);
@@ -357,11 +376,29 @@ public sealed partial class WorkingFolderBrowserControl : UserControl
 
     private void FileRow_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        if (sender is FrameworkElement fe && fe.DataContext is FolderFileItem item)
+        FolderFileItem? item = null;
+        if (sender is FrameworkElement fe)
         {
-            AppServices.FolderManager.OpenFileWithDefaultApp(item.FullPath);
+            item = fe.Tag as FolderFileItem ?? fe.DataContext as FolderFileItem;
+        }
+
+        if (item == null || item.IsRenaming || string.IsNullOrEmpty(item.FullPath)) return;
+
+        AppServices.FolderManager.OpenFileWithDefaultApp(item.FullPath);
+    }
+
+    private void FilesListView_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Enter)
+        {
+            if (FilesListView.SelectedItem is FolderFileItem item && !item.IsRenaming && !string.IsNullOrEmpty(item.FullPath))
+            {
+                AppServices.FolderManager.OpenFileWithDefaultApp(item.FullPath);
+                e.Handled = true;
+            }
         }
     }
+
 
     private void StartRename_Click(object sender, RoutedEventArgs e)
     {

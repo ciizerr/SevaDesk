@@ -66,14 +66,20 @@
                     </Border>
 
                     <Grid ColumnDefinitions="*,*">
-                        <TextBox
-                            x:Name="MobileBox"
-                            Grid.Column="0"
-                            loc:Loc.HeaderKey="Dialog.NewCustomer.MobileHeader"
-                            Header="Mobile Number"
-                            Margin="0,0,8,0"
-                            loc:Loc.PlaceholderKey="Dialog.NewCustomer.MobilePlaceholder"
-                            PlaceholderText="e.g. 9876543210" />
+                        <StackPanel Grid.Column="0" Margin="0,0,8,0" Spacing="4">
+                            <TextBox
+                                x:Name="MobileBox"
+                                loc:Loc.HeaderKey="Dialog.NewCustomer.MobileHeader"
+                                Header="Mobile Number"
+                                loc:Loc.PlaceholderKey="Dialog.NewCustomer.MobilePlaceholder"
+                                PlaceholderText="e.g. 9876543210"
+                                MaxLength="10" />
+                            <TextBlock x:Name="TxtMobileError"
+                                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                       FontSize="11"
+                                       Margin="2,0,0,0"
+                                       Visibility="Collapsed" />
+                        </StackPanel>
 
                         <TextBox
                             x:Name="VillageBox"
@@ -105,7 +111,7 @@
                 <Button Grid.Column="1" Click="Cancel_Click" Margin="0,0,8,0" Padding="16,6" UseSystemFocusVisuals="False">
                     <TextBlock loc:Loc.Key="Common.Cancel" Text="Cancel" />
                 </Button>
-                <Button Grid.Column="0" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Click="StartSession_Click" Padding="16,6" UseSystemFocusVisuals="False">
+                <Button x:Name="BtnStartSession" Grid.Column="0" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Click="StartSession_Click" Padding="16,6" UseSystemFocusVisuals="False">
                     <TextBlock loc:Loc.Key="Dialog.NewCustomer.PrimaryBtn" Text="Start Session" FontWeight="SemiBold" />
                 </Button>
             </Grid>

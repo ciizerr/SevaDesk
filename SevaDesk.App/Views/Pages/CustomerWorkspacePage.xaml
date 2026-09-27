@@ -56,12 +56,29 @@
 
                         <!-- Contact & ID Chips -->
                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                            <!-- Phone Chip -->
+                            <!-- Phone Chip + WhatsApp + Copy -->
                             <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="12" Padding="8,4"
                                     Visibility="{x:Bind local:CustomerWorkspacePage.VisibleIfHasText(ViewModel.Customer.Mobile), Mode=OneWay}">
-                                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                     <FontIcon Glyph="&#xE717;" FontSize="11" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                                     <TextBlock Text="{x:Bind ViewModel.Customer.Mobile, Mode=OneWay}" FontSize="12" />
+
+                                    <!-- WhatsApp Button -->
+                                    <Button Click="WhatsApp_Click" Padding="4,2" CornerRadius="4"
+                                            ToolTipService.ToolTip="Chat on WhatsApp"
+                                            Visibility="{x:Bind local:CustomerWorkspacePage.VisibleIfCanWhatsApp(ViewModel.Customer.Mobile), Mode=OneWay}"
+                                            Background="#1510B981" BorderBrush="#3010B981" BorderThickness="1">
+                                        <StackPanel Orientation="Horizontal" Spacing="3">
+                                            <FontIcon Glyph="&#xE717;" FontSize="9" Foreground="#10B981" />
+                                            <TextBlock Text="WhatsApp" FontSize="10" Foreground="#10B981" FontWeight="SemiBold" />
+                                        </StackPanel>
+                                    </Button>
+
+                                    <!-- Copy Phone Button -->
+                                    <Button Click="CopyPhone_Click" Width="22" Height="22" Padding="0" CornerRadius="3"
+                                            ToolTipService.ToolTip="Copy phone number">
+                                        <FontIcon Glyph="&#xE8C8;" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    </Button>
                                 </StackPanel>
                             </Border>
 
@@ -85,31 +102,74 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <!-- Action Buttons: Edit Details, Folder, Start Session, Delete -->
+                    <!-- Action Buttons: Start Session, New Bill, Folder, Edit, Delete -->
                     <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <Button Click="EditCustomer_Click" ToolTipService.ToolTip="Edit Customer Details">
+                        <!-- Start Session (Primary Accent) -->
+                        <Button Click="StartSession_Click" Style="{StaticResource AccentButtonStyle}" ToolTipService.ToolTip="Start counter session for this customer">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE70F;" FontSize="13" />
-                                <TextBlock Text="Edit" />
+                                <FontIcon Glyph="&#xE768;" FontSize="12" />
+                                <TextBlock loc:Loc.Key="CustomerProfile.StartSessionBtn" Text="Start Session" FontWeight="SemiBold" />
                             </StackPanel>
                         </Button>
-                        <Button Command="{x:Bind ViewModel.OpenCustomerFolderCommand}" ToolTipService.ToolTip="Open in Windows Explorer">
+
+                        <!-- Direct New Bill in POS -->
+                        <Button Click="NewBill_Click" ToolTipService.ToolTip="Create direct counter bill in POS">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xED25;" FontSize="13" />
-                                <TextBlock Text="Folder" />
+                                <FontIcon Glyph="&#xE8C7;" FontSize="12" Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                                <TextBlock loc:Loc.Key="CustomerProfile.NewBillBtn" Text="New Bill" FontWeight="SemiBold" />
                             </StackPanel>
                         </Button>
-                        <Button Command="{x:Bind ViewModel.StartSessionCommand}" Style="{StaticResource AccentButtonStyle}">
+
+                        <!-- Open Folder in Explorer -->
+                        <Button Click="OpenFolder_Click" ToolTipService.ToolTip="Open customer working folder in Windows Explorer">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE768;" FontSize="13" />
-                                <TextBlock Text="Start Session" />
+                                <FontIcon Glyph="&#xED25;" FontSize="12" />
+                                <TextBlock loc:Loc.Key="CustomerProfile.FolderBtn" Text="Folder" />
                             </StackPanel>
                         </Button>
-                        <Button Click="DeleteCustomer_Click" ToolTipService.ToolTip="Delete Customer">
+
+                        <!-- Edit Profile -->
+                        <Button Click="EditCustomer_Click" ToolTipService.ToolTip="Edit customer profile">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE74D;" FontSize="13" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
-                                <TextBlock Text="Delete" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                                <FontIcon Glyph="&#xE70F;" FontSize="12" />
+                                <TextBlock loc:Loc.Key="CustomerProfile.EditBtn" Text="Edit" />
                             </StackPanel>
+                        </Button>
+
+                        <!-- More Menu (with Delete) -->
+                        <Button Width="32" Height="32" Padding="0" CornerRadius="4" ToolTipService.ToolTip="More options">
+                            <FontIcon Glyph="&#xE712;" FontSize="12" />
+                            <Button.Flyout>
+                                <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                    <MenuFlyoutItem loc:Loc.Key="CustomerProfile.StartSessionBtn" Text="Start Session" Click="StartSession_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE768;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem loc:Loc.Key="CustomerProfile.NewBillBtn" Text="Create New Bill" Click="NewBill_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE8C7;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem loc:Loc.Key="CustomerProfile.FolderBtn" Text="Open Folder in Explorer" Click="OpenFolder_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xED25;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem loc:Loc.Key="CustomerProfile.CopyPhoneBtn" Text="Copy Phone Number" Click="CopyPhone_Click">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE8C8;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutSeparator />
+                                    <MenuFlyoutItem loc:Loc.Key="CustomerProfile.DeleteBtn" Text="Delete Customer" Click="DeleteCustomer_Click"
+                                                    Foreground="{ThemeResource SystemFillColorCriticalBrush}">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE74D;" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                </MenuFlyout>
+                            </Button.Flyout>
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -121,21 +181,21 @@
                         <!-- Total Visits -->
                         <Border Background="{ThemeResource LayerFillColorAltBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6" Padding="10,4">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock Text="Visits:" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock loc:Loc.Key="CustomerProfile.VisitsLabel" Text="Visits:" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <TextBlock Text="{x:Bind ViewModel.TotalVisits, Mode=OneWay}" FontSize="11" FontWeight="Bold" />
                             </StackPanel>
                         </Border>
                         <!-- Total Spent -->
                         <Border Background="{ThemeResource LayerFillColorAltBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6" Padding="10,4">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock Text="Spent:" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock loc:Loc.Key="CustomerProfile.SpentLabel" Text="Total Billed:" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <TextBlock Text="{x:Bind ViewModel.FormattedTotalSpent, Mode=OneWay}" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
                             </StackPanel>
                         </Border>
                         <!-- Last Active -->
                         <Border Background="{ThemeResource LayerFillColorAltBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6" Padding="10,4">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock Text="Last Active:" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock loc:Loc.Key="CustomerProfile.LastActiveLabel" Text="Last Active:" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 <TextBlock Text="{x:Bind ViewModel.LastVisitText, Mode=OneWay}" FontSize="11" FontWeight="SemiBold" />
                             </StackPanel>
                         </Border>
@@ -152,26 +212,22 @@
         </Border>
 
         <!-- Main Workspace -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,350" ColumnSpacing="16">
+        <Grid Grid.Row="1" ColumnDefinitions="*,380" ColumnSpacing="16">
             
-            <!-- Left: Files (Primary Focus) -->
+            <!-- Left: Documents & Files -->
             <Border Grid.Column="0" CornerRadius="8"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    
-                    <!-- Header -->
-                    <Grid Grid.Row="0" Padding="16,12" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Background="{ThemeResource LayerFillColorAltBrush}" CornerRadius="8,8,0,0">
+                <Grid RowDefinitions="Auto,*">
+                    <!-- Header with Search & Import -->
+                    <Grid Grid.Row="0" Padding="16,10" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Background="{ThemeResource LayerFillColorAltBrush}" CornerRadius="8,8,0,0">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="Documents &amp; Files" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock loc:Loc.Key="CustomerProfile.FilesHeader" Text="Documents &amp; Files" FontWeight="SemiBold" VerticalAlignment="Center" />
                             <Border CornerRadius="10" Padding="8,2"
                                     Background="{ThemeResource SubtleFillColorSecondaryBrush}">
                                 <TextBlock Text="{x:Bind ViewModel.TotalFileCount, Mode=OneWay}" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
@@ -184,21 +240,39 @@
                                     ToolTipService.ToolTip="Working folder was cleaned up; viewing archived files from Backup folder">
                                 <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
                                     <FontIcon Glyph="&#xE8B7;" FontSize="10" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                    <TextBlock Text="Backup Archive" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                    <TextBlock loc:Loc.Key="CustomerProfile.BackupArchiveBadge" Text="Backup Archive" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                                 </StackPanel>
                             </Border>
                         </StackPanel>
-                        <Button Grid.Column="1" Command="{x:Bind ViewModel.OpenCustomerFolderCommand}"
-                                ToolTipService.ToolTip="Open folder in Windows Explorer"
-                                Background="Transparent" BorderBrush="Transparent" Padding="6">
-                            <FontIcon Glyph="&#xED25;" FontSize="14" />
-                        </Button>
+
+                        <!-- Search and Import Toolbar -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <AutoSuggestBox
+                                Width="180"
+                                loc:Loc.PlaceholderKey="CustomerProfile.SearchFilesPlaceholder"
+                                PlaceholderText="Search customer files..."
+                                QueryIcon="Find"
+                                Text="{x:Bind ViewModel.FileSearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                            <Button Click="ImportFiles_Click" Style="{StaticResource AccentButtonStyle}" ToolTipService.ToolTip="Import documents into customer folder">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE710;" FontSize="11" />
+                                    <TextBlock loc:Loc.Key="CustomerProfile.AddFilesBtn" Text="Add Files" FontSize="12" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button Click="OpenFolder_Click"
+                                    ToolTipService.ToolTip="Open folder in Windows Explorer"
+                                    Background="Transparent" BorderBrush="Transparent" Padding="6">
+                                <FontIcon Glyph="&#xED25;" FontSize="14" />
+                            </Button>
+                        </StackPanel>
                     </Grid>
 
                     <!-- Grouped File List -->
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
-                                  Visibility="{x:Bind local:CustomerWorkspacePage.HasItemsVisibility(ViewModel.FolderGroups.Count), Mode=OneWay}">
-                        <ItemsControl ItemsSource="{x:Bind ViewModel.FolderGroups, Mode=OneWay}" Padding="0,4,0,12">
+                                  Visibility="{x:Bind loc:CustomerAvatarHelper.BoolToVisible(ViewModel.HasFiles), Mode=OneWay}">
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.FilteredFolderGroups, Mode=OneWay}" Padding="0,4,0,12">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="models:FolderGroup">
                                     <StackPanel>
@@ -226,9 +300,11 @@
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate x:DataType="models:FolderFileItem">
                                                     <Grid ColumnDefinitions="*,110,130,Auto" Padding="16,9"
+                                                          Background="Transparent"
+                                                          DoubleTapped="CustomerFileRow_DoubleTapped" Tag="{x:Bind}"
                                                           BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
                                                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                                                            <FontIcon Glyph="{x:Bind Glyph}" FontSize="16" Foreground="{x:Bind GlyphColor}" />
+                                                             <FontIcon Glyph="{x:Bind Glyph}" FontSize="16" Foreground="{x:Bind GlyphColor}" />
                                                             <TextBlock Text="{x:Bind Name}" VerticalAlignment="Center" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
                                                         </StackPanel>
                                                         <TextBlock Grid.Column="1" Text="{x:Bind FormattedSize}" VerticalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -255,41 +331,153 @@
                         </ItemsControl>
                     </ScrollViewer>
                     
-                    <!-- Blank State for Files -->
-                    <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16"
-                                Visibility="{x:Bind local:CustomerWorkspacePage.EmptyListVisibility(ViewModel.FolderGroups.Count), Mode=OneWay}">
-                        <FontIcon Glyph="&#xE7C3;" FontSize="48" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                        <TextBlock Text="No files found for this customer" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <Button Command="{x:Bind ViewModel.OpenCustomerFolderCommand}">Open Folder</Button>
+                    <!-- Blank State for Files (Centered) -->
+                    <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" Margin="32"
+                                Visibility="{x:Bind loc:CustomerAvatarHelper.BoolToCollapsed(ViewModel.HasFiles), Mode=OneWay}">
+                        <Border Width="64" Height="64" CornerRadius="32" Background="{ThemeResource SubtleFillColorSecondaryBrush}" HorizontalAlignment="Center">
+                            <FontIcon Glyph="&#xE7C3;" FontSize="28" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Spacing="4" HorizontalAlignment="Center">
+                            <TextBlock loc:Loc.Key="CustomerProfile.NoFilesFound" Text="No files found for this customer" FontWeight="SemiBold" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextAlignment="Center" HorizontalAlignment="Center" />
+                            <TextBlock loc:Loc.Key="CustomerProfile.NoFilesSub" Text="Click 'Add Files' or copy documents into the customer's folder." FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextAlignment="Center" HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="320" />
+                        </StackPanel>
+                        <Button Click="ImportFiles_Click" Style="{StaticResource AccentButtonStyle}" Margin="0,4,0,0" HorizontalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <FontIcon Glyph="&#xE710;" FontSize="11" />
+                                <TextBlock loc:Loc.Key="CustomerProfile.AddFilesBtn" Text="Add Files" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <!-- Right Sidebar: Sessions & Payments -->
-            <Grid Grid.Column="1" RowDefinitions="*,*" RowSpacing="16">
-                <!-- Session History -->
-                <Border Grid.Row="0" CornerRadius="8" Background="{ThemeResource LayerFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                    <Grid RowDefinitions="Auto,*">
-                        <Grid Grid.Row="0" Padding="16,10" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Background="{ThemeResource LayerFillColorAltBrush}" CornerRadius="8,8,0,0">
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <TextBlock Text="Session History" FontWeight="SemiBold" FontSize="13" />
-                                <Border CornerRadius="8" Padding="6,1" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
-                                    <TextBlock Text="{x:Bind ViewModel.SessionHistory.Count, Mode=OneWay}" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                </Border>
-                            </StackPanel>
+            <!-- Right Sidebar: Full-Height Segmented Activity Hub -->
+            <Border Grid.Column="1" CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                <Grid RowDefinitions="Auto,*">
+                    <!-- Segmented Activity Switcher (Pill Layout with Zero Clipping) -->
+                    <Border Grid.Row="0" Padding="8,6" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Background="{ThemeResource LayerFillColorAltBrush}" CornerRadius="8,8,0,0">
+                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="4">
+                            <Button Grid.Column="0" Click="ActivityTabBtn_Click" Tag="0" HorizontalAlignment="Stretch" Padding="0,6"
+                                    Background="{x:Bind local:CustomerWorkspacePage.TabSegmentBackground(ViewModel.SelectedActivityTab, 0), Mode=OneWay}"
+                                    BorderBrush="{x:Bind local:CustomerWorkspacePage.TabSegmentBorder(ViewModel.SelectedActivityTab, 0), Mode=OneWay}"
+                                    BorderThickness="1" CornerRadius="6">
+                                <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center">
+                                    <FontIcon Glyph="&#xE8C7;" FontSize="11" Foreground="{x:Bind local:CustomerWorkspacePage.TabSegmentForeground(ViewModel.SelectedActivityTab, 0), Mode=OneWay}" />
+                                    <TextBlock Text="Bills" FontSize="12" FontWeight="{x:Bind local:CustomerWorkspacePage.TabSegmentFontWeight(ViewModel.SelectedActivityTab, 0), Mode=OneWay}"
+                                               Foreground="{x:Bind local:CustomerWorkspacePage.TabSegmentForeground(ViewModel.SelectedActivityTab, 0), Mode=OneWay}" />
+                                </StackPanel>
+                            </Button>
+                            <Button Grid.Column="1" Click="ActivityTabBtn_Click" Tag="1" HorizontalAlignment="Stretch" Padding="0,6"
+                                    Background="{x:Bind local:CustomerWorkspacePage.TabSegmentBackground(ViewModel.SelectedActivityTab, 1), Mode=OneWay}"
+                                    BorderBrush="{x:Bind local:CustomerWorkspacePage.TabSegmentBorder(ViewModel.SelectedActivityTab, 1), Mode=OneWay}"
+                                    BorderThickness="1" CornerRadius="6">
+                                <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center">
+                                    <FontIcon Glyph="&#xE916;" FontSize="11" Foreground="{x:Bind local:CustomerWorkspacePage.TabSegmentForeground(ViewModel.SelectedActivityTab, 1), Mode=OneWay}" />
+                                    <TextBlock Text="Sessions" FontSize="12" FontWeight="{x:Bind local:CustomerWorkspacePage.TabSegmentFontWeight(ViewModel.SelectedActivityTab, 1), Mode=OneWay}"
+                                               Foreground="{x:Bind local:CustomerWorkspacePage.TabSegmentForeground(ViewModel.SelectedActivityTab, 1), Mode=OneWay}" />
+                                </StackPanel>
+                            </Button>
+                            <Button Grid.Column="2" Click="ActivityTabBtn_Click" Tag="2" HorizontalAlignment="Stretch" Padding="0,6"
+                                    Background="{x:Bind local:CustomerWorkspacePage.TabSegmentBackground(ViewModel.SelectedActivityTab, 2), Mode=OneWay}"
+                                    BorderBrush="{x:Bind local:CustomerWorkspacePage.TabSegmentBorder(ViewModel.SelectedActivityTab, 2), Mode=OneWay}"
+                                    BorderThickness="1" CornerRadius="6">
+                                <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center">
+                                    <FontIcon Glyph="&#xE81C;" FontSize="11" Foreground="{x:Bind local:CustomerWorkspacePage.TabSegmentForeground(ViewModel.SelectedActivityTab, 2), Mode=OneWay}" />
+                                    <TextBlock Text="Timeline" FontSize="12" FontWeight="{x:Bind local:CustomerWorkspacePage.TabSegmentFontWeight(ViewModel.SelectedActivityTab, 2), Mode=OneWay}"
+                                               Foreground="{x:Bind local:CustomerWorkspacePage.TabSegmentForeground(ViewModel.SelectedActivityTab, 2), Mode=OneWay}" />
+                                </StackPanel>
+                            </Button>
                         </Grid>
+                    </Border>
 
-                        <!-- Sessions List -->
-                        <ListView Grid.Row="1" x:Name="SessionHistoryList" ItemsSource="{x:Bind ViewModel.SessionHistory, Mode=OneWay}"
-                                  IsItemClickEnabled="True" ItemClick="SessionHistory_ItemClick" SelectionMode="Single">
+                    <!-- Tab 0: Bills & Receipts -->
+                    <Grid Grid.Row="1" Visibility="{x:Bind local:CustomerWorkspacePage.TabVisibility(ViewModel.SelectedActivityTab, 0), Mode=OneWay}">
+                        <ListView ItemsSource="{x:Bind ViewModel.Payments, Mode=OneWay}"
+                                  IsItemClickEnabled="True" ItemClick="PaymentItem_Click" SelectionMode="None"
+                                  Visibility="{x:Bind ViewModel.HasPayments, Mode=OneWay}">
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="models:Payment">
+                                    <Border CornerRadius="6" Margin="8,4" Padding="12,10"
+                                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                            ToolTipService.ToolTip="Click to view full receipt, thermal slip &amp; WhatsApp">
+                                        <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
+                                            <!-- Top Row: Date & Amount -->
+                                            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                                <TextBlock Grid.Column="0" Text="{x:Bind local:CustomerWorkspacePage.FormatPaymentDate(PaymentDate)}" FontWeight="SemiBold" FontSize="12"/>
+                                                <TextBlock Grid.Column="1" Text="{x:Bind local:CustomerWorkspacePage.FormatRupee(Amount)}"
+                                                           FontWeight="Bold" FontSize="14" Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                                           VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                            </Grid>
+
+                                            <!-- Middle Row: Invoice No & Payment Method -->
+                                            <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                <Border CornerRadius="3" Padding="4,1" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                                    <TextBlock Text="{x:Bind InvoiceNo}" FontFamily="Consolas" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                                </Border>
+                                                <TextBlock Text="•" FontSize="10" Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
+                                                <Border CornerRadius="3" Padding="4,1" Background="#1810B981">
+                                                    <TextBlock Text="{x:Bind PaymentMethod}" FontSize="10" FontWeight="SemiBold" Foreground="#10B981"/>
+                                                </Border>
+                                            </StackPanel>
+
+                                            <!-- Bottom Row: Billed Items Chips -->
+                                            <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled">
+                                                <ItemsControl ItemsSource="{x:Bind BilledItems}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <StackPanel Orientation="Horizontal" Spacing="6" />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="models:BilledServiceItem">
+                                                            <Border CornerRadius="6" Padding="6,2" Background="{x:Bind local:CustomerWorkspacePage.ItemBadgeBackground(IsDiscount)}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                                                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                                    <FontIcon Glyph="{x:Bind Glyph}" FontSize="9" Foreground="{x:Bind local:CustomerWorkspacePage.ItemGlyphForeground(IsDiscount)}" />
+                                                                    <TextBlock Text="{x:Bind DisplayChipText}" FontSize="10" FontWeight="SemiBold" Foreground="{x:Bind local:CustomerWorkspacePage.ItemTextForeground(IsDiscount)}" />
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </ScrollViewer>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+
+                        <!-- Blank State for Bills (Centered) -->
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" Margin="24"
+                                    Visibility="{x:Bind loc:CustomerAvatarHelper.BoolToCollapsed(ViewModel.HasPayments), Mode=OneWay}">
+                            <Border Width="56" Height="56" CornerRadius="28" Background="{ThemeResource SubtleFillColorSecondaryBrush}" HorizontalAlignment="Center">
+                                <FontIcon Glyph="&#xE8C7;" FontSize="24" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Spacing="4" HorizontalAlignment="Center">
+                                <TextBlock loc:Loc.Key="CustomerProfile.NoBills" Text="No bills or receipts recorded" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextAlignment="Center" HorizontalAlignment="Center" />
+                                <TextBlock Text="Quick bills and counter receipts will show here." FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextAlignment="Center" HorizontalAlignment="Center" />
+                            </StackPanel>
+                            <Button Click="NewBill_Click" Style="{StaticResource AccentButtonStyle}" Margin="0,4,0,0" HorizontalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE8C7;" FontSize="11" />
+                                    <TextBlock loc:Loc.Key="CustomerProfile.NewBillBtn" Text="New Bill" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Tab 1: Counter Sessions -->
+                    <Grid Grid.Row="1" Visibility="{x:Bind local:CustomerWorkspacePage.TabVisibility(ViewModel.SelectedActivityTab, 1), Mode=OneWay}">
+                        <ListView ItemsSource="{x:Bind ViewModel.SessionHistory, Mode=OneWay}"
+                                  IsItemClickEnabled="True" ItemClick="SessionHistory_ItemClick" SelectionMode="None"
+                                  Visibility="{x:Bind ViewModel.HasSessions, Mode=OneWay}">
                             <ListView.ItemTemplate>
                                 <DataTemplate x:DataType="vm:CustomerSessionRowModel">
-                                    <Border CornerRadius="6" Margin="0,2"
-                                            Background="{x:Bind local:CustomerWorkspacePage.SessionHighlightBackground(IsHighlighted), Mode=OneWay}"
-                                            BorderBrush="{x:Bind local:CustomerWorkspacePage.SessionHighlightBorder(IsHighlighted), Mode=OneWay}"
-                                            BorderThickness="{x:Bind local:CustomerWorkspacePage.SessionHighlightThickness(IsHighlighted), Mode=OneWay}">
-                                        <Grid Padding="14,10" RowDefinitions="Auto,Auto,Auto" RowSpacing="5"
-                                              Background="Transparent">
+                                    <Border CornerRadius="6" Margin="8,4" Padding="12,10"
+                                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                            ToolTipService.ToolTip="Click to view details or receipt">
+                                        <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
                                             <!-- Top Row: Date/Time + Status Badge -->
                                             <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
                                                 <TextBlock Grid.Column="0" Text="{x:Bind FormattedDate}" FontWeight="SemiBold" FontSize="12" />
@@ -299,12 +487,8 @@
                                                 </Border>
                                             </Grid>
 
-                                            <!-- Middle Row: Work Done Summary / Services Chips -->
-                                            <ScrollViewer Grid.Row="1"
-                                                          HorizontalScrollBarVisibility="Hidden"
-                                                          VerticalScrollBarVisibility="Disabled"
-                                                          HorizontalScrollMode="Enabled"
-                                                          VerticalScrollMode="Disabled">
+                                            <!-- Middle Row: Work Summary / Services Chips -->
+                                            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled">
                                                 <ItemsControl ItemsSource="{x:Bind BilledItems}">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate>
@@ -313,14 +497,10 @@
                                                     </ItemsControl.ItemsPanel>
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate x:DataType="models:BilledServiceItem">
-                                                            <Border CornerRadius="8" Padding="7,2"
-                                                                    Background="{x:Bind local:CustomerWorkspacePage.ItemBadgeBackground(IsDiscount)}"
-                                                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                                                                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                                                    <FontIcon Glyph="{x:Bind Glyph}" FontSize="10"
-                                                                              Foreground="{x:Bind local:CustomerWorkspacePage.ItemGlyphForeground(IsDiscount)}" />
-                                                                    <TextBlock Text="{x:Bind DisplayChipText}" FontSize="11" FontWeight="SemiBold"
-                                                                               Foreground="{x:Bind local:CustomerWorkspacePage.ItemTextForeground(IsDiscount)}" />
+                                                            <Border CornerRadius="6" Padding="6,2" Background="{x:Bind local:CustomerWorkspacePage.ItemBadgeBackground(IsDiscount)}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                                                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                                    <FontIcon Glyph="{x:Bind Glyph}" FontSize="9" Foreground="{x:Bind local:CustomerWorkspacePage.ItemGlyphForeground(IsDiscount)}" />
+                                                                    <TextBlock Text="{x:Bind DisplayChipText}" FontSize="10" FontWeight="SemiBold" Foreground="{x:Bind local:CustomerWorkspacePage.ItemTextForeground(IsDiscount)}" />
                                                                 </StackPanel>
                                                             </Border>
                                                         </DataTemplate>
@@ -328,7 +508,7 @@
                                                 </ItemsControl>
                                             </ScrollViewer>
 
-                                            <!-- Bottom Row: Duration Chip + Amount Paid Chip -->
+                                            <!-- Bottom Row: Duration + Amount / Billing Status -->
                                             <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                                                 <!-- Duration -->
                                                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
@@ -343,7 +523,7 @@
                                                                Visibility="{x:Bind loc:CustomerAvatarHelper.BoolToVisible(HasPayment)}" />
                                                     <Border CornerRadius="4" Padding="5,1" Background="{ThemeResource SubtleFillColorTertiaryBrush}"
                                                             Visibility="{x:Bind loc:CustomerAvatarHelper.BoolToCollapsed(HasPayment)}">
-                                                        <TextBlock Text="Unbilled" FontSize="10" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                                        <TextBlock loc:Loc.Key="CustomerProfile.Unbilled" Text="Unbilled" FontSize="10" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
                                                     </Border>
                                                 </StackPanel>
                                             </Grid>
@@ -353,90 +533,75 @@
                             </ListView.ItemTemplate>
                         </ListView>
 
-                        <!-- Blank State for Sessions -->
-                        <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" Margin="0,20"
-                                    Visibility="{x:Bind local:CustomerWorkspacePage.EmptyListVisibility(ViewModel.SessionHistory.Count), Mode=OneWay}">
-                            <FontIcon Glyph="&#xE916;" FontSize="28" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                            <TextBlock Text="No past sessions" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <!-- Blank State for Sessions (Centered) -->
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" Margin="24"
+                                    Visibility="{x:Bind loc:CustomerAvatarHelper.BoolToCollapsed(ViewModel.HasSessions), Mode=OneWay}">
+                            <Border Width="56" Height="56" CornerRadius="28" Background="{ThemeResource SubtleFillColorSecondaryBrush}" HorizontalAlignment="Center">
+                                <FontIcon Glyph="&#xE916;" FontSize="24" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Spacing="4" HorizontalAlignment="Center">
+                                <TextBlock loc:Loc.Key="CustomerProfile.NoSessions" Text="No past sessions recorded" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextAlignment="Center" HorizontalAlignment="Center" />
+                                <TextBlock Text="Active desk sessions will be saved here." FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextAlignment="Center" HorizontalAlignment="Center" />
+                            </StackPanel>
+                            <Button Click="StartSession_Click" Style="{StaticResource AccentButtonStyle}" Margin="0,4,0,0" HorizontalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE768;" FontSize="11" />
+                                    <TextBlock loc:Loc.Key="CustomerProfile.StartSessionBtn" Text="Start Session" />
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
                     </Grid>
-                </Border>
-                
-                <!-- Payments -->
-                <Border Grid.Row="1" CornerRadius="8" Background="{ThemeResource LayerFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                    <Grid RowDefinitions="Auto,*">
-                        <Grid Grid.Row="0" Padding="16,10" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1" Background="{ThemeResource LayerFillColorAltBrush}" CornerRadius="8,8,0,0">
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <TextBlock Text="Recent Payments" FontWeight="SemiBold" FontSize="13" />
-                                <Border CornerRadius="8" Padding="6,1" Background="{ThemeResource SubtleFillColorSecondaryBrush}">
-                                    <TextBlock Text="{x:Bind ViewModel.Payments.Count, Mode=OneWay}" FontSize="11" FontWeight="Bold" Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
-                                </Border>
-                            </StackPanel>
-                        </Grid>
 
-                        <ListView Grid.Row="1" x:Name="PaymentsList" ItemsSource="{x:Bind ViewModel.Payments, Mode=OneWay}"
-                                  IsItemClickEnabled="True" ItemClick="PaymentItem_Click" SelectionMode="Single">
+                    <!-- Tab 2: All Activity (Timeline) -->
+                    <Grid Grid.Row="1" Visibility="{x:Bind local:CustomerWorkspacePage.TabVisibility(ViewModel.SelectedActivityTab, 2), Mode=OneWay}">
+                        <ListView ItemsSource="{x:Bind ViewModel.TimelineItems, Mode=OneWay}"
+                                  IsItemClickEnabled="True" ItemClick="TimelineItem_Click" SelectionMode="None"
+                                  Visibility="{x:Bind ViewModel.HasTimelineItems, Mode=OneWay}">
                             <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="models:Payment">
-                                    <Grid Padding="14,10" RowDefinitions="Auto,Auto,Auto" RowSpacing="6"
-                                          BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
-                                        <!-- Top Row: Date & Amount -->
-                                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-                                            <TextBlock Grid.Column="0" Text="{x:Bind local:CustomerWorkspacePage.FormatPaymentDate(PaymentDate)}" FontWeight="SemiBold" FontSize="12"/>
-                                            <TextBlock Grid.Column="1" Text="{x:Bind local:CustomerWorkspacePage.FormatRupee(Amount)}"
-                                                       FontWeight="Bold" FontSize="14" Foreground="{ThemeResource SystemFillColorSuccessBrush}"
-                                                       VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                <DataTemplate x:DataType="vm:CustomerTimelineItemModel">
+                                    <Border CornerRadius="6" Margin="8,4" Padding="12,10"
+                                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                            ToolTipService.ToolTip="Click to view details or receipt">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" VerticalAlignment="Center">
+                                            <!-- Icon Badge -->
+                                            <Border Grid.Column="0" Width="32" Height="32" CornerRadius="16"
+                                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}" VerticalAlignment="Center">
+                                                <FontIcon Glyph="{x:Bind Glyph}" FontSize="13" Foreground="{x:Bind GlyphColor}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+
+                                            <!-- Info -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                                <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{x:Bind SecondaryInfo}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                                <TextBlock Text="{x:Bind FormattedDate}" FontSize="10" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                            </StackPanel>
+
+                                            <!-- Tag Badge -->
+                                            <Border Grid.Column="2" CornerRadius="4" Padding="6,2" Background="{ThemeResource SubtleFillColorSecondaryBrush}" VerticalAlignment="Center">
+                                                <TextBlock Text="{x:Bind TagText}" FontSize="10" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                            </Border>
                                         </Grid>
-
-                                        <!-- Middle Row: Invoice No & Payment Method -->
-                                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                            <TextBlock Text="{x:Bind InvoiceNo}" FontFamily="Consolas" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                            <TextBlock Text="•" FontSize="10" Foreground="{ThemeResource TextFillColorTertiaryBrush}"/>
-                                            <TextBlock Text="{x:Bind PaymentMethod}" FontSize="11" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
-                                        </StackPanel>
-
-                                        <!-- Bottom Row: Billed Items Chips -->
-                                        <ScrollViewer Grid.Row="2"
-                                                      HorizontalScrollBarVisibility="Hidden"
-                                                      VerticalScrollBarVisibility="Disabled"
-                                                      HorizontalScrollMode="Enabled"
-                                                      VerticalScrollMode="Disabled">
-                                            <ItemsControl ItemsSource="{x:Bind BilledItems}">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                        <StackPanel Orientation="Horizontal" Spacing="6" />
-                                                    </ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate x:DataType="models:BilledServiceItem">
-                                                        <Border CornerRadius="8" Padding="7,2"
-                                                                Background="{x:Bind local:CustomerWorkspacePage.ItemBadgeBackground(IsDiscount)}"
-                                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                                                            <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                                                <FontIcon Glyph="{x:Bind Glyph}" FontSize="10"
-                                                                          Foreground="{x:Bind local:CustomerWorkspacePage.ItemGlyphForeground(IsDiscount)}" />
-                                                                <TextBlock Text="{x:Bind DisplayChipText}" FontSize="11" FontWeight="SemiBold"
-                                                                           Foreground="{x:Bind local:CustomerWorkspacePage.ItemTextForeground(IsDiscount)}" />
-                                                            </StackPanel>
-                                                        </Border>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </ScrollViewer>
-                                    </Grid>
+                                    </Border>
                                 </DataTemplate>
                             </ListView.ItemTemplate>
                         </ListView>
 
-                        <!-- Blank State for Payments -->
-                        <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" Margin="0,20"
-                                    Visibility="{x:Bind local:CustomerWorkspacePage.EmptyListVisibility(ViewModel.Payments.Count), Mode=OneWay}">
-                            <FontIcon Glyph="&#xE8C7;" FontSize="28" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                            <TextBlock Text="No payments recorded" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <!-- Blank State for Timeline (Centered) -->
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" Margin="24"
+                                    Visibility="{x:Bind loc:CustomerAvatarHelper.BoolToCollapsed(ViewModel.HasTimelineItems), Mode=OneWay}">
+                            <Border Width="56" Height="56" CornerRadius="28" Background="{ThemeResource SubtleFillColorSecondaryBrush}" HorizontalAlignment="Center">
+                                <FontIcon Glyph="&#xE81C;" FontSize="24" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Spacing="4" HorizontalAlignment="Center">
+                                <TextBlock loc:Loc.Key="CustomerProfile.NoActivity" Text="No activity recorded yet" FontSize="13" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextAlignment="Center" HorizontalAlignment="Center" />
+                                <TextBlock Text="Bills and counter visits will appear in this timeline." FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextAlignment="Center" HorizontalAlignment="Center" />
+                            </StackPanel>
                         </StackPanel>
                     </Grid>
-                </Border>
-            </Grid>
+                </Grid>
+            </Border>
         </Grid>
     </Grid>
 </Page>
+

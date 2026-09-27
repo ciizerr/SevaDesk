@@ -158,13 +158,14 @@
                 </Border>
 
                 <!-- Live File List -->
-                <ListView Grid.Row="2" x:Name="FilesListView" SelectionMode="None">
+                <ListView Grid.Row="2" x:Name="FilesListView" SelectionMode="Single" KeyDown="FilesListView_KeyDown">
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="models:FolderFileItem">
                             <Grid Padding="8,8" Margin="0,0,0,4" CornerRadius="6"
                                   Background="{ThemeResource LayerFillColorDefaultBrush}"
                                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                  ColumnDefinitions="Auto,*,Auto,Auto">
+                                  ColumnDefinitions="Auto,*,Auto,Auto"
+                                  DoubleTapped="FileRow_DoubleTapped" Tag="{x:Bind}">
 
                                 <!-- File Icon -->
                                 <Border Grid.Column="0" Width="36" Height="36" CornerRadius="6"
@@ -176,7 +177,6 @@
 
                                 <!-- Normal Filename Display -->
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2"
-                                            DoubleTapped="FileRow_DoubleTapped"
                                             Visibility="{x:Bind local:WorkingFolderBrowserControl.CollapsedIf(IsRenaming), Mode=OneWay}">
                                     <TextBlock Text="{x:Bind Name, Mode=OneWay}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" />
                                     <StackPanel Orientation="Horizontal" Spacing="8">

@@ -111,6 +111,9 @@ public partial class DashboardViewModel : StatusViewModel
     [ObservableProperty]
     private ObservableCollection<DashboardRecentPaymentItem> _recentPayments = [];
 
+    [ObservableProperty]
+    private int _todayReceiptsCount;
+
     // --- State Flags ---
     [ObservableProperty]
     private bool _hasActiveSessions;
@@ -134,6 +137,11 @@ public partial class DashboardViewModel : StatusViewModel
         };
 
         AppServices.Applications.ApplicationsChanged += async (s, e) =>
+        {
+            await LoadDashboardDataAsync();
+        };
+
+        AppServices.Payments.PaymentsChanged += async (s, e) =>
         {
             await LoadDashboardDataAsync();
         };
@@ -268,15 +276,24 @@ public partial class DashboardViewModel : StatusViewModel
             // 5. Load today's recent payments
             try
             {
-                var payments = (await AppServices.Payments.GetRecentPaymentsAsync(6)).ToList();
+                var allTodayPayments = (await AppServices.Payments.GetTodayPaymentsAsync(50))
+                    .Where(p => p.PaymentDate.Date == DateTime.Today)
+                    .OrderByDescending(p => p.PaymentDate)
+                    .ToList();
+
+                TodayReceiptsCount = allTodayPayments.Count;
+
                 RecentPayments.Clear();
-                foreach (var p in payments)
+                foreach (var p in allTodayPayments.Take(10))
                 {
                     RecentPayments.Add(new DashboardRecentPaymentItem(p, IsPrivacyMode));
                 }
                 HasRecentPayments = RecentPayments.Count > 0;
             }
-            catch { }
+            catch
+            {
+                TodayReceiptsCount = 0;
+            }
         }
         finally
         {

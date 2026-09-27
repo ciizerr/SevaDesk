@@ -110,6 +110,7 @@ public class BillingHandoverRequest
     public string CustomerName { get; set; } = string.Empty;
     public string? CustomerId { get; set; }
     public string? SessionId { get; set; }
+    public string? CustomerAddress { get; set; }
     public List<CartItem> Items { get; set; } = [];
 }
 
@@ -121,3 +122,86 @@ public class EarningsChartBar
     public decimal Upi { get; set; }
     public string Tooltip { get; set; } = string.Empty;
 }
+
+public class CompletedReceiptInfo
+{
+    public string InvoiceNo { get; set; } = string.Empty;
+    public string CustomerName { get; set; } = "Walk-in Customer";
+    public string CustomerMobile { get; set; } = string.Empty;
+    public string? CustomerAddress { get; set; }
+    public DateTime PaymentDate { get; set; } = DateTime.Now;
+    public decimal SubTotal { get; set; }
+    public decimal Discount { get; set; }
+    public decimal GrandTotal { get; set; }
+    public string PaymentMode { get; set; } = "Cash";
+    public string ItemsSummary { get; set; } = string.Empty;
+    public List<ReceiptItemInfo> Items { get; set; } = [];
+
+    // Optional Session Context
+    public string? SessionDurationText { get; set; }
+    public string? SessionNotes { get; set; }
+    public bool HasSessionInfo => !string.IsNullOrWhiteSpace(SessionDurationText) || !string.IsNullOrWhiteSpace(SessionNotes);
+
+    public static CompletedReceiptInfo FromPayment(Payment payment, Customer? customer = null, Session? session = null)
+    {
+        var receipt = new CompletedReceiptInfo
+        {
+            InvoiceNo = string.IsNullOrWhiteSpace(payment.InvoiceNo) ? "RCP-DIRECT" : payment.InvoiceNo,
+            CustomerName = !string.IsNullOrWhiteSpace(customer?.Name) ? customer.Name : (string.IsNullOrWhiteSpace(payment.CustomerName) ? "Walk-in Customer" : payment.CustomerName),
+            CustomerMobile = customer?.Mobile ?? string.Empty,
+            CustomerAddress = customer?.Village,
+            PaymentDate = payment.PaymentDate.ToLocalTime(),
+            GrandTotal = payment.Amount,
+            SubTotal = payment.Amount,
+            Discount = 0,
+            PaymentMode = string.IsNullOrWhiteSpace(payment.PaymentMethod) ? "Cash" : payment.PaymentMethod,
+            ItemsSummary = payment.ItemsSummary ?? string.Empty
+        };
+
+        if (session != null)
+        {
+            var durationSec = session.DurationSeconds;
+            int mins = durationSec / 60;
+            int secs = durationSec % 60;
+            receipt.SessionDurationText = mins > 0 ? $"{mins}m {secs}s" : $"{secs}s";
+            receipt.SessionNotes = session.Notes;
+        }
+
+        if (payment.BilledItems != null && payment.BilledItems.Count > 0)
+        {
+            foreach (var b in payment.BilledItems)
+            {
+                var qty = b.Quantity > 0 ? b.Quantity : 1;
+                var tot = b.LineTotal > 0 ? b.LineTotal : payment.Amount;
+                receipt.Items.Add(new ReceiptItemInfo
+                {
+                    Name = b.ServiceName,
+                    Quantity = qty,
+                    Rate = tot / Math.Max(1, qty),
+                    Total = tot
+                });
+            }
+        }
+        else
+        {
+            receipt.Items.Add(new ReceiptItemInfo
+            {
+                Name = !string.IsNullOrWhiteSpace(payment.Notes) ? payment.Notes : "Counter Service",
+                Quantity = 1,
+                Rate = payment.Amount,
+                Total = payment.Amount
+            });
+        }
+
+        return receipt;
+    }
+}
+
+public class ReceiptItemInfo
+{
+    public string Name { get; set; } = string.Empty;
+    public int Quantity { get; set; } = 1;
+    public decimal Rate { get; set; }
+    public decimal Total { get; set; }
+}
+

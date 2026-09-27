@@ -101,6 +101,7 @@ public sealed partial class DocumentsPage : Page
     public static bool HasStatus(string status) => !string.IsNullOrWhiteSpace(status);
     public static Visibility VisibleIf(bool condition) => condition ? Visibility.Visible : Visibility.Collapsed;
     public static Visibility CollapsedIf(bool condition) => condition ? Visibility.Collapsed : Visibility.Visible;
+    public static bool Not(bool condition) => !condition;
 
     private async void Refresh_Click(object sender, RoutedEventArgs e)
     {
@@ -124,6 +125,61 @@ public sealed partial class DocumentsPage : Page
     {
         ViewModel.OpenFile();
     }
+
+    private void PendingFileRow_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        DocumentItem? doc = null;
+        if (sender is FrameworkElement fe)
+        {
+            doc = fe.Tag as DocumentItem ?? fe.DataContext as DocumentItem;
+        }
+
+        if (doc == null || doc.IsRenaming || string.IsNullOrWhiteSpace(doc.FilePath) || !System.IO.File.Exists(doc.FilePath)) return;
+
+        AppServices.FolderManager.OpenFileWithDefaultApp(doc.FilePath);
+    }
+
+    private void ProcessedFileRow_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        DocumentItem? doc = null;
+        if (sender is FrameworkElement fe)
+        {
+            doc = fe.Tag as DocumentItem ?? fe.DataContext as DocumentItem;
+        }
+
+        if (doc == null || string.IsNullOrWhiteSpace(doc.FilePath) || !System.IO.File.Exists(doc.FilePath)) return;
+
+        AppServices.FolderManager.OpenFileWithDefaultApp(doc.FilePath);
+    }
+
+    private void PendingListView_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Enter)
+        {
+            if (ViewModel.SelectedDocument != null && !ViewModel.SelectedDocument.IsRenaming &&
+                !string.IsNullOrWhiteSpace(ViewModel.SelectedDocument.FilePath) &&
+                System.IO.File.Exists(ViewModel.SelectedDocument.FilePath))
+            {
+                AppServices.FolderManager.OpenFileWithDefaultApp(ViewModel.SelectedDocument.FilePath);
+                e.Handled = true;
+            }
+        }
+    }
+
+    private void ProcessedListView_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Enter)
+        {
+            if (sender is ListView lv && lv.SelectedItem is DocumentItem doc &&
+                !string.IsNullOrWhiteSpace(doc.FilePath) &&
+                System.IO.File.Exists(doc.FilePath))
+            {
+                AppServices.FolderManager.OpenFileWithDefaultApp(doc.FilePath);
+                e.Handled = true;
+            }
+        }
+    }
+
 
     private async void MoveToSubfolder_Click(object sender, RoutedEventArgs e)
     {
@@ -194,22 +250,24 @@ public sealed partial class DocumentsPage : Page
     {
         if (args.SelectedItem is NavigationViewItem item)
         {
-            if (item.Tag.ToString() == "Studio")
+            if (item.Tag?.ToString() == "Studio")
             {
                 OrgView.Visibility = Visibility.Collapsed;
-                StudioView.Visibility = Visibility.Visible;
-
-                if (ViewModel.SelectedDocument != null && !string.IsNullOrWhiteSpace(ViewModel.SelectedDocument.FilePath))
-                {
-                    StudioView.AddSourceFile(ViewModel.SelectedDocument.FilePath);
-                }
+                StudioPlaceholderView.Visibility = Visibility.Visible;
             }
             else
             {
                 OrgView.Visibility = Visibility.Visible;
-                StudioView.Visibility = Visibility.Collapsed;
+                StudioPlaceholderView.Visibility = Visibility.Collapsed;
             }
         }
+    }
+
+    private void BackToOrganizer_Click(object sender, RoutedEventArgs e)
+    {
+        DocNav.SelectedItem = DocNav.MenuItems[0];
+        OrgView.Visibility = Visibility.Visible;
+        StudioPlaceholderView.Visibility = Visibility.Collapsed;
     }
 
     private void PopulateInspectorChips()

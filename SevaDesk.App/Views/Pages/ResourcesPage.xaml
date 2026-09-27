@@ -91,11 +91,14 @@
                           SelectedItem="{x:Bind ViewModel.SelectedResource, Mode=TwoWay}"
                           SelectionMode="Single"
                           SelectionChanged="ListView_SelectionChanged"
+                          KeyDown="CatalogListView_KeyDown"
                           AutomationProperties.Name="Templates and resources list"
                           AutomationProperties.AutomationId="ListResources">
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="models:ResourceItem">
                             <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" Padding="14,12" VerticalAlignment="Center"
+                                  Background="Transparent"
+                                  DoubleTapped="CatalogItem_DoubleTapped" Tag="{x:Bind}"
                                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
                                 <Grid.ContextFlyout>
                                     <MenuFlyout>

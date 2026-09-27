@@ -353,9 +353,23 @@ public class FolderManager : IFolderManager
 
         var groups = new List<FolderGroup>();
 
-        // 1. Unorganised (root loose files)
-        var rootFiles = GetFolderFiles(customerFolderPath).ToList();
-        if (rootFiles.Count > 0)
+        // 1. Unorganised Files (root loose files + legacy 00_Unorganised if present)
+        var unorganisedFiles = new List<FolderFileItem>();
+        unorganisedFiles.AddRange(GetFolderFiles(customerFolderPath));
+
+        var unorganisedSubPath = Path.Combine(customerFolderPath, "00_Unorganised");
+        if (Directory.Exists(unorganisedSubPath))
+        {
+            foreach (var f in GetFolderFiles(unorganisedSubPath))
+            {
+                if (!unorganisedFiles.Any(x => string.Equals(x.FullPath, f.FullPath, StringComparison.OrdinalIgnoreCase)))
+                {
+                    unorganisedFiles.Add(f);
+                }
+            }
+        }
+
+        if (unorganisedFiles.Count > 0)
         {
             groups.Add(new FolderGroup
             {
@@ -363,7 +377,7 @@ public class FolderManager : IFolderManager
                 FolderPath = customerFolderPath,
                 Glyph = "\uE8B7",
                 AccentColor = "#F59E0B",
-                Files = rootFiles
+                Files = unorganisedFiles
             });
         }
 

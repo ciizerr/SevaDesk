@@ -9,10 +9,9 @@
     xmlns:loc="using:SevaDesk_App.Services"
     xmlns:vm="using:SevaDesk_App.ViewModels.Pages"
     xmlns:local="using:SevaDesk_App.Views.Pages"
-    xmlns:controls="using:SevaDesk_App.Views.Controls"
     mc:Ignorable="d">
 
-    <Grid RowDefinitions="Auto,Auto,*" Padding="24" RowSpacing="16">
+    <Grid RowDefinitions="Auto,*" Padding="24" RowSpacing="16">
         <!-- Header -->
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
@@ -22,16 +21,16 @@
 
             <StackPanel Grid.Column="0" Spacing="4">
                 <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                    <TextBlock loc:Loc.Key="Documents.Title" Text="Document Processing Hub" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
+                    <TextBlock loc:Loc.Key="Documents.Title" Text="Document Hub" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
                     <Border Background="#F59E0B" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <TextBlock Text="{x:Bind ViewModel.UnorganisedCount, Mode=OneWay}" Foreground="White" FontWeight="Bold" FontSize="12" />
-                            <TextBlock loc:Loc.Key="Documents.PendingBadge" Text="Pending" Foreground="White" FontSize="12" />
+                            <TextBlock loc:Loc.Key="Documents.PendingBadge" Text="Unsorted" Foreground="White" FontSize="12" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
                 <TextBlock loc:Loc.Key="Documents.Subtitle"
-                           Text="Process incoming Bluetooth &amp; WhatsApp files, apply photo/signature compression presets, and sort with 1-click"
+                           Text="Quickly rename, compress, and organize customer documents for online applications"
                            Style="{StaticResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
@@ -40,316 +39,472 @@
                 <Button Click="Refresh_Click">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <FontIcon Glyph="&#xE72C;" FontSize="14" />
-                        <TextBlock loc:Loc.Key="Documents.ScanRefreshBtn" Text="Scan &amp; Refresh" />
+                        <TextBlock loc:Loc.Key="Documents.ScanRefreshBtn" Text="Refresh Files" />
                     </StackPanel>
                 </Button>
                 <Button Style="{StaticResource AccentButtonStyle}" Click="OpenExplorer_Click">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <FontIcon Glyph="&#xED25;" FontSize="14" />
-                        <TextBlock loc:Loc.Key="Documents.OpenWorkingRootBtn" Text="Open Working Directory" />
+                        <TextBlock loc:Loc.Key="Documents.OpenWorkingRootBtn" Text="Open Folder" />
                     </StackPanel>
                 </Button>
             </StackPanel>
         </Grid>
 
-
         <!-- NavigationView for Tabs -->
-        <NavigationView x:Name="DocNav" Grid.Row="2" PaneDisplayMode="Top" IsBackButtonVisible="Collapsed" SelectionChanged="DocNav_SelectionChanged">
+        <NavigationView x:Name="DocNav" Grid.Row="1" PaneDisplayMode="Top" IsBackButtonVisible="Collapsed" SelectionChanged="DocNav_SelectionChanged">
             <NavigationView.MenuItems>
-                <NavigationViewItem Content="Organization" Tag="Org">
+                <NavigationViewItem Content="File Organizer" Tag="Org">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE8B7;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Document Studio" Tag="Studio">
+                <NavigationViewItem Tag="Studio">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE70F;" />
                     </NavigationViewItem.Icon>
+                    <NavigationViewItem.Content>
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock Text="Document Studio" />
+                            <Border Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="4" Padding="6,1" VerticalAlignment="Center">
+                                <TextBlock loc:Loc.Key="Documents.StudioUnderDev" Text="Under Development" FontSize="10" FontWeight="SemiBold" Foreground="#B45309" />
+                            </Border>
+                        </StackPanel>
+                    </NavigationViewItem.Content>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
 
             <Grid Margin="0,16,0,0">
-                <!-- Organization View -->
-                <Grid x:Name="OrgView" ColumnDefinitions="420,*" ColumnSpacing="16">
-                    <!-- Left: Incoming Unorganised Queue & Compression Presets -->
-                    <Grid RowDefinitions="*,Auto" RowSpacing="12">
-                <!-- Pending Queue Card -->
-                <Border Grid.Row="0" CornerRadius="8"
-                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                    <Grid RowDefinitions="Auto,*">
-                        <Border Grid.Row="0" Padding="14,10" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <FontIcon Glyph="&#xE8B7;" Foreground="#F59E0B" FontSize="14" />
-                                <TextBlock loc:Loc.Key="Documents.IncomingQueueTitle" Text="Unorganised Files (Pending)" FontWeight="SemiBold" />
-                            </StackPanel>
-                        </Border>
-
-                        <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.PendingDocuments, Mode=OneWay}"
-                                  SelectedItem="{x:Bind ViewModel.SelectedDocument, Mode=TwoWay}"
-                                  SelectionMode="Single">
-                            <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="models:DocumentItem">
-                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" Padding="8,10" VerticalAlignment="Center">
-                                        <FontIcon Grid.Column="0" Glyph="{x:Bind Glyph, Mode=OneWay}" FontSize="20"
-                                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Margin="0,0,12,0" />
-
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                            <TextBlock Text="{x:Bind Name, Mode=OneWay}" FontWeight="SemiBold" FontSize="13"
-                                                       TextTrimming="CharacterEllipsis" MaxLines="1" />
-                                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                                <TextBlock Text="{x:Bind CustomerName}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                <TextBlock Text="•" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                                <TextBlock Text="{x:Bind FileSize, Mode=OneWay}" FontSize="11" FontWeight="SemiBold" Foreground="#F59E0B" />
-                                            </StackPanel>
-                                        </StackPanel>
-
-                                        <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="4" Padding="6,2" Margin="0,0,6,0"
-                                                Background="{ThemeResource SubtleFillColorSecondaryBrush}">
-                                            <TextBlock Text="{x:Bind Extension, Mode=OneWay}" FontSize="10" FontFamily="Consolas" FontWeight="Bold" />
-                                        </Border>
-
-                                        <!-- Quick Tag & Rename Flyout Button -->
-                                        <Button Grid.Column="3" Click="RowTagButton_Click" Tag="{x:Bind}" Padding="6"
-                                                Background="Transparent" BorderBrush="Transparent"
-                                                ToolTipService.ToolTip="Quick Tag &amp; Rename">
-                                            <FontIcon Glyph="&#xE8EC;" FontSize="13" Foreground="#F59E0B" />
-                                        </Button>
-                                    </Grid>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                    </Grid>
-                </Border>
-
-                <!-- Compression Presets Card -->
-                <Border Grid.Row="1" Padding="14" CornerRadius="8"
-                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                    <StackPanel Spacing="10">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon Glyph="&#xEB9F;" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" FontSize="14" />
-                            <TextBlock loc:Loc.Key="Documents.CompressionPresetsTitle" Text="1-Click Compression Presets" FontWeight="SemiBold" FontSize="13" />
-                        </StackPanel>
-
-                        <ItemsControl ItemsSource="{x:Bind ViewModel.CompressionPresets, Mode=OneWay}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="models:CompressionPreset">
-                                    <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                                            Margin="0,0,0,6" Click="PresetButton_Click" Tag="{x:Bind}">
-                                        <Grid ColumnDefinitions="Auto,*,Auto">
-                                            <FontIcon Grid.Column="0" Glyph="{x:Bind IconGlyph}" FontSize="14"
-                                                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Margin="0,0,8,0" />
-                                            <TextBlock Grid.Column="1" Text="{x:Bind Name}" VerticalAlignment="Center" FontSize="12" />
-                                            <Border Grid.Column="2" Background="{ThemeResource SystemFillColorNeutralBackgroundBrush}"
-                                                    CornerRadius="4" Padding="6,2">
-                                                <TextBlock Text="{x:Bind TargetSize}" FontSize="11" FontWeight="SemiBold" />
-                                            </Border>
-                                        </Grid>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <!-- Right: Document Inspector & Sort Actions -->
-            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
-                <StackPanel Spacing="16">
-                    <!-- Empty State when no document selected -->
-                    <Border Visibility="{x:Bind local:DocumentsPage.CollapsedIf(ViewModel.HasSelectedDocument), Mode=OneWay}"
-                            Padding="28" CornerRadius="8"
-                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
-                            <Border Width="56" Height="56" CornerRadius="28"
-                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
-                                    HorizontalAlignment="Center">
-                                <FontIcon Glyph="&#xE8A5;" FontSize="24" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel Spacing="4" HorizontalAlignment="Center">
-                                <TextBlock Text="No Unorganized File Selected" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center" />
-                                <TextBlock Text="Select a file from the incoming queue to view, apply compression, or move to customer folders."
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" TextAlignment="Center" MaxWidth="320" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Selected Document Card & Sort Actions -->
-                    <Border Visibility="{x:Bind local:DocumentsPage.VisibleIf(ViewModel.HasSelectedDocument), Mode=OneWay}"
-                            Padding="20" CornerRadius="8"
-                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="14">
-                            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
-                                <Border Grid.Column="0" Width="48" Height="48" CornerRadius="8"
-                                        Background="{ThemeResource SubtleFillColorSecondaryBrush}" Margin="0,0,16,0">
-                                    <FontIcon Glyph="{x:Bind ViewModel.SelectedDocument.Glyph, Mode=OneWay}" FontSize="24"
-                                              HorizontalAlignment="Center" VerticalAlignment="Center"
-                                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                </Border>
-
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
-                                    <!-- Filename View / Inline Edit Mode -->
-                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
-                                                Visibility="{x:Bind local:DocumentsPage.CollapsedIf(ViewModel.SelectedDocument.IsRenaming), Mode=OneWay}">
-                                        <TextBlock Text="{x:Bind ViewModel.SelectedDocument.Name, Mode=OneWay}"
-                                                   Style="{StaticResource SubtitleTextBlockStyle}" FontWeight="Bold" FontSize="16"
-                                                   TextTrimming="CharacterEllipsis" MaxLines="1" />
-                                        <Button Click="StartInspectorRename_Click" Padding="4" Background="Transparent" BorderBrush="Transparent"
-                                                ToolTipService.ToolTip="Rename File (Custom)">
-                                            <FontIcon Glyph="&#xE70F;" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                        </Button>
-                                    </StackPanel>
-
-                                    <!-- Inline Edit Mode -->
-                                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6"
-                                          Visibility="{x:Bind local:DocumentsPage.VisibleIf(ViewModel.SelectedDocument.IsRenaming), Mode=OneWay}">
-                                        <TextBox x:Name="TxtInspectorRename"
-                                                 Text="{x:Bind ViewModel.SelectedDocument.EditName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                 KeyDown="InspectorRename_KeyDown"
-                                                 FontSize="14" VerticalAlignment="Center" />
-                                        <Button Grid.Column="1" Click="SaveInspectorRename_Click"
-                                                Style="{StaticResource AccentButtonStyle}" Padding="8,4" ToolTipService.ToolTip="Save (Enter)">
-                                            <FontIcon Glyph="&#xE73E;" FontSize="11" />
-                                        </Button>
-                                        <Button Grid.Column="2" Click="CancelInspectorRename_Click"
-                                                Padding="8,4" ToolTipService.ToolTip="Cancel (Esc)">
-                                            <FontIcon Glyph="&#xE711;" FontSize="11" />
-                                        </Button>
-                                    </Grid>
-
-                                    <StackPanel Orientation="Horizontal" Spacing="12">
-                                        <TextBlock Text="{x:Bind ViewModel.SelectedDocument.CustomerName, Mode=OneWay}"
-                                                   FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                        <TextBlock Text="•" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                        <TextBlock Text="{x:Bind ViewModel.SelectedDocument.FileSize, Mode=OneWay}"
-                                                   FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                        <TextBlock Text="•" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                        <TextBlock Text="{x:Bind ViewModel.SelectedDocument.Status, Mode=OneWay}"
-                                                   FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                    </StackPanel>
-                                </StackPanel>
-                                <Button Grid.Column="2" VerticalAlignment="Center" Click="OpenFile_Click" ToolTipService.ToolTip="Open file in default viewer">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xE8A7;" FontSize="13" />
-                                        <TextBlock Text="Open" FontSize="12" />
-                                    </StackPanel>
-                                </Button>
-                            </Grid>
-
-                            <Border Grid.Row="1" Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
-
-                            <!-- 2. Quick Rename Tag Chips Strip -->
-                            <StackPanel Grid.Row="2" Spacing="8">
-                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                    <FontIcon Glyph="&#xE8EC;" FontSize="14" Foreground="#F59E0B" />
-                                    <TextBlock Text="Quick Rename:" FontWeight="SemiBold" FontSize="13" />
-                                    <TextBlock Text="(1-click rename preserving extension)" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                </StackPanel>
-
-                                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled">
-                                    <StackPanel x:Name="InspectorChipsPanel" Orientation="Horizontal" Spacing="8" />
-                                </ScrollViewer>
-                            </StackPanel>
-
-                            <Border Grid.Row="3" Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
-
-                            <!-- Dynamic Subfolder Move Destination Buttons & New Subfolder Action -->
-                            <StackPanel Grid.Row="4" Spacing="10">
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                        <FontIcon Glyph="&#xE8DE;" FontSize="14" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                        <TextBlock loc:Loc.Key="Documents.InspectorTitle" Text="Quick Sort &amp; Move to Customer Subfolder:" FontWeight="SemiBold" FontSize="13" />
-                                    </StackPanel>
-
-                                    <!-- Quick New Subfolder Button -->
-                                    <Button Grid.Column="1" Click="NewSubfolder_Click" Style="{StaticResource AccentButtonStyle}" Padding="10,5">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <FontIcon Glyph="&#xE710;" FontSize="12" />
-                                            <TextBlock Text="New Subfolder" FontWeight="SemiBold" FontSize="12" />
-                                        </StackPanel>
-                                    </Button>
-                                </Grid>
-
-                                <!-- Dynamic Customer Subfolders List -->
-                                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled">
-                                    <ItemsControl ItemsSource="{x:Bind ViewModel.CustomerSubfolders, Mode=OneWay}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <StackPanel Orientation="Horizontal" Spacing="8" />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="models:SubfolderItem">
-                                                <Button Click="MoveToSubfolder_Click" Tag="{x:Bind RelativePath}"
-                                                        Padding="12,8" MinWidth="130" CornerRadius="6"
-                                                        Background="{ThemeResource LayerFillColorDefaultBrush}"
-                                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                                                    <ToolTipService.ToolTip>
-                                                        <ToolTip Content="{x:Bind RelativePath}" />
-                                                    </ToolTipService.ToolTip>
-                                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
-                                                        <FontIcon Grid.Column="0" Glyph="{x:Bind Glyph}" Foreground="{x:Bind AccentColor}" FontSize="15" VerticalAlignment="Center" />
-                                                        <TextBlock Grid.Column="1" Text="{x:Bind DisplayName}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="160" />
-                                                        <Border Grid.Column="2" Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="10" Padding="6,1" VerticalAlignment="Center">
-                                                            <TextBlock Text="{x:Bind FileCount}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                        </Border>
-                                                    </Grid>
-                                                </Button>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </ScrollViewer>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-
-                    <!-- Processed Files Archive List -->
-                    <Border CornerRadius="8"
+                <!-- 1. File Organizer View -->
+                <Grid x:Name="OrgView" ColumnDefinitions="380,*" ColumnSpacing="16">
+                    <!-- Left: Full-Height Unsorted Files Queue -->
+                    <Border Grid.Column="0" CornerRadius="8"
                             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                         <Grid RowDefinitions="Auto,*">
                             <Border Grid.Row="0" Padding="14,10" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
-                                <TextBlock loc:Loc.Key="Documents.AssignToCustomer" Text="Organized &amp; Processed Files" FontWeight="SemiBold" />
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <FontIcon Glyph="&#xE8B7;" Foreground="#F59E0B" FontSize="14" />
+                                        <TextBlock loc:Loc.Key="Documents.IncomingQueueTitle" Text="Unsorted Files" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                    <Border Grid.Column="1" Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="10" Padding="8,2" VerticalAlignment="Center">
+                                        <TextBlock Text="{x:Bind ViewModel.UnorganisedCount, Mode=OneWay}" FontSize="11" FontWeight="SemiBold" Foreground="#F59E0B" />
+                                    </Border>
+                                </Grid>
                             </Border>
 
-                            <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.ProcessedDocuments, Mode=OneWay}" SelectionMode="None">
+                            <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.PendingDocuments, Mode=OneWay}"
+                                      SelectedItem="{x:Bind ViewModel.SelectedDocument, Mode=TwoWay}"
+                                      SelectionMode="Single"
+                                      KeyDown="PendingListView_KeyDown">
                                 <ListView.ItemTemplate>
                                     <DataTemplate x:DataType="models:DocumentItem">
-                                        <Grid ColumnDefinitions="Auto,*,Auto" Padding="12,10" VerticalAlignment="Center"
-                                              BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
-                                            <FontIcon Grid.Column="0" Glyph="{x:Bind Glyph}" FontSize="18"
-                                                      Foreground="#10B981" Margin="0,0,12,0" />
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" Padding="8,10" VerticalAlignment="Center"
+                                              DoubleTapped="PendingFileRow_DoubleTapped" Tag="{x:Bind}" Background="Transparent">
+                                            <FontIcon Grid.Column="0" Glyph="{x:Bind Glyph, Mode=OneWay}" FontSize="20"
+                                                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Margin="0,0,12,0" />
 
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                                <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="13" />
+                                                <TextBlock Text="{x:Bind Name, Mode=OneWay}" FontWeight="SemiBold" FontSize="13"
+                                                           TextTrimming="CharacterEllipsis" MaxLines="1" />
                                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                                     <TextBlock Text="{x:Bind CustomerName}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                                     <TextBlock Text="•" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                                    <TextBlock Text="{x:Bind Category}" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                    <TextBlock Text="{x:Bind FileSize, Mode=OneWay}" FontSize="11" FontWeight="SemiBold" Foreground="#F59E0B" />
                                                 </StackPanel>
                                             </StackPanel>
 
-                                            <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="4" Padding="6,2"
-                                                    Background="#ECFDF5">
-                                                <TextBlock Text="{x:Bind Status}" FontSize="11" FontWeight="SemiBold" Foreground="#047857" />
+                                            <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="4" Padding="6,2" Margin="0,0,6,0"
+                                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                                <TextBlock Text="{x:Bind Extension, Mode=OneWay}" FontSize="10" FontFamily="Consolas" FontWeight="Bold" />
                                             </Border>
+
+                                            <!-- Quick Tag & Rename Flyout Button -->
+                                            <Button Grid.Column="3" Click="RowTagButton_Click" Tag="{x:Bind}" Padding="6"
+                                                    Background="Transparent" BorderBrush="Transparent"
+                                                    ToolTipService.ToolTip="Quick Rename">
+                                                <FontIcon Glyph="&#xE8EC;" FontSize="13" Foreground="#F59E0B" />
+                                            </Button>
                                         </Grid>
                                     </DataTemplate>
                                 </ListView.ItemTemplate>
                             </ListView>
                         </Grid>
                     </Border>
-                </StackPanel>
-            </ScrollViewer>
-            </Grid>
 
-            <!-- Document Studio View -->
-            <controls:DocumentStudioControl x:Name="StudioView" Visibility="Collapsed" />
-        </Grid>
-    </NavigationView>
+                    <!-- Right: Document Inspector & Sort Actions -->
+                    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="16">
+                            <!-- Empty State when no document selected -->
+                            <Border Visibility="{x:Bind local:DocumentsPage.CollapsedIf(ViewModel.HasSelectedDocument), Mode=OneWay}"
+                                    Padding="36" CornerRadius="8"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                                    <Border Width="56" Height="56" CornerRadius="28"
+                                            Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                            HorizontalAlignment="Center">
+                                        <FontIcon Glyph="&#xE8A5;" FontSize="24" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Spacing="4" HorizontalAlignment="Center">
+                                        <TextBlock Text="No File Selected" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center" />
+                                        <TextBlock Text="Select a file from the unsorted list on the left to rename, compress, or move to customer folders."
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" TextAlignment="Center" MaxWidth="360" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Selected Document Card -->
+                            <Border Visibility="{x:Bind local:DocumentsPage.VisibleIf(ViewModel.HasSelectedDocument), Mode=OneWay}"
+                                    Padding="20" CornerRadius="8"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="14">
+                                    <!-- Row 0: File Header -->
+                                    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
+                                        <Border Grid.Column="0" Width="48" Height="48" CornerRadius="8"
+                                                Background="{ThemeResource SubtleFillColorSecondaryBrush}" Margin="0,0,16,0">
+                                            <FontIcon Glyph="{x:Bind ViewModel.SelectedDocument.Glyph, Mode=OneWay}" FontSize="24"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                        </Border>
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                            <!-- Filename View / Inline Edit Mode -->
+                                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
+                                                        Visibility="{x:Bind local:DocumentsPage.CollapsedIf(ViewModel.SelectedDocument.IsRenaming), Mode=OneWay}">
+                                                <TextBlock Text="{x:Bind ViewModel.SelectedDocument.Name, Mode=OneWay}"
+                                                           Style="{StaticResource SubtitleTextBlockStyle}" FontWeight="Bold" FontSize="16"
+                                                           TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                                <Button Click="StartInspectorRename_Click" Padding="4" Background="Transparent" BorderBrush="Transparent"
+                                                        ToolTipService.ToolTip="Rename File">
+                                                    <FontIcon Glyph="&#xE70F;" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                </Button>
+                                            </StackPanel>
+
+                                            <!-- Inline Edit Mode -->
+                                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6"
+                                                  Visibility="{x:Bind local:DocumentsPage.VisibleIf(ViewModel.SelectedDocument.IsRenaming), Mode=OneWay}">
+                                                <TextBox x:Name="TxtInspectorRename"
+                                                         Text="{x:Bind ViewModel.SelectedDocument.EditName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                         KeyDown="InspectorRename_KeyDown"
+                                                         FontSize="14" VerticalAlignment="Center" />
+                                                <Button Grid.Column="1" Click="SaveInspectorRename_Click"
+                                                        Style="{StaticResource AccentButtonStyle}" Padding="8,4" ToolTipService.ToolTip="Save (Enter)">
+                                                    <FontIcon Glyph="&#xE73E;" FontSize="11" />
+                                                </Button>
+                                                <Button Grid.Column="2" Click="CancelInspectorRename_Click"
+                                                        Padding="8,4" ToolTipService.ToolTip="Cancel (Esc)">
+                                                    <FontIcon Glyph="&#xE711;" FontSize="11" />
+                                                </Button>
+                                            </Grid>
+
+                                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                                <TextBlock Text="{x:Bind ViewModel.SelectedDocument.CustomerName, Mode=OneWay}"
+                                                           FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                <TextBlock Text="•" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                                <TextBlock Text="{x:Bind ViewModel.SelectedDocument.FileSize, Mode=OneWay}"
+                                                           FontSize="12" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                <TextBlock Text="•" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                                <TextBlock Text="{x:Bind ViewModel.SelectedDocument.Status, Mode=OneWay}"
+                                                           FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <Button Grid.Column="2" VerticalAlignment="Center" Click="OpenFile_Click" ToolTipService.ToolTip="Open file in default viewer">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <FontIcon Glyph="&#xE8A7;" FontSize="13" />
+                                                <TextBlock Text="Open File" FontSize="12" />
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+
+                                    <Border Grid.Row="1" Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+
+                                    <!-- Row 2: Quick Rename Chips -->
+                                    <StackPanel Grid.Row="2" Spacing="8">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                            <FontIcon Glyph="&#xE8EC;" FontSize="14" Foreground="#F59E0B" />
+                                            <TextBlock Text="Quick Rename:" FontWeight="SemiBold" FontSize="13" />
+                                            <TextBlock Text="(1-click rename preserving file extension)" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </StackPanel>
+
+                                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled">
+                                            <StackPanel x:Name="InspectorChipsPanel" Orientation="Horizontal" Spacing="8" />
+                                        </ScrollViewer>
+                                    </StackPanel>
+
+                                    <Border Grid.Row="3" Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+
+                                    <!-- Row 4: 1-Click Compression Presets -->
+                                    <StackPanel Grid.Row="4" Spacing="10">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                <FontIcon Glyph="&#xEB9F;" FontSize="14" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                <TextBlock loc:Loc.Key="Documents.CompressionPresetsTitle" Text="1-Click Compression Presets:" FontWeight="SemiBold" FontSize="13" />
+                                                <TextBlock Text="(Creates optimized copy for govt portals)" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            </StackPanel>
+
+                                            <!-- Processing Indicator -->
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                                                        Visibility="{x:Bind local:DocumentsPage.VisibleIf(ViewModel.IsProcessingPreset), Mode=OneWay}">
+                                                <ProgressRing IsActive="True" Width="14" Height="14" VerticalAlignment="Center" />
+                                                <TextBlock Text="Compressing..." FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Presets Grid (2x2) -->
+                                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="8">
+                                            <Button Grid.Row="0" Grid.Column="0" Click="PresetButton_Click" Tag="{x:Bind ViewModel.CompressionPresets[0], Mode=OneWay}"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="12,10" CornerRadius="6"
+                                                    Background="{ThemeResource LayerFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                                    IsEnabled="{x:Bind local:DocumentsPage.Not(ViewModel.IsProcessingPreset), Mode=OneWay}">
+                                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                                    <FontIcon Grid.Column="0" Glyph="&#xEB9F;" FontSize="16" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Center" />
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                                                        <TextBlock Text="Passport Photo" FontWeight="SemiBold" FontSize="12" />
+                                                        <TextBlock Text="3.5×4.5 ratio, JPEG" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                    </StackPanel>
+                                                    <Border Grid.Column="2" Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                                        <TextBlock Text="20 KB – 50 KB" FontSize="10" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                    </Border>
+                                                </Grid>
+                                            </Button>
+
+                                            <Button Grid.Row="0" Grid.Column="1" Click="PresetButton_Click" Tag="{x:Bind ViewModel.CompressionPresets[1], Mode=OneWay}"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="12,10" CornerRadius="6"
+                                                    Background="{ThemeResource LayerFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                                    IsEnabled="{x:Bind local:DocumentsPage.Not(ViewModel.IsProcessingPreset), Mode=OneWay}">
+                                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                                    <FontIcon Grid.Column="0" Glyph="&#xEDC6;" FontSize="16" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Center" />
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                                                        <TextBlock Text="Applicant Signature" FontWeight="SemiBold" FontSize="12" />
+                                                        <TextBlock Text="Clear contrast, 4.0×2.0" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                    </StackPanel>
+                                                    <Border Grid.Column="2" Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                                        <TextBlock Text="10 KB – 20 KB" FontSize="10" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                    </Border>
+                                                </Grid>
+                                            </Button>
+
+                                            <Button Grid.Row="1" Grid.Column="0" Click="PresetButton_Click" Tag="{x:Bind ViewModel.CompressionPresets[2], Mode=OneWay}"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="12,10" CornerRadius="6"
+                                                    Background="{ThemeResource LayerFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                                    IsEnabled="{x:Bind local:DocumentsPage.Not(ViewModel.IsProcessingPreset), Mode=OneWay}">
+                                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                                    <FontIcon Grid.Column="0" Glyph="&#xE8A5;" FontSize="16" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Center" />
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                                                        <TextBlock Text="Govt Portal PDF" FontWeight="SemiBold" FontSize="12" />
+                                                        <TextBlock Text="Convert image to A4 PDF" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                    </StackPanel>
+                                                    <Border Grid.Column="2" Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                                        <TextBlock Text="&lt; 300 KB" FontSize="10" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                    </Border>
+                                                </Grid>
+                                            </Button>
+
+                                            <Button Grid.Row="1" Grid.Column="1" Click="PresetButton_Click" Tag="{x:Bind ViewModel.CompressionPresets[3], Mode=OneWay}"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="12,10" CornerRadius="6"
+                                                    Background="{ThemeResource LayerFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                                    IsEnabled="{x:Bind local:DocumentsPage.Not(ViewModel.IsProcessingPreset), Mode=OneWay}">
+                                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                                    <FontIcon Grid.Column="0" Glyph="&#xE749;" FontSize="16" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Center" />
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                                                        <TextBlock Text="Document Scan" FontWeight="SemiBold" FontSize="12" />
+                                                        <TextBlock Text="Color scan for form upload" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                    </StackPanel>
+                                                    <Border Grid.Column="2" Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                                        <TextBlock Text="&lt; 200 KB" FontSize="10" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                    </Border>
+                                                </Grid>
+                                            </Button>
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <Border Grid.Row="5" Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+
+                                    <!-- Row 6: Move to Customer Folder -->
+                                    <StackPanel Grid.Row="6" Spacing="10">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                <FontIcon Glyph="&#xE8DE;" FontSize="14" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                <TextBlock loc:Loc.Key="Documents.InspectorTitle" Text="Move to Customer Folder:" FontWeight="SemiBold" FontSize="13" />
+                                            </StackPanel>
+
+                                            <!-- Quick New Subfolder Button -->
+                                            <Button Grid.Column="1" Click="NewSubfolder_Click" Style="{StaticResource AccentButtonStyle}" Padding="10,5">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <FontIcon Glyph="&#xE710;" FontSize="12" />
+                                                    <TextBlock Text="New Folder" FontWeight="SemiBold" FontSize="12" />
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+
+                                        <!-- Dynamic Customer Subfolders List -->
+                                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Enabled">
+                                            <ItemsControl ItemsSource="{x:Bind ViewModel.CustomerSubfolders, Mode=OneWay}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal" Spacing="8" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="models:SubfolderItem">
+                                                        <Button Click="MoveToSubfolder_Click" Tag="{x:Bind RelativePath}"
+                                                                Padding="12,8" MinWidth="130" CornerRadius="6"
+                                                                Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                                            <ToolTipService.ToolTip>
+                                                                <ToolTip Content="{x:Bind RelativePath}" />
+                                                            </ToolTipService.ToolTip>
+                                                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                                                <FontIcon Grid.Column="0" Glyph="{x:Bind Glyph}" Foreground="{x:Bind AccentColor}" FontSize="15" VerticalAlignment="Center" />
+                                                                <TextBlock Grid.Column="1" Text="{x:Bind DisplayName}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="160" />
+                                                                <Border Grid.Column="2" Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="10" Padding="6,1" VerticalAlignment="Center">
+                                                                    <TextBlock Text="{x:Bind FileCount}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                                </Border>
+                                                            </Grid>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Processed Files Archive List -->
+                            <Border CornerRadius="8"
+                                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                <Grid RowDefinitions="Auto,*">
+                                    <Border Grid.Row="0" Padding="14,10" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                            <FontIcon Glyph="&#xE73E;" Foreground="#10B981" FontSize="14" />
+                                            <TextBlock loc:Loc.Key="Documents.AssignToCustomer" Text="Sorted Files" FontWeight="SemiBold" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.ProcessedDocuments, Mode=OneWay}" SelectionMode="Single" KeyDown="ProcessedListView_KeyDown">
+                                        <ListView.ItemTemplate>
+                                            <DataTemplate x:DataType="models:DocumentItem">
+                                                <Grid ColumnDefinitions="Auto,*,Auto" Padding="12,10" VerticalAlignment="Center"
+                                                      DoubleTapped="ProcessedFileRow_DoubleTapped" Tag="{x:Bind}" Background="Transparent"
+                                                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                                                    <FontIcon Grid.Column="0" Glyph="{x:Bind Glyph}" FontSize="18"
+                                                              Foreground="#10B981" Margin="0,0,12,0" />
+
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                                        <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="13" />
+                                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                                            <TextBlock Text="{x:Bind CustomerName}" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                            <TextBlock Text="•" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                                            <TextBlock Text="{x:Bind Category}" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                        </StackPanel>
+                                                    </StackPanel>
+
+                                                    <Border Grid.Column="2" VerticalAlignment="Center" CornerRadius="4" Padding="6,2"
+                                                            Background="#ECFDF5">
+                                                        <TextBlock Text="✓ Sorted" FontSize="11" FontWeight="SemiBold" Foreground="#047857" />
+                                                    </Border>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListView.ItemTemplate>
+                                    </ListView>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- 2. Document Studio Under Development Placeholder -->
+                <Grid x:Name="StudioPlaceholderView" Visibility="Collapsed" Margin="0,24,0,0" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="800">
+                    <Border Padding="32" CornerRadius="12"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                        <StackPanel Spacing="24">
+                            <!-- Header Banner -->
+                            <StackPanel Spacing="10" HorizontalAlignment="Center">
+                                <Border Width="64" Height="64" CornerRadius="32"
+                                        Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                        HorizontalAlignment="Center">
+                                    <FontIcon Glyph="&#xE70F;" FontSize="28" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="Document Studio" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
+                                    <Border Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="6" Padding="8,2" VerticalAlignment="Center">
+                                        <TextBlock loc:Loc.Key="Documents.StudioUnderDev" Text="🚧 Under Development" FontSize="11" FontWeight="Bold" Foreground="#B45309" />
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock Text="Advanced editing and printing tools tailored for Seva Kendra operators are currently under active development and will arrive in an upcoming update."
+                                           Style="{StaticResource BodyTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           TextAlignment="Center" MaxWidth="600" TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <!-- 3 Upcoming Feature Preview Cards -->
+                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="12">
+                                <!-- Feature 1: ID Card Cropper -->
+                                <Border Grid.Column="0" Padding="16" CornerRadius="8"
+                                        Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                    <StackPanel Spacing="8">
+                                        <Border Width="36" Height="36" CornerRadius="18"
+                                                Background="{ThemeResource SubtleFillColorSecondaryBrush}" HorizontalAlignment="Left">
+                                            <FontIcon Glyph="&#xE8F1;" FontSize="16" Foreground="#0284C7" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <TextBlock Text="ID Card Cropper" FontWeight="Bold" FontSize="13" />
+                                        <TextBlock Text="Auto-crop Aadhaar, PAN, and Voter ID front &amp; back into wallet size for laminated prints."
+                                                   FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Feature 2: Passport Photo Grid -->
+                                <Border Grid.Column="1" Padding="16" CornerRadius="8"
+                                        Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                    <StackPanel Spacing="8">
+                                        <Border Width="36" Height="36" CornerRadius="18"
+                                                Background="{ThemeResource SubtleFillColorSecondaryBrush}" HorizontalAlignment="Left">
+                                            <FontIcon Glyph="&#xEB9F;" FontSize="16" Foreground="#10B981" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <TextBlock Text="Passport Photo Grid" FontWeight="Bold" FontSize="13" />
+                                        <TextBlock Text="Tile 6, 8, or 12 passport photos with cut-marks onto a standard 4×6 photo sheet with 1-click."
+                                                   FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Feature 3: Multi-Page PDF Compiler -->
+                                <Border Grid.Column="2" Padding="16" CornerRadius="8"
+                                        Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                    <StackPanel Spacing="8">
+                                        <Border Width="36" Height="36" CornerRadius="18"
+                                                Background="{ThemeResource SubtleFillColorSecondaryBrush}" HorizontalAlignment="Left">
+                                            <FontIcon Glyph="&#xE8A5;" FontSize="16" Foreground="#8B5CF6" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <TextBlock Text="Multi-Page PDF Compiler" FontWeight="Bold" FontSize="13" />
+                                        <TextBlock Text="Merge multiple scanned receipts, marksheets, and proofs into a single compressed legal PDF."
+                                                   FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <!-- Back to Organizer Action Button -->
+                            <Button Style="{StaticResource AccentButtonStyle}" Click="BackToOrganizer_Click"
+                                    HorizontalAlignment="Center" Padding="20,10">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE72B;" FontSize="14" />
+                                    <TextBlock loc:Loc.Key="Documents.BackToOrganizer" Text="Back to File Organizer" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+        </NavigationView>
     </Grid>
 </Page>

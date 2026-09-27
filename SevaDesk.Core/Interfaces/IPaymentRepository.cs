@@ -4,8 +4,10 @@ namespace SevaDesk.Core.Interfaces;
 
 public interface IPaymentRepository
 {
+    event EventHandler? PaymentsChanged;
     Task<Payment> RecordPaymentAsync(Payment payment);
     Task<IEnumerable<Payment>> GetRecentPaymentsAsync(int limit = 50);
+    Task<IEnumerable<Payment>> GetTodayPaymentsAsync(int limit = 50);
     Task<string> GenerateNextInvoiceNoAsync();
     Task<IEnumerable<Payment>> GetCustomerPaymentsAsync(string customerId);
     Task<(decimal TotalSales, decimal CashTotal, decimal UpiTotal)> GetTodaySalesSummaryAsync();

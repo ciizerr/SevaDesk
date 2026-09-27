@@ -9,15 +9,15 @@
   IgnorableNamespaces="uap rescap systemai">
 
   <Identity
-    Name="AF3C4374-8F54-4326-A93E-91D4DAECADD1"
-    Publisher="CN=AppPublisher"
-    Version="1.0.0.0" />
+    Name="SevaDesk"
+    Publisher="CN=ciizerr, O=SevaDesk"
+    Version="0.1.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="AF3C4374-8F54-4326-A93E-91D4DAECADD1" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>SevaDesk.App</DisplayName>
-    <PublisherDisplayName>AppPublisher</PublisherDisplayName>
+    <DisplayName>SevaDesk</DisplayName>
+    <PublisherDisplayName>ciizerr</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -35,8 +35,8 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="SevaDesk.App"
-        Description="SevaDesk.App"
+        DisplayName="SevaDesk"
+        Description="Next-Gen Cyber Café &amp; CSC Center Operations Platform"
         BackgroundColor="#FFFFFF"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">

@@ -1,4 +1,6 @@
+using System;
 using System.IO;
+using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -13,7 +15,7 @@ public sealed partial class CustomersPage : Page
 {
     public CustomersViewModel ViewModel { get; } = new();
 
-    private readonly System.Action<string> _avatarUpdatedHandler;
+    private readonly Action<string> _avatarUpdatedHandler;
 
     public CustomersPage()
     {
@@ -28,11 +30,13 @@ public sealed partial class CustomersPage : Page
                 }
             });
         };
+
         Loaded += async (s, e) =>
         {
             await ViewModel.InitializeAsync();
             CustomerAvatarHelper.AvatarUpdated += _avatarUpdatedHandler;
         };
+
         Unloaded += (s, e) =>
         {
             CustomerAvatarHelper.AvatarUpdated -= _avatarUpdatedHandler;
@@ -92,7 +96,15 @@ public sealed partial class CustomersPage : Page
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement el && el.Tag is Customer customer)
+        Customer? customer = null;
+        if (sender is FrameworkElement el)
+        {
+            if (el.Tag is Customer c) customer = c;
+            else if (el.Tag is CustomerRowModel r) customer = r.Customer;
+            else if (el.DataContext is CustomerRowModel crm) customer = crm.Customer;
+        }
+
+        if (customer != null)
         {
             var folderPath = AppServices.FolderManager.GetEffectiveCustomerFolderPath(
                 customer.Name, customer.Code, out _);
@@ -109,16 +121,124 @@ public sealed partial class CustomersPage : Page
 
     private async void StartSession_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement el && el.Tag is string customerId)
+        string? customerId = null;
+        if (sender is FrameworkElement el)
+        {
+            if (el.Tag is string cid) customerId = cid;
+            else if (el.Tag is Customer c) customerId = c.Id;
+            else if (el.Tag is CustomerRowModel r) customerId = r.Customer.Id;
+            else if (el.DataContext is CustomerRowModel crm) customerId = crm.Customer.Id;
+        }
+
+        if (!string.IsNullOrWhiteSpace(customerId))
         {
             await AppServices.Sessions.StartSessionAsync(customerId);
             MainWindow.Instance?.NavigateTo(typeof(DashboardPage));
         }
     }
 
+    private async void WhatsApp_Click(object sender, RoutedEventArgs e)
+    {
+        CustomerRowModel? row = null;
+        if (sender is FrameworkElement el)
+        {
+            if (el.Tag is CustomerRowModel r) row = r;
+            else if (el.DataContext is CustomerRowModel crm) row = crm;
+        }
+
+        if (row == null) return;
+
+        var digits = row.DigitsOnlyMobile;
+        if (digits.Length < 10)
+        {
+            MainWindow.Instance?.ShowToast("Customer does not have a valid 10-digit mobile number for WhatsApp.", InfoBarSeverity.Warning);
+            return;
+        }
+
+        string fullPhone = digits.Length == 10 ? "91" + digits : digits;
+
+        try
+        {
+            // 1. Try launching native desktop WhatsApp app first
+            var appUri = new Uri($"whatsapp://send?phone={fullPhone}");
+            var launchedApp = await Windows.System.Launcher.LaunchUriAsync(appUri);
+
+            // 2. If native app didn't launch or isn't installed, fallback to WhatsApp Web
+            if (!launchedApp)
+            {
+                var webUri = new Uri($"https://wa.me/{fullPhone}");
+                await Windows.System.Launcher.LaunchUriAsync(webUri);
+            }
+        }
+        catch
+        {
+            // Fallback to web browser wa.me link
+            try
+            {
+                var webUri = new Uri($"https://wa.me/{fullPhone}");
+                await Windows.System.Launcher.LaunchUriAsync(webUri);
+            }
+            catch (Exception ex)
+            {
+                MainWindow.Instance?.ShowToast($"Could not launch WhatsApp: {ex.Message}", InfoBarSeverity.Error);
+            }
+        }
+    }
+
+    private void CopyPhone_Click(object sender, RoutedEventArgs e)
+    {
+        Customer? customer = null;
+        if (sender is FrameworkElement el)
+        {
+            if (el.Tag is Customer c) customer = c;
+            else if (el.Tag is CustomerRowModel r) customer = r.Customer;
+            else if (el.DataContext is CustomerRowModel crm) customer = crm.Customer;
+        }
+
+        if (customer != null && !string.IsNullOrWhiteSpace(customer.Mobile))
+        {
+            var dp = new Windows.ApplicationModel.DataTransfer.DataPackage();
+            dp.SetText(customer.Mobile.Trim());
+            Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dp);
+            MainWindow.Instance?.ShowToast($"Copied {customer.Mobile.Trim()} to clipboard.", InfoBarSeverity.Informational);
+        }
+    }
+
+    private void OpenProfile_Click(object sender, RoutedEventArgs e)
+    {
+        Customer? customer = null;
+        if (sender is FrameworkElement el)
+        {
+            if (el.Tag is Customer c) customer = c;
+            else if (el.Tag is CustomerRowModel r) customer = r.Customer;
+            else if (el.DataContext is CustomerRowModel crm) customer = crm.Customer;
+        }
+
+        if (customer != null)
+        {
+            MainWindow.Instance?.NavigateTo(typeof(CustomerWorkspacePage), customer);
+        }
+    }
+
+    private void ListView_ItemClick(object sender, ItemClickEventArgs e)
+    {
+        if (e.ClickedItem is CustomerRowModel row)
+        {
+            MainWindow.Instance?.NavigateTo(typeof(CustomerWorkspacePage), row.Customer);
+        }
+    }
+
     private async void DeleteCustomer_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement el && el.Tag is Customer customer)
+        Customer? customer = null;
+        if (sender is FrameworkElement el)
+        {
+            if (el.Tag is Customer c) customer = c;
+            else if (el.Tag is CustomerRowModel r) customer = r.Customer;
+            else if (el.DataContext is CustomerRowModel crm) customer = crm.Customer;
+        }
+
+        if (customer != null)
         {
             await DeleteCustomerWorkflowAsync(customer);
         }
@@ -152,13 +272,9 @@ public sealed partial class CustomersPage : Page
             // 4. Delete from database
             await AppServices.Customers.DeleteCustomerAsync(customer.Id);
 
-            // 5. Remove from UI list
-            var existing = ViewModel.Customers.FirstOrDefault(c => c.Customer.Id == customer.Id);
-            if (existing != null)
-            {
-                ViewModel.Customers.Remove(existing);
-                ViewModel.TotalCustomersCount = ViewModel.Customers.Count;
-            }
+            // 5. Reload view model list and counters
+            await ViewModel.LoadCustomersAsync();
+            await ViewModel.LoadOverviewMetricsAsync();
 
             // 6. Toast feedback
             if (action == DeleteCustomerAction.DeleteAndWipeAll)
@@ -170,25 +286,44 @@ public sealed partial class CustomersPage : Page
                 MainWindow.Instance?.ShowToast($"Customer '{customer.Name}' deleted. Backup files preserved.", InfoBarSeverity.Success);
             }
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
             ViewModel.ShowError($"Error deleting customer: {ex.Message}");
         }
     }
 
-    private void ListView_ItemClick(object sender, ItemClickEventArgs e)
+    private void FilterRadio_Checked(object sender, RoutedEventArgs e)
     {
-        if (e.ClickedItem is CustomerRowModel row)
+        if (sender is RadioButton rb && rb.Tag is string tagStr && int.TryParse(tagStr, out int filterIdx))
         {
-            MainWindow.Instance?.NavigateTo(typeof(CustomerWorkspacePage), row.Customer);
+            ViewModel.SetFilter((CustomerFilterMode)filterIdx);
         }
     }
 
-    private void Row_PointerEntered(object sender, PointerRoutedEventArgs e)
+    private void SortCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (sender is FrameworkElement el && el.DataContext is CustomerRowModel row)
+        if (sender is ComboBox cb && cb.SelectedIndex >= 0)
         {
-            _ = row.LoadStatsAsync();
+            ViewModel.SetSort((CustomerSortMode)cb.SelectedIndex);
+        }
+    }
+
+    private void PageSizeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is ComboBox cb && cb.SelectedItem is ComboBoxItem item && int.TryParse(item.Content?.ToString(), out int size))
+        {
+            ViewModel.SetPageSize(size);
+        }
+    }
+
+    private void ClearFilters_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.SearchQuery = string.Empty;
+        ViewModel.SetFilter(CustomerFilterMode.All);
+        if (FilterAllRadio != null)
+        {
+            FilterAllRadio.IsChecked = true;
         }
     }
 }
+

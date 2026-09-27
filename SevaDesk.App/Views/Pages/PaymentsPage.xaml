@@ -45,9 +45,9 @@
             <!-- Top Header & Navigation Bar -->
             <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="12">
                 <StackPanel Grid.Row="0" Grid.Column="0" Spacing="4">
-                    <TextBlock loc:Loc.Key="Payments.Title" Text="Cashier &amp; Billing POS" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
+                    <TextBlock loc:Loc.Key="Payments.Title" Text="Billing &amp; Payments" Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
                     <TextBlock loc:Loc.Key="Payments.Subtitle"
-                               Text="1-click rate charging, dynamic UPI billing, and comprehensive earnings reporting"
+                               Text="Fast counter billing, quick cash change calculator, instant UPI QR, and daily sales receipts"
                                Style="{StaticResource BodyTextBlockStyle}"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
@@ -92,17 +92,17 @@
 
                 <!-- Navigation SelectorBar (Tab Switcher) -->
                 <SelectorBar Grid.Row="1" Grid.ColumnSpan="2" x:Name="ViewSelector" SelectionChanged="ViewSelector_SelectionChanged">
-                    <SelectorBarItem Text="Point of Sale (POS)" x:Name="PosTab">
+                    <SelectorBarItem Text="New Bill" x:Name="PosTab">
                         <SelectorBarItem.Icon>
                             <FontIcon Glyph="&#xE7BF;" />
                         </SelectorBarItem.Icon>
                     </SelectorBarItem>
-                    <SelectorBarItem Text="Service Rates &amp; Catalog" x:Name="RatesTab">
+                    <SelectorBarItem Text="Rate List" x:Name="RatesTab">
                         <SelectorBarItem.Icon>
                             <FontIcon Glyph="&#xE8F1;" />
                         </SelectorBarItem.Icon>
                     </SelectorBarItem>
-                    <SelectorBarItem Text="Earnings &amp; Reports" x:Name="EarningsTab">
+                    <SelectorBarItem Text="Sales &amp; Reports" x:Name="EarningsTab">
                         <SelectorBarItem.Icon>
                             <FontIcon Glyph="&#xE9D9;" />
                         </SelectorBarItem.Icon>
@@ -135,7 +135,7 @@
                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>
                                     <StackPanel Spacing="1" VerticalAlignment="Center">
-                                        <TextBlock loc:Loc.Key="Payments.RateCardTitle" Text="Service Rate Card" FontWeight="Bold" FontSize="15" />
+                                        <TextBlock loc:Loc.Key="Payments.RateCardTitle" Text="Quick Services" FontWeight="Bold" FontSize="15" />
                                         <TextBlock Text="Click any card to add directly to current bill"
                                                    FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                     </StackPanel>
@@ -236,7 +236,7 @@
                             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" HorizontalAlignment="Stretch">
                                 <FontIcon Grid.Column="0" Glyph="&#xE71D;" FontSize="15" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <TextBlock loc:Loc.Key="Payments.BillCartTitle" Text="Today's Payment Counter Ledger" FontWeight="SemiBold" FontSize="14" />
+                                    <TextBlock loc:Loc.Key="Payments.BillCartTitle" Text="Today's Receipts" FontWeight="SemiBold" FontSize="14" />
                                 </StackPanel>
                                 <Border Grid.Column="2" Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="12" Padding="10,3">
                                     <TextBlock Text="{x:Bind ViewModel.TodayLedgerHeaderSummary, Mode=OneWay}" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -256,10 +256,10 @@
                                 <ListView ItemsSource="{x:Bind ViewModel.RecentTransactions, Mode=OneWay}" SelectionMode="None" MaxHeight="280">
                                     <ListView.ItemTemplate>
                                         <DataTemplate x:DataType="models:TransactionItem">
-                                            <Grid ColumnDefinitions="Auto,*,Auto,Auto" Padding="14,10" VerticalAlignment="Center"
+                                            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="10" Padding="14,10" VerticalAlignment="Center"
                                                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
                                                 <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
-                                                        Background="{ThemeResource SubtleFillColorSecondaryBrush}" Margin="0,0,12,0">
+                                                        Background="{ThemeResource SubtleFillColorSecondaryBrush}">
                                                     <FontIcon Glyph="{x:Bind Glyph}" FontSize="14"
                                                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -276,7 +276,7 @@
                                                                MaxLines="1" TextTrimming="CharacterEllipsis" />
                                                 </StackPanel>
 
-                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,16,0" Spacing="2">
+                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="2">
                                                     <Border CornerRadius="4" Padding="6,2" HorizontalAlignment="Right"
                                                             Background="{ThemeResource SubtleFillColorSecondaryBrush}">
                                                         <TextBlock Text="{x:Bind PaymentMode}" FontSize="10" FontWeight="SemiBold" />
@@ -286,6 +286,12 @@
 
                                                 <TextBlock Grid.Column="3" VerticalAlignment="Center" FontWeight="Bold" FontSize="15"
                                                            Text="{x:Bind FormattedAmount}" />
+
+                                                <Button Grid.Column="4" Padding="6,3" Height="28" MinWidth="0" VerticalAlignment="Center"
+                                                        Click="ViewReceiptFromTransaction_Click" Tag="{x:Bind}"
+                                                        ToolTipService.ToolTip="View and share receipt slip">
+                                                    <FontIcon Glyph="&#xE8A1;" FontSize="11" />
+                                                </Button>
                                             </Grid>
                                         </DataTemplate>
                                     </ListView.ItemTemplate>
@@ -340,6 +346,27 @@
                                 </Button>
                             </Grid>
 
+                            <!-- Post-Payment Success Banner -->
+                            <Border Visibility="{x:Bind local:PaymentsPage.VisibleIf(ViewModel.HasRecentCompletedPayment), Mode=OneWay}"
+                                    Background="#0F766E" CornerRadius="8" Padding="12,10">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8" VerticalAlignment="Center">
+                                    <FontIcon Grid.Column="0" Glyph="&#xE73E;" Foreground="#34D399" FontSize="16" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.RecentPaymentSuccessMessage, Mode=OneWay}"
+                                               Foreground="White" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <Button Grid.Column="2" Click="ShowRecentReceipt_Click" Background="White" Foreground="#0F766E"
+                                            FontWeight="Bold" FontSize="11" Padding="10,4" Height="28" CornerRadius="4">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <FontIcon Glyph="&#xE8A1;" FontSize="11" Foreground="#0F766E" />
+                                            <TextBlock loc:Loc.Key="Payments.ViewReceiptBtn" Text="View Receipt" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Grid.Column="3" Command="{x:Bind ViewModel.DismissRecentPaymentBannerCommand}"
+                                            Background="Transparent" BorderThickness="0" Padding="4" Height="24" Width="24" ToolTipService.ToolTip="Dismiss">
+                                        <FontIcon Glyph="&#xE711;" FontSize="10" Foreground="#A7F3D0" />
+                                    </Button>
+                                </Grid>
+                            </Border>
+
                             <!-- Active Sessions Quick Picker (visible when 2+ sessions are active) -->
                             <StackPanel Visibility="{x:Bind local:PaymentsPage.VisibleIf(ViewModel.HasMultipleActiveSessions), Mode=OneWay}"
                                         Spacing="6">
@@ -373,26 +400,37 @@
                                 </ScrollViewer>
                             </StackPanel>
 
-                            <!-- Customer Selection Field -->
-                            <AutoSuggestBox x:Name="CustomerAutoSuggest"
-                                            Text="{x:Bind ViewModel.CustomerName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                            PlaceholderText="Search customer name, code or walk-in..."
-                                            TextChanged="CustomerAutoSuggest_TextChanged"
-                                            SuggestionChosen="CustomerAutoSuggest_SuggestionChosen"
-                                            QueryIcon="Contact" HorizontalAlignment="Stretch">
-                                <AutoSuggestBox.ItemTemplate>
-                                    <DataTemplate x:DataType="models:Customer">
-                                        <StackPanel Spacing="1">
-                                            <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="13" />
-                                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                                <TextBlock Text="{x:Bind Code}" FontFamily="Consolas" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                <TextBlock Text="·" FontSize="10" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                                <TextBlock Text="{x:Bind Mobile}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <!-- Customer Selection Field & 1-Click Walk-in Button -->
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                                <AutoSuggestBox x:Name="CustomerAutoSuggest" Grid.Column="0"
+                                                Text="{x:Bind ViewModel.CustomerName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                PlaceholderText="Search customer name, code or walk-in..."
+                                                TextChanged="CustomerAutoSuggest_TextChanged"
+                                                SuggestionChosen="CustomerAutoSuggest_SuggestionChosen"
+                                                QueryIcon="Contact" HorizontalAlignment="Stretch">
+                                    <AutoSuggestBox.ItemTemplate>
+                                        <DataTemplate x:DataType="models:Customer">
+                                            <StackPanel Spacing="1">
+                                                <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" FontSize="13" />
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="{x:Bind Code}" FontFamily="Consolas" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                    <TextBlock Text="·" FontSize="10" Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                                    <TextBlock Text="{x:Bind Mobile}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                </StackPanel>
                                             </StackPanel>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </AutoSuggestBox.ItemTemplate>
-                            </AutoSuggestBox>
+                                        </DataTemplate>
+                                    </AutoSuggestBox.ItemTemplate>
+                                </AutoSuggestBox>
+
+                                <Button Grid.Column="1" Click="WalkIn_Click"
+                                        ToolTipService.ToolTip="Reset to Walk-in Customer"
+                                        Padding="8,4" Height="32">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <FontIcon Glyph="&#xE77B;" FontSize="11" />
+                                        <TextBlock loc:Loc.Key="Payments.WalkInBtn" Text="Walk-in" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
 
                             <!-- Linked Active Session Indicator Badge -->
                             <Border Visibility="{x:Bind local:PaymentsPage.VisibleIf(ViewModel.HasLinkedActiveSession), Mode=OneWay}"
@@ -566,59 +604,148 @@
                                            FontWeight="Bold" FontSize="24" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                             </Grid>
 
-                            <!-- Collapsible: Scan & Pay via Dynamic UPI (Expander) -->
-                            <Expander HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                                      IsExpanded="{x:Bind ViewModel.IsScanAndPayExpanded, Mode=TwoWay}">
-                                <Expander.Header>
-                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" HorizontalAlignment="Stretch">
-                                        <FontIcon Grid.Column="0" Glyph="&#xE8C7;" FontSize="14" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                        <TextBlock Grid.Column="1" Text="Scan &amp; Pay via UPI" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.ShopUpiId, Mode=OneWay}" FontFamily="Consolas" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                            <!-- Payment Method Mode Switcher (Segmented Control) -->
+                            <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="8" Padding="3" Margin="0,4,0,0">
+                                <Grid ColumnDefinitions="*,*">
+                                    <Button Grid.Column="0" HorizontalAlignment="Stretch" Height="34" CornerRadius="6"
+                                            Click="PaymentModeCash_Click"
+                                            Style="{x:Bind CashModeToggleStyle(ViewModel.IsCashMode), Mode=OneWay}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                            <FontIcon Glyph="&#xE717;" FontSize="14" Foreground="#10B981" />
+                                            <TextBlock Text="Cash Payment" FontWeight="SemiBold" FontSize="12" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Grid.Column="1" HorizontalAlignment="Stretch" Height="34" CornerRadius="6"
+                                            Click="PaymentModeUpi_Click"
+                                            Style="{x:Bind UpiModeToggleStyle(ViewModel.IsUpiMode), Mode=OneWay}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                            <FontIcon Glyph="&#xE8C7;" FontSize="14" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                            <TextBlock Text="UPI QR Code" FontWeight="SemiBold" FontSize="12" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </Border>
+
+                            <!-- Mode 1: CASH PAYMENT PANEL -->
+                            <StackPanel Spacing="10" Visibility="{x:Bind local:PaymentsPage.VisibleIf(ViewModel.IsCashMode), Mode=OneWay}">
+                                <!-- Quick Tender Buttons -->
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="Quick Tender / Received Notes:" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                                                  HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Button Content="{x:Bind ViewModel.FormattedGrandTotal, Mode=OneWay}"
+                                                    Padding="10,3" FontSize="11" FontWeight="Bold" Height="28" CornerRadius="14"
+                                                    Click="CashExact_Click" ToolTipService.ToolTip="Exact amount given by customer" />
+                                            <Button Content="₹50" Padding="10,3" FontSize="11" Height="28" CornerRadius="14" Click="CashPreset_Click" Tag="50" />
+                                            <Button Content="₹100" Padding="10,3" FontSize="11" Height="28" CornerRadius="14" Click="CashPreset_Click" Tag="100" />
+                                            <Button Content="₹200" Padding="10,3" FontSize="11" Height="28" CornerRadius="14" Click="CashPreset_Click" Tag="200" />
+                                            <Button Content="₹500" Padding="10,3" FontSize="11" Height="28" CornerRadius="14" Click="CashPreset_Click" Tag="500" />
+                                        </StackPanel>
+                                    </ScrollViewer>
+                                </StackPanel>
+
+                                <!-- Cash Received Input Field -->
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <TextBox x:Name="TxtCashReceived"
+                                             Header="Amount Received from Customer (₹)"
+                                             PlaceholderText="e.g. 500"
+                                             Text="{x:Bind ViewModel.CashReceivedInputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             TextChanged="TxtCashReceived_TextChanged"
+                                             KeyDown="TxtCashReceived_KeyDown"
+                                             InputScope="Number"
+                                             FontSize="13" Height="54" />
+                                    <Button Grid.Column="1" VerticalAlignment="Bottom" Height="32" Padding="10,0" Margin="0,0,0,2"
+                                            Click="CashClear_Click" Content="Clear" FontSize="11" />
+                                </Grid>
+
+                                <!-- Change to Return Banner -->
+                                <!-- Case 1: Change to return (Customer gave more than total) -->
+                                <Border Visibility="{x:Bind local:PaymentsPage.VisibleIf(ViewModel.HasChangeToReturn), Mode=OneWay}"
+                                        Background="#10B981" CornerRadius="8" Padding="12,8">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" VerticalAlignment="Center">
+                                        <FontIcon Grid.Column="0" Glyph="&#xE73E;" Foreground="White" FontSize="16" />
+                                        <TextBlock Grid.Column="1" Text="Return Change to Customer:" Foreground="White" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" Text="{x:Bind ViewModel.FormattedChangeToReturn, Mode=OneWay}"
+                                                   Foreground="White" FontWeight="Bold" FontSize="18" VerticalAlignment="Center" />
                                     </Grid>
-                                </Expander.Header>
+                                </Border>
 
-                                <Expander.Content>
-                                    <Border CornerRadius="8" Padding="12" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Margin="-16,0">
-                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                                            <Button Grid.Column="0" Click="ShowQrDialog_Click" Background="White" CornerRadius="8" Padding="4"
-                                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
-                                                    ToolTipService.ToolTip="Click to enlarge QR for customer">
-                                                <Grid Width="96" Height="96">
-                                                    <Image x:Name="InlineQrImage" Width="92" Height="92" Stretch="Uniform" />
-                                                </Grid>
-                                            </Button>
+                                <!-- Case 2: Exact cash tendered -->
+                                <Border Visibility="{x:Bind local:PaymentsPage.VisibleIf(ViewModel.HasExactCash), Mode=OneWay}"
+                                        Background="{ThemeResource SubtleFillColorSecondaryBrush}" CornerRadius="8" Padding="10,6">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                        <FontIcon Glyph="&#xE73E;" Foreground="#10B981" FontSize="12" />
+                                        <TextBlock Text="Exact amount tendered — no change to return" FontSize="11" Foreground="#10B981" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Border>
 
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
-                                                <TextBlock Text="{x:Bind ViewModel.PayeeName, Mode=OneWay}" FontSize="12" FontWeight="SemiBold" />
-                                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                                    <TextBlock Text="{x:Bind ViewModel.ShopUpiId, Mode=OneWay}" FontFamily="Consolas" FontSize="11" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" FontWeight="Bold" VerticalAlignment="Center" />
-                                                    <Button Padding="4,2" Click="CopyUpi_Click" Background="Transparent" BorderBrush="Transparent" ToolTipService.ToolTip="Copy UPI ID">
-                                                        <FontIcon Glyph="&#xE8C8;" FontSize="11" />
-                                                    </Button>
-                                                </StackPanel>
-                                                <TextBlock Text="GPay • PhonePe • Paytm • BHIM • Cred" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                                <TextBlock Text="Auto-encodes current bill amount in UPI QR" FontSize="10" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" FontStyle="Italic" />
+                                <!-- Case 3: Customer gave less than total -->
+                                <Border Visibility="{x:Bind local:PaymentsPage.VisibleIf(ViewModel.HasCashShortage), Mode=OneWay}"
+                                        Background="#F59E0B" CornerRadius="8" Padding="10,6">
+                                    <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                        <TextBlock Grid.Column="0" Text="Remaining to collect:" Foreground="White" FontWeight="SemiBold" FontSize="11" />
+                                        <TextBlock Grid.Column="1" Text="{x:Bind ViewModel.FormattedCashShortage, Mode=OneWay}" Foreground="White" FontWeight="Bold" FontSize="13" />
+                                    </Grid>
+                                </Border>
+
+                                <!-- Record Cash Button -->
+                                <Button HorizontalAlignment="Stretch" Height="42" Style="{StaticResource AccentButtonStyle}"
+                                        Click="PayCash_Click"
+                                        IsEnabled="{x:Bind ViewModel.HasCartItems, Mode=OneWay}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <FontIcon Glyph="&#xE717;" FontSize="15" />
+                                        <TextBlock Text="{x:Bind CashButtonLabel(ViewModel.FormattedGrandTotal), Mode=OneWay}" FontWeight="Bold" FontSize="14" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+
+                            <!-- Mode 2: DYNAMIC UPI QR PANEL -->
+                            <StackPanel Spacing="10" Visibility="{x:Bind local:PaymentsPage.VisibleIf(ViewModel.IsUpiMode), Mode=OneWay}">
+                                <Border CornerRadius="10" Padding="14" Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                                        <!-- Scannable UPI QR Image Button (Click to enlarge) -->
+                                        <Button Grid.Column="0" Click="ShowQrDialog_Click" Background="White" CornerRadius="8" Padding="6"
+                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                                ToolTipService.ToolTip="Click to enlarge scannable QR for customer">
+                                            <Grid Width="130" Height="130">
+                                                <Image Source="{x:Bind ViewModel.QrCodeBitmap, Mode=OneWay}" Width="124" Height="124" Stretch="Uniform" />
+                                            </Grid>
+                                        </Button>
+
+                                        <!-- UPI Details & Instructions -->
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="5">
+                                            <TextBlock Text="{x:Bind ViewModel.PayeeName, Mode=OneWay}" FontSize="13" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
+                                            
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="{x:Bind ViewModel.ShopUpiId, Mode=OneWay}" FontFamily="Consolas" FontSize="12"
+                                                           Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                <Button Padding="4,2" Click="CopyUpi_Click" Background="Transparent" BorderBrush="Transparent" ToolTipService.ToolTip="Copy UPI ID">
+                                                    <FontIcon Glyph="&#xE8C8;" FontSize="11" />
+                                                </Button>
                                             </StackPanel>
-                                        </Grid>
-                                    </Border>
-                                </Expander.Content>
-                            </Expander>
 
-                            <!-- Payment Settlement Action Buttons -->
-                            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                                <Button Grid.Column="0" HorizontalAlignment="Stretch" Height="36" Click="PayCash_Click">
-                                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <FontIcon Glyph="&#xE717;" FontSize="14" Foreground="#10B981" />
-                                        <TextBlock loc:Loc.Key="Payments.MarkCashPaidBtn" Text="Mark Paid (Cash)" FontWeight="SemiBold" />
+                                            <TextBlock Text="GPay • PhonePe • Paytm • BHIM • Cred" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            
+                                            <Border Background="{ThemeResource LayerFillColorAltBrush}" CornerRadius="4" Padding="6,2" HorizontalAlignment="Left">
+                                                <TextBlock Text="{x:Bind UpiScanNotice(ViewModel.FormattedGrandTotal), Mode=OneWay}"
+                                                           FontSize="10" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" FontWeight="SemiBold" />
+                                            </Border>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Confirm UPI Payment Button -->
+                                <Button HorizontalAlignment="Stretch" Height="42" Style="{StaticResource AccentButtonStyle}"
+                                        Click="PayUpi_Click"
+                                        IsEnabled="{x:Bind ViewModel.HasCartItems, Mode=OneWay}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <FontIcon Glyph="&#xE8C7;" FontSize="15" />
+                                        <TextBlock Text="{x:Bind UpiButtonLabel(ViewModel.FormattedGrandTotal), Mode=OneWay}" FontWeight="Bold" FontSize="14" />
                                     </StackPanel>
                                 </Button>
-                                <Button Grid.Column="1" HorizontalAlignment="Stretch" Height="36" Style="{StaticResource AccentButtonStyle}" Click="PayUpi_Click">
-                                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <FontIcon Glyph="&#xE8C7;" FontSize="14" />
-                                        <TextBlock loc:Loc.Key="Payments.GenerateQrBtn" Text="Mark Paid (UPI)" FontWeight="SemiBold" />
-                                    </StackPanel>
-                                </Button>
-                            </Grid>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -901,18 +1028,18 @@
                                             HorizontalAlignment="Stretch"
                                             AutomationProperties.Name="Cancel Edit"
                                             AutomationProperties.AutomationId="BtnCatalogCancelEdit" />
-                                    <Button Grid.Column="1" Content="Back to POS"
+                                    <Button Grid.Column="1" Content="Back to Billing"
                                             Command="{x:Bind ViewModel.SwitchToPosViewCommand}"
                                             HorizontalAlignment="Stretch"
-                                            AutomationProperties.Name="Back to Point of Sale"
+                                            AutomationProperties.Name="Back to Billing"
                                             AutomationProperties.AutomationId="BtnCatalogBackToPos" />
                                 </Grid>
 
-                                <Button Content="Back to POS"
+                                <Button Content="Back to Billing"
                                         Command="{x:Bind ViewModel.SwitchToPosViewCommand}"
                                         Visibility="{x:Bind local:PaymentsPage.CollapsedIf(ViewModel.IsEditingExistingRate), Mode=OneWay}"
                                         HorizontalAlignment="Stretch"
-                                        AutomationProperties.Name="Back to Point of Sale"
+                                        AutomationProperties.Name="Back to Billing"
                                         AutomationProperties.AutomationId="BtnCatalogBackToPos" />
                             </StackPanel>
                         </StackPanel>

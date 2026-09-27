@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using SevaDesk_App.ViewModels.Pages;
 
 namespace SevaDesk_App.Views.Pages;
@@ -16,7 +17,7 @@ public sealed partial class SettingsPage : Page
 
     private void SettingsPage_Loaded(object sender, RoutedEventArgs e)
     {
-        TabSelector.SelectedItem = TabAppearance;
+        TabSelector.SelectedItem = TabProfile;
     }
 
     // Static helpers for x:Bind function calls
@@ -25,17 +26,75 @@ public sealed partial class SettingsPage : Page
 
     private void TabSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
-        if (PanelAppearance == null) return;
+        DismissKeyboardFocus(null);
+
+        if (PanelProfile == null) return;
 
         var selected = sender.SelectedItem;
-        PanelAppearance.Visibility = selected == TabAppearance ? Visibility.Visible : Visibility.Collapsed;
         PanelProfile.Visibility    = selected == TabProfile    ? Visibility.Visible : Visibility.Collapsed;
-        PanelHardware.Visibility   = selected == TabHardware   ? Visibility.Visible : Visibility.Collapsed;
+        PanelAppearance.Visibility = selected == TabAppearance ? Visibility.Visible : Visibility.Collapsed;
         PanelStorage.Visibility    = selected == TabStorage    ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void SaveChanges_Click(object sender, RoutedEventArgs e)
-        => ViewModel.SaveAllChangesCommand.Execute(null);
+    private void Background_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        DismissKeyboardFocus(e.OriginalSource);
+    }
+
+    private void DismissKeyboardFocus(object? originalSource)
+    {
+        // Don't interfere if the user clicked directly into an interactive input
+        if (originalSource is TextBox or ComboBox or Button or ToggleSwitch or Slider)
+        {
+            return;
+        }
+
+        // Move keyboard focus away to the page container
+        this.Focus(FocusState.Programmatic);
+
+        // Auto-save any pending profile changes
+        ViewModel.AutoSaveProfile();
+    }
+
+    private void Input_LostFocus(object sender, RoutedEventArgs e)
+    {
+        ViewModel.AutoSaveProfile();
+    }
+
+    private void SldTtlHours_ValueChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        // Smooth real-time preview without any database writes or toast spam
+        ViewModel.WorkingFolderTtlDisplay = SettingsViewModel.FormatTtlHours((int)Math.Round(e.NewValue));
+    }
+
+    private void SldTtlHours_PointerCaptureLost(object sender, PointerRoutedEventArgs e)
+    {
+        CommitSliderValue();
+    }
+
+    private void SldTtlHours_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        CommitSliderValue();
+    }
+
+    private void CommitSliderValue()
+    {
+        if (SldTtlHours == null) return;
+        var hours = (int)Math.Round(SldTtlHours.Value);
+        ViewModel.CommitWorkingFolderTtl(hours);
+    }
+
+    private void PresetHours_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string tagStr && int.TryParse(tagStr, out var hours))
+        {
+            if (SldTtlHours != null)
+            {
+                SldTtlHours.Value = hours;
+            }
+            ViewModel.CommitWorkingFolderTtl(hours);
+        }
+    }
 
     private async void CheckLanguageUpdates_Click(object sender, RoutedEventArgs e)
         => await ViewModel.CheckLanguageUpdatesCommand.ExecuteAsync(null);
@@ -57,6 +116,19 @@ public sealed partial class SettingsPage : Page
         }
     }
 
-    private void Backup_Click(object sender, RoutedEventArgs e)
-        => ViewModel.BackupDatabaseCommand.Execute(null);
+    private async void Backup_Click(object sender, RoutedEventArgs e)
+        => await ViewModel.BackupDatabaseCommand.ExecuteAsync(null);
+
+    private async void Restore_Click(object sender, RoutedEventArgs e)
+        => await ViewModel.RestoreDatabaseCommand.ExecuteAsync(null);
+
+    private async void ReplayOnboarding_Click(object sender, RoutedEventArgs e)
+    {
+        if (MainWindow.Instance != null)
+        {
+            await MainWindow.Instance.ShowOnboardingWizardAsync();
+            // Refresh settings view model after onboarding completes
+            ViewModel.ReloadShopProfile();
+        }
+    }
 }

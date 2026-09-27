@@ -34,3 +34,10 @@ data/
 
 /docs
 scratch/
+
+# Development certificate & release outputs
+devcert.pfx
+dist/
+publish/
+installer/
+Package-Beta.ps1

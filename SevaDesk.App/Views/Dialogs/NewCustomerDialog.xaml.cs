@@ -23,6 +23,7 @@ public sealed partial class NewCustomerDialog : ContentDialog
     {
         InitializeComponent();
         this.EnableLightDismiss(() => string.IsNullOrWhiteSpace(CustomerName) && string.IsNullOrWhiteSpace(Mobile) && string.IsNullOrWhiteSpace(Notes));
+        MobileBox.ConfigureNumericMobileInput(_ => ValidateInputs());
         Closing += OnDialogClosing;
     }
 
@@ -106,14 +107,43 @@ public sealed partial class NewCustomerDialog : ContentDialog
         }
         TxtBadgeInfo.Text = string.Format(template, customer.Code);
         ExistingCustomerBadge.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+        ValidateInputs();
+    }
+
+    private void ValidateInputs()
+    {
+        var mobile = MobileBox.Text?.Trim() ?? string.Empty;
+        if (mobile.Length > 0 && mobile.Length < 10)
+        {
+            TxtMobileError.Text = $"Please enter 10 digits ({mobile.Length}/10 entered)";
+            TxtMobileError.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+            IsPrimaryButtonEnabled = false;
+        }
+        else
+        {
+            TxtMobileError.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+            IsPrimaryButtonEnabled = true;
+        }
     }
 
     private void OnDialogClosing(ContentDialog sender, ContentDialogClosingEventArgs args)
     {
-        if (args.Result == ContentDialogResult.Primary && string.IsNullOrWhiteSpace(CustomerName))
+        if (args.Result == ContentDialogResult.Primary)
         {
-            args.Cancel = true;
-            NameSuggestBox.Focus(Microsoft.UI.Xaml.FocusState.Programmatic);
+            if (string.IsNullOrWhiteSpace(CustomerName))
+            {
+                args.Cancel = true;
+                NameSuggestBox.Focus(Microsoft.UI.Xaml.FocusState.Programmatic);
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(Mobile) && Mobile.Length != 10)
+            {
+                args.Cancel = true;
+                ValidateInputs();
+                MobileBox.Focus(Microsoft.UI.Xaml.FocusState.Programmatic);
+                return;
+            }
         }
     }
 }

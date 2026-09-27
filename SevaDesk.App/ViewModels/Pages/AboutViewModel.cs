@@ -9,13 +9,17 @@ namespace SevaDesk_App.ViewModels.Pages;
 public partial class AboutViewModel : StatusViewModel
 {
     [ObservableProperty]
-    private string _appVersionDisplay = "SevaDesk v1.0.0-preview";
+    private string _appVersionDisplay = "SevaDesk v0.1.0 (Beta)";
 
     [ObservableProperty]
-    private string _buildInfoDisplay = "Build 2026.09.14 · WinUI 3 (Windows App SDK 2.4) · .NET 8.0 (win-x64)";
+    private string _buildInfoDisplay = "Offline Desktop Edition · Windows 10 & 11";
 
     [ObservableProperty]
     private string _developerName = "ciizerr";
+
+    [ObservableProperty]
+    private string _dataFolderPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SevaDesk");
 
     [ObservableProperty]
     private string _githubUrl = "https://github.com/ciizerr/SevaDesk";
@@ -28,6 +32,24 @@ public partial class AboutViewModel : StatusViewModel
 
     [ObservableProperty]
     private string _communityUrl = "https://github.com/ciizerr/SevaDesk/discussions";
+
+    [RelayCommand]
+    public void OpenDataFolder()
+    {
+        try
+        {
+            Directory.CreateDirectory(DataFolderPath);
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = DataFolderPath,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            ShowWarning($"Could not open data folder: {ex.Message}");
+        }
+    }
 
     [RelayCommand]
     public void OpenGitHub() => OpenUrl(GithubUrl);

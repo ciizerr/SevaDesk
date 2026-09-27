@@ -19,6 +19,10 @@ public sealed partial class SessionsPage : Page
 
     private readonly Action<string> _avatarUpdatedHandler;
 
+    private bool _isStackedMode;
+    private bool? _userLayoutOverride; // null = Auto, true = Stacked, false = SideBySide
+    private bool _isSchemeCardCollapsed;
+
     public SessionsPage()
     {
         InitializeComponent();
@@ -37,6 +41,11 @@ public sealed partial class SessionsPage : Page
             {
                 ViewModel.SelectedSession?.UpdateElapsed();
                 WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty, ViewModel.SelectedSession?.Customer);
+                ApplyLayoutMode();
+            }
+            else if (e.PropertyName == nameof(ViewModel.HasActiveApplication))
+            {
+                ApplyLayoutMode();
             }
         };
 
@@ -61,6 +70,7 @@ public sealed partial class SessionsPage : Page
             WorkingFolderBrowser.LoadCustomerFolder(ViewModel.SelectedSession?.FolderPath ?? string.Empty, ViewModel.SelectedSession?.Customer);
             CustomerAvatarHelper.AvatarUpdated += _avatarUpdatedHandler;
             _elapsedTimer.Start();
+            ApplyLayoutMode();
         };
         Unloaded += (s, e) =>
         {
@@ -89,6 +99,175 @@ public sealed partial class SessionsPage : Page
         };
 
         ViewModel.Initialize();
+    }
+
+    private void WorkspaceScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (e.NewSize.Width <= 0) return;
+
+        if (_userLayoutOverride == null)
+        {
+            bool shouldBeStacked = e.NewSize.Width < 950;
+            if (shouldBeStacked != _isStackedMode)
+            {
+                _isStackedMode = shouldBeStacked;
+                ApplyLayoutMode();
+            }
+        }
+    }
+
+    private void ToggleLayoutMode_Click(object sender, RoutedEventArgs e)
+    {
+        _userLayoutOverride = !_isStackedMode;
+        _isStackedMode = _userLayoutOverride.Value;
+        ApplyLayoutMode();
+    }
+
+    private void ResetAutoLayout_Click(object sender, RoutedEventArgs e)
+    {
+        _userLayoutOverride = null;
+        var width = WorkspaceScrollViewer?.ActualWidth ?? 0;
+        _isStackedMode = width > 0 && width < 950;
+        ApplyLayoutMode();
+    }
+
+    private void ToggleSchemeCard_Click(object sender, RoutedEventArgs e)
+    {
+        _isSchemeCardCollapsed = !_isSchemeCardCollapsed;
+        if (AppCardBodyGrid != null)
+            AppCardBodyGrid.Visibility = _isSchemeCardCollapsed ? Visibility.Collapsed : Visibility.Visible;
+        if (AppCardSummaryChip != null)
+            AppCardSummaryChip.Visibility = _isSchemeCardCollapsed ? Visibility.Visible : Visibility.Collapsed;
+        if (IconToggleSchemeCard != null)
+            IconToggleSchemeCard.Glyph = _isSchemeCardCollapsed ? "\uE70E" : "\uE70D";
+        if (BtnToggleSchemeCard != null)
+            ToolTipService.SetToolTip(BtnToggleSchemeCard, _isSchemeCardCollapsed
+                ? AppServices.Localization.GetString("Sessions.ExpandScheme", "Expand scheme details")
+                : AppServices.Localization.GetString("Sessions.CollapseScheme", "Collapse scheme details"));
+    }
+
+    private void ApplyLayoutMode()
+    {
+        if (WorkspaceGrid == null || AppCardBorder == null || WorkingFolderBrowser == null || AppCardBodyGrid == null)
+            return;
+
+        bool hasApp = ViewModel.HasActiveApplication;
+
+        if (_isStackedMode)
+        {
+            // 1. Configure WorkspaceGrid as Rows (Stacked vertically)
+            WorkspaceGrid.ColumnDefinitions.Clear();
+            WorkspaceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            WorkspaceGrid.RowDefinitions.Clear();
+            WorkspaceGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            WorkspaceGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            WorkspaceGrid.ColumnSpacing = 0;
+            WorkspaceGrid.RowSpacing = 14;
+
+            Grid.SetColumn(AppCardBorder, 0);
+            Grid.SetRow(AppCardBorder, 0);
+            Grid.SetColumnSpan(AppCardBorder, 1);
+
+            Grid.SetColumn(WorkingFolderBrowser, 0);
+            Grid.SetRow(WorkingFolderBrowser, hasApp ? 1 : 0);
+            Grid.SetColumnSpan(WorkingFolderBrowser, 1);
+
+            // 2. Configure AppCardBodyGrid internal 2-column split
+            if (AppDetailsSubpane != null && AppChecklistSubpane != null)
+            {
+                AppCardBodyGrid.ColumnDefinitions.Clear();
+                AppCardBodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(360) });
+                AppCardBodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+                AppCardBodyGrid.RowDefinitions.Clear();
+                AppCardBodyGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+                AppCardBodyGrid.ColumnSpacing = 16;
+                AppCardBodyGrid.RowSpacing = 0;
+
+                Grid.SetColumn(AppDetailsSubpane, 0);
+                Grid.SetRow(AppDetailsSubpane, 0);
+
+                Grid.SetColumn(AppChecklistSubpane, 1);
+                Grid.SetRow(AppChecklistSubpane, 0);
+            }
+        }
+        else
+        {
+            // 1. Configure WorkspaceGrid as Columns (Side-by-side)
+            WorkspaceGrid.ColumnDefinitions.Clear();
+            WorkspaceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(380) });
+            WorkspaceGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            WorkspaceGrid.RowDefinitions.Clear();
+            WorkspaceGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            WorkspaceGrid.ColumnSpacing = 14;
+            WorkspaceGrid.RowSpacing = 0;
+
+            Grid.SetColumn(AppCardBorder, 0);
+            Grid.SetRow(AppCardBorder, 0);
+            Grid.SetColumnSpan(AppCardBorder, 1);
+
+            Grid.SetColumn(WorkingFolderBrowser, hasApp ? 1 : 0);
+            Grid.SetRow(WorkingFolderBrowser, 0);
+            Grid.SetColumnSpan(WorkingFolderBrowser, hasApp ? 1 : 2);
+
+            // 2. Configure AppCardBodyGrid single-column vertical stack
+            if (AppDetailsSubpane != null && AppChecklistSubpane != null)
+            {
+                AppCardBodyGrid.ColumnDefinitions.Clear();
+                AppCardBodyGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+                AppCardBodyGrid.RowDefinitions.Clear();
+                AppCardBodyGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                AppCardBodyGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+                AppCardBodyGrid.ColumnSpacing = 0;
+                AppCardBodyGrid.RowSpacing = 12;
+
+                Grid.SetColumn(AppDetailsSubpane, 0);
+                Grid.SetRow(AppDetailsSubpane, 0);
+
+                Grid.SetColumn(AppChecklistSubpane, 0);
+                Grid.SetRow(AppChecklistSubpane, 1);
+            }
+        }
+
+        UpdateMenuFlyoutState();
+    }
+
+    private void UpdateMenuFlyoutState()
+    {
+        if (MfiToggleLayout != null)
+        {
+            if (_isStackedMode)
+            {
+                MfiToggleLayout.Text = AppServices.Localization.GetString("Sessions.SwitchToSideBySide", "Switch to Side-by-Side View");
+                if (IconToggleLayout != null) IconToggleLayout.Glyph = "\uE745";
+            }
+            else
+            {
+                MfiToggleLayout.Text = AppServices.Localization.GetString("Sessions.SwitchToStacked", "Switch to Stacked View");
+                if (IconToggleLayout != null) IconToggleLayout.Glyph = "\uE746";
+            }
+        }
+
+        if (MfiResetAutoLayout != null)
+        {
+            MfiResetAutoLayout.Visibility = _userLayoutOverride != null ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
+
+    public static string ChecklistSummary(IEnumerable<ApplicationChecklistItem>? items)
+    {
+        if (items == null) return "0 Docs";
+        var list = items.ToList();
+        if (list.Count == 0) return "0 Docs";
+        int matched = list.Count(i => i.HasMatchedFile || i.IsCompleted);
+        return $"{matched}/{list.Count} Docs Verified";
     }
 
     public static int BrowserColumn(bool hasApp) => hasApp ? 1 : 0;
@@ -331,7 +510,7 @@ public sealed partial class SessionsPage : Page
         {
             var currentSession = ViewModel.SelectedSession;
             var customer = currentSession.Customer;
-            if (customer != null && (string.IsNullOrWhiteSpace(customer.Mobile) || string.IsNullOrWhiteSpace(customer.IdReference)))
+            if (customer != null && string.IsNullOrWhiteSpace(customer.Mobile))
             {
                 var dialog = new CompleteSessionDialog(customer)
                 {
@@ -356,6 +535,7 @@ public sealed partial class SessionsPage : Page
             {
                 CustomerName = customer?.Name ?? "Customer",
                 CustomerId = customer?.Id,
+                CustomerAddress = customer?.Village,
                 SessionId = currentSession.Session.Id,
                 Items = []
             };

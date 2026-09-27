@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SevaDesk.Core.Models;
+using SevaDesk.Core.Interfaces;
 using SevaDesk_App.Services;
 
 namespace SevaDesk_App.ViewModels.Pages;
@@ -40,6 +41,9 @@ public partial class DocumentsViewModel : StatusViewModel
     [ObservableProperty]
     private int _unorganisedCount;
 
+    [ObservableProperty]
+    private bool _isProcessingPreset;
+
     public DocumentsViewModel()
     {
         InitializePresets();
@@ -60,10 +64,10 @@ public partial class DocumentsViewModel : StatusViewModel
         CompressionPresets.Clear();
         CompressionPresets.Add(new CompressionPreset
         {
-            Id = "ssc_photo",
-            Name = "Passport Photo (SSC/UPSC)",
+            Id = "passport_photo",
+            Name = "Passport Photo",
             TargetSize = "20 KB – 50 KB",
-            Description = "Dimensions 3.5cm x 4.5cm, JPEG format",
+            Description = "3.5×4.5 ratio, JPEG format",
             IconGlyph = "\uEB9F"
         });
         CompressionPresets.Add(new CompressionPreset
@@ -71,23 +75,23 @@ public partial class DocumentsViewModel : StatusViewModel
             Id = "govt_sign",
             Name = "Applicant Signature",
             TargetSize = "10 KB – 20 KB",
-            Description = "Dimensions 4.0cm x 2.0cm, clear black ink",
+            Description = "Clear contrast, 4.0×2.0 ratio",
             IconGlyph = "\uEDC6"
         });
         CompressionPresets.Add(new CompressionPreset
         {
             Id = "pdf_doc",
-            Name = "Govt Portal PDF Upload",
+            Name = "Govt Portal PDF",
             TargetSize = "< 300 KB",
-            Description = "High legibility grayscale/color A4 PDF",
+            Description = "Convert image to standard A4 PDF",
             IconGlyph = "\uE8A5"
         });
         CompressionPresets.Add(new CompressionPreset
         {
-            Id = "pan_doc",
-            Name = "PAN / NSDL Format",
-            TargetSize = "< 2 MB (200 DPI)",
-            Description = "Color scan for Form 49A supporting docs",
+            Id = "doc_scan",
+            Name = "Document Scan",
+            TargetSize = "< 200 KB",
+            Description = "Color scan for form upload",
             IconGlyph = "\uE749"
         });
     }
@@ -523,12 +527,111 @@ public partial class DocumentsViewModel : StatusViewModel
     }
 
     [RelayCommand]
-    public void ApplyPreset(CompressionPreset preset)
+    public async Task ApplyPresetAsync(CompressionPreset preset)
     {
-        if (SelectedDocument == null) return;
+        if (SelectedDocument == null || string.IsNullOrWhiteSpace(SelectedDocument.FilePath))
+        {
+            ShowWarning("Please select a file to apply compression.");
+            return;
+        }
 
-        ShowInfo($"Preset '{preset.Name}' applied to {SelectedDocument.Name} (Target: {preset.TargetSize}).");
-        SelectedDocument.Status = $"Target: {preset.TargetSize}";
+        var sourcePath = SelectedDocument.FilePath;
+        if (!File.Exists(sourcePath))
+        {
+            ShowError("Selected file does not exist on disk.");
+            return;
+        }
+
+        var ext = Path.GetExtension(sourcePath).ToLowerInvariant();
+        bool isImage = ext is ".jpg" or ".jpeg" or ".png" or ".webp" or ".bmp";
+
+        var folder = Path.GetDirectoryName(sourcePath) ?? string.Empty;
+        var baseName = Path.GetFileNameWithoutExtension(sourcePath);
+        long origLength = new FileInfo(sourcePath).Length;
+        string origSizeStr = origLength > 1024 * 1024 ? $"{origLength / (1024.0 * 1024.0):F1} MB" : $"{Math.Max(1, origLength / 1024)} KB";
+
+        try
+        {
+            IsProcessingPreset = true;
+            string newSizeStr = string.Empty;
+
+            if (preset.Id == "pdf_doc")
+            {
+                if (!isImage)
+                {
+                    if (ext == ".pdf")
+                    {
+                        ShowInfo($"'{SelectedDocument.Name}' is already a PDF file.");
+                        return;
+                    }
+                    ShowWarning("Govt Portal PDF preset converts image scans (.jpg, .png) to PDF.");
+                    return;
+                }
+
+                var pdfFileName = SmartTagHelper.GenerateUniqueFileName(folder, $"{baseName}_doc", ".pdf");
+                var destPdfPath = Path.Combine(folder, pdfFileName);
+
+                await AppServices.PdfGeneration.GeneratePdfAsync(new[] { sourcePath }, destPdfPath, PdfPaperSize.A4, PdfLayoutMode.SingleImageFit);
+
+                long newLen = new FileInfo(destPdfPath).Length;
+                newSizeStr = $"{Math.Max(1, newLen / 1024)} KB";
+
+                ShowSuccess($"Created PDF: '{pdfFileName}' ({newSizeStr}) ✓");
+                await LoadDocumentsAsync();
+
+                var newlyCreated = PendingDocuments.FirstOrDefault(d => string.Equals(d.FilePath, destPdfPath, StringComparison.OrdinalIgnoreCase))
+                                ?? ProcessedDocuments.FirstOrDefault(d => string.Equals(d.FilePath, destPdfPath, StringComparison.OrdinalIgnoreCase));
+                if (newlyCreated != null) SelectedDocument = newlyCreated;
+                return;
+            }
+
+            if (!isImage)
+            {
+                ShowWarning($"'{preset.Name}' requires an image file (.jpg, .png, etc.).");
+                return;
+            }
+
+            string targetSuffix = preset.Id switch
+            {
+                "passport_photo" => "photo_compressed",
+                "govt_sign" => "sign_compressed",
+                _ => "compressed"
+            };
+
+            var outFileName = SmartTagHelper.GenerateUniqueFileName(folder, $"{baseName}_{targetSuffix}", ".jpg");
+            var destPath = Path.Combine(folder, outFileName);
+
+            if (preset.Id == "passport_photo")
+            {
+                await AppServices.ImageProcessing.CompressToTargetSizeAsync(sourcePath, destPath, 20, 50, 0.7778, false);
+            }
+            else if (preset.Id == "govt_sign")
+            {
+                await AppServices.ImageProcessing.CompressToTargetSizeAsync(sourcePath, destPath, 10, 20, 2.0, true);
+            }
+            else
+            {
+                await AppServices.ImageProcessing.CompressToTargetSizeAsync(sourcePath, destPath, 50, 200, null, false);
+            }
+
+            long newLength = new FileInfo(destPath).Length;
+            newSizeStr = $"{Math.Max(1, newLength / 1024)} KB";
+
+            ShowSuccess($"{preset.Name}: {origSizeStr} → {newSizeStr} ✓");
+            await LoadDocumentsAsync();
+
+            var newlyCreatedImg = PendingDocuments.FirstOrDefault(d => string.Equals(d.FilePath, destPath, StringComparison.OrdinalIgnoreCase))
+                               ?? ProcessedDocuments.FirstOrDefault(d => string.Equals(d.FilePath, destPath, StringComparison.OrdinalIgnoreCase));
+            if (newlyCreatedImg != null) SelectedDocument = newlyCreatedImg;
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Preset failed: {ex.Message}");
+        }
+        finally
+        {
+            IsProcessingPreset = false;
+        }
     }
 
     [RelayCommand]

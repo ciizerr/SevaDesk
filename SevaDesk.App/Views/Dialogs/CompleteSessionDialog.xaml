@@ -18,10 +18,17 @@
                    FontSize="13"
                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
 
-        <TextBox x:Name="TxtMobile"
-                 Header="Mobile Number"
-                 PlaceholderText="10-digit number"
-                 InputScope="TelephoneNumber" />
+        <StackPanel Spacing="4">
+            <TextBox x:Name="TxtMobile"
+                     Header="Mobile Number"
+                     PlaceholderText="10-digit number"
+                     MaxLength="10" />
+            <TextBlock x:Name="TxtMobileError"
+                       Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                       FontSize="11"
+                       Margin="2,0,0,0"
+                       Visibility="Collapsed" />
+        </StackPanel>
 
         <Grid ColumnDefinitions="*,*">
             <TextBox x:Name="TxtIdRef"

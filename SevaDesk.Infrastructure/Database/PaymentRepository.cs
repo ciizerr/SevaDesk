@@ -9,6 +9,8 @@ public class PaymentRepository : IPaymentRepository
 {
     private readonly DatabaseInitializer _db;
 
+    public event EventHandler? PaymentsChanged;
+
     public PaymentRepository(DatabaseInitializer db)
     {
         _db = db;
@@ -74,6 +76,8 @@ public class PaymentRepository : IPaymentRepository
             payment.Notes
         });
 
+        PaymentsChanged?.Invoke(this, EventArgs.Empty);
+
         return payment;
     }
 
@@ -134,6 +138,14 @@ public class PaymentRepository : IPaymentRepository
         var startOfToday = DateTime.Today;
         var endOfToday = DateTime.Today.AddDays(1).AddTicks(-1);
         return GetEarningsSummaryAsync(startOfToday, endOfToday);
+    }
+
+    public async Task<IEnumerable<Payment>> GetTodayPaymentsAsync(int limit = 50)
+    {
+        var startOfToday = DateTime.Today;
+        var endOfToday = DateTime.Today.AddDays(1).AddTicks(-1);
+        var payments = await GetPaymentsByDateRangeAsync(startOfToday, endOfToday);
+        return payments.Take(limit);
     }
 
     public async Task<IEnumerable<Payment>> GetPaymentsByDateRangeAsync(DateTime from, DateTime to, string? paymentMethod = null)

@@ -36,6 +36,23 @@ public sealed partial class MainWindow : Window
     public ElementTheme CurrentTheme => _currentTheme;
     public bool IsMicaEnabled => _isMicaEnabled;
 
+    public async Task ShowOnboardingWizardAsync()
+    {
+        try
+        {
+            if (RootGrid.XamlRoot == null) return;
+            var onboarding = new SevaDesk_App.Views.Dialogs.OnboardingDialog
+            {
+                XamlRoot = RootGrid.XamlRoot
+            };
+            await onboarding.ShowAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[MainWindow] Onboarding dialog failed: {ex.Message}");
+        }
+    }
+
     public MainWindow()
     {
         try
@@ -68,6 +85,13 @@ public sealed partial class MainWindow : Window
                 DialogService.Initialize(RootGrid.XamlRoot);
 
                 await CheckAndNotifyRestoredSessionsAsync();
+
+                // Check First-Run Onboarding
+                var isOnboarded = AppServices.Database.GetSetting("is_onboarded", "false");
+                if (string.Equals(isOnboarded, "false", StringComparison.OrdinalIgnoreCase))
+                {
+                    await ShowOnboardingWizardAsync();
+                }
             };
 
             // Initialize Global File Watcher Listener

@@ -19,8 +19,38 @@ public partial class SettingsViewModel : StatusViewModel
     [ObservableProperty]
     private bool _hasUnsavedChanges = false;
 
+    [ObservableProperty]
+    private string _saveStatusText = "All changes saved";
+
+    [ObservableProperty]
+    private bool _isSaved = true;
+
     // ==========================================
-    // Tab 1: Appearance, Material & Language
+    // Tab 1: Shop Profile
+    // ==========================================
+    [ObservableProperty]
+    private string _shopName = "SevaDesk Digital Cyber Café";
+
+    [ObservableProperty]
+    private string _operatorName = "Ramesh Patel (VLE / Operator)";
+
+    [ObservableProperty]
+    private string _cscVleId = "CSC-MH-2024-9842";
+
+    [ObservableProperty]
+    private string _contactNumber = "+91 98765 43210";
+
+    [ObservableProperty]
+    private string _shopAddress = "Shop #4, Panchayat Complex, Main Market";
+
+    [ObservableProperty]
+    private string _shopUpiVpa = "sevadesk.csc@upi";
+
+    [ObservableProperty]
+    private string _payeeName = "SevaDesk Cyber Center";
+
+    // ==========================================
+    // Tab 2: Appearance, Material & Language
     // ==========================================
     [ObservableProperty]
     private int _selectedThemeIndex = 0; // 0 = System, 1 = Light, 2 = Dark
@@ -51,44 +81,7 @@ public partial class SettingsViewModel : StatusViewModel
     private bool _isCheckingLanguageUpdates;
 
     // ==========================================
-    // Tab 2: Cyber Café / CSC Business Profile
-    // ==========================================
-    [ObservableProperty]
-    private string _shopName = "SevaDesk Digital Cyber Café";
-
-    [ObservableProperty]
-    private string _operatorName = "Ramesh Patel (VLE / Operator)";
-
-    [ObservableProperty]
-    private string _cscVleId = "CSC-MH-2024-9842";
-
-    [ObservableProperty]
-    private string _contactNumber = "+91 98765 43210";
-
-    [ObservableProperty]
-    private string _shopAddress = "Shop #4, Panchayat Complex, Main Market";
-
-    [ObservableProperty]
-    private string _shopUpiVpa = "sevadesk.csc@upi";
-
-    [ObservableProperty]
-    private string _payeeName = "SevaDesk Cyber Center";
-
-    // ==========================================
-    // Tab 3: Hardware & Pricing Rates
-    // ==========================================
-    public ObservableCollection<string> InstalledPrinters { get; } = new();
-
-    [ObservableProperty]
-    private string _defaultBwPrinter = "Brother DCP-L2520D series";
-
-    [ObservableProperty]
-    private string _defaultColorPrinter = "Epson EcoTank L8050 Photo";
-
-
-
-    // ==========================================
-    // Tab 4: Storage & Automation
+    // Tab 3: Storage & Automation
     // ==========================================
     [ObservableProperty]
     private string _workingRootPath = string.Empty;
@@ -98,6 +91,9 @@ public partial class SettingsViewModel : StatusViewModel
 
     [ObservableProperty]
     private double _workingFolderTtlHours = 24;
+
+    [ObservableProperty]
+    private string _workingFolderTtlDisplay = "24 hours (1 day)";
 
     [ObservableProperty]
     private bool _watchDownloads = true;
@@ -158,13 +154,10 @@ public partial class SettingsViewModel : StatusViewModel
                       ?? _shopUpiVpa;
         _payeeName = AppServices.Database.GetSetting("payee_name", _payeeName) ?? _payeeName;
 
-        // Load printer preferences from DB
-        _defaultBwPrinter = AppServices.Database.GetSetting("default_bw_printer", _defaultBwPrinter) ?? _defaultBwPrinter;
-        _defaultColorPrinter = AppServices.Database.GetSetting("default_color_printer", _defaultColorPrinter) ?? _defaultColorPrinter;
-
         _workingRootPath = AppServices.FolderManager.BaseDirectory;
         _backupRootPath = AppServices.FolderManager.BackupDirectory;
         _workingFolderTtlHours = SevaDesk_App.Services.Maintenance.WorkingFolderCleanupService.GetTtlHours();
+        _workingFolderTtlDisplay = FormatTtlHours((int)Math.Round(_workingFolderTtlHours));
 
         // BUG FIX: Use backing-field assignment so OnWatchXxxChanged partial handlers
         // do NOT fire during construction (which was triggering the "Watched folders updated." toast).
@@ -174,8 +167,6 @@ public partial class SettingsViewModel : StatusViewModel
 
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         _databasePath = Path.Combine(appData, "SevaDesk", "sevadesk.db");
-
-        LoadInstalledPrinters();
 
         // Initialize active theme and mica state from MainWindow
         if (MainWindow.Instance != null)
@@ -204,45 +195,6 @@ public partial class SettingsViewModel : StatusViewModel
             OnPropertyChanged(nameof(AvailableLanguages));
             OnPropertyChanged(nameof(SelectedLanguage));
         };
-    }
-
-    private void LoadInstalledPrinters()
-    {
-        InstalledPrinters.Clear();
-        try
-        {
-            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows NT\CurrentVersion\Devices");
-            if (key != null)
-            {
-                foreach (var printer in key.GetValueNames())
-                {
-                    if (!string.IsNullOrWhiteSpace(printer))
-                    {
-                        InstalledPrinters.Add(printer);
-                    }
-                }
-            }
-        }
-        catch
-        {
-            // fallback
-        }
-
-        if (InstalledPrinters.Count == 0)
-        {
-            InstalledPrinters.Add("Microsoft Print to PDF");
-            InstalledPrinters.Add("OneNote (Desktop)");
-        }
-
-        // Set default printer selection if not in list
-        if (!InstalledPrinters.Contains(DefaultBwPrinter) && InstalledPrinters.Count > 0)
-        {
-            DefaultBwPrinter = InstalledPrinters[0];
-        }
-        if (!InstalledPrinters.Contains(DefaultColorPrinter) && InstalledPrinters.Count > 0)
-        {
-            DefaultColorPrinter = InstalledPrinters.Count > 1 ? InstalledPrinters[1] : InstalledPrinters[0];
-        }
     }
 
     // ==========================================
@@ -276,39 +228,70 @@ public partial class SettingsViewModel : StatusViewModel
         }
     }
 
+    public static string FormatTtlHours(int hours)
+    {
+        if (hours <= 0) return "Immediately on next startup";
+        if (hours == 1) return "1 hour";
+        if (hours < 24) return $"{hours} hours";
+        if (hours == 24) return "24 hours (1 day)";
+        if (hours % 24 == 0)
+        {
+            var days = hours / 24;
+            return $"{hours} hours ({days} {(days == 1 ? "day" : "days")})";
+        }
+        var d = hours / 24;
+        var remH = hours % 24;
+        return $"{hours} hours ({d}d {remH}h)";
+    }
+
     partial void OnWorkingFolderTtlHoursChanged(double value)
     {
         var hours = Math.Max(0, (int)Math.Round(value));
+        WorkingFolderTtlDisplay = FormatTtlHours(hours);
+    }
+
+    public void CommitWorkingFolderTtl(int hours)
+    {
+        hours = Math.Clamp(hours, 0, 720);
+        WorkingFolderTtlHours = hours;
+        WorkingFolderTtlDisplay = FormatTtlHours(hours);
         SevaDesk_App.Services.Maintenance.WorkingFolderCleanupService.SetTtlHours(hours);
-        ShowSuccess($"Working folder TTL set to {hours}h after backup sync.");
+        ShowSuccess(hours <= 0
+            ? "Desktop folders will be cleaned immediately on next startup."
+            : $"Desktop folders will be cleaned {FormatTtlHours(hours)} after backup sync.");
     }
 
     // ==========================================
-    // Dirty-Flag Settings (require explicit Save)
+    // Dirty-Flag Settings & Auto-Save
     // ==========================================
+
+    private void MarkDirty()
+    {
+        HasUnsavedChanges = true;
+        IsSaved = false;
+        SaveStatusText = "Unsaved changes...";
+    }
 
     partial void OnSelectedCloseBehaviorIndexChanged(int value)
     {
         CloseActionBehavior = value;
-        HasUnsavedChanges = true;
+        MarkDirty();
     }
 
-    partial void OnShopNameChanged(string value) => HasUnsavedChanges = true;
-    partial void OnOperatorNameChanged(string value) => HasUnsavedChanges = true;
-    partial void OnCscVleIdChanged(string value) => HasUnsavedChanges = true;
-    partial void OnContactNumberChanged(string value) => HasUnsavedChanges = true;
-    partial void OnShopAddressChanged(string value) => HasUnsavedChanges = true;
-    partial void OnShopUpiVpaChanged(string value) => HasUnsavedChanges = true;
-    partial void OnPayeeNameChanged(string value) => HasUnsavedChanges = true;
-    partial void OnDefaultBwPrinterChanged(string value) => HasUnsavedChanges = true;
-    partial void OnDefaultColorPrinterChanged(string value) => HasUnsavedChanges = true;
+    partial void OnShopNameChanged(string value) => MarkDirty();
+    partial void OnOperatorNameChanged(string value) => MarkDirty();
+    partial void OnCscVleIdChanged(string value) => MarkDirty();
+    partial void OnContactNumberChanged(string value) => MarkDirty();
+    partial void OnShopAddressChanged(string value) => MarkDirty();
+    partial void OnShopUpiVpaChanged(string value) => MarkDirty();
+    partial void OnPayeeNameChanged(string value) => MarkDirty();
 
     partial void OnWatchDownloadsChanged(bool value)
     {
         AppServices.FileWatcher.WatchDownloads = value;
         AppServices.FileWatcher.SaveSettings();
         AppServices.FileWatcher.RestartWatchers();
-        HasUnsavedChanges = true;
+        MarkDirty();
     }
 
     partial void OnWatchDesktopChanged(bool value)
@@ -316,7 +299,7 @@ public partial class SettingsViewModel : StatusViewModel
         AppServices.FileWatcher.WatchDesktop = value;
         AppServices.FileWatcher.SaveSettings();
         AppServices.FileWatcher.RestartWatchers();
-        HasUnsavedChanges = true;
+        MarkDirty();
     }
 
     partial void OnWatchDocumentsChanged(bool value)
@@ -324,19 +307,56 @@ public partial class SettingsViewModel : StatusViewModel
         AppServices.FileWatcher.WatchDocuments = value;
         AppServices.FileWatcher.SaveSettings();
         AppServices.FileWatcher.RestartWatchers();
-        HasUnsavedChanges = true;
+        MarkDirty();
     }
 
     partial void OnIsOverlayWidgetEnabledChanged(bool value)
     {
         IsOverlayWidgetEnabledSetting = value;
-        HasUnsavedChanges = true;
+        MarkDirty();
     }
 
     partial void OnOverlayPositionIndexChanged(int value)
     {
         OverlayPositionSetting = value;
-        HasUnsavedChanges = true;
+        MarkDirty();
+    }
+
+    [RelayCommand]
+    public void AutoSaveProfile()
+    {
+        if (!HasUnsavedChanges) return;
+
+        AppServices.Database.SetSetting("shop_name", ShopName);
+        AppServices.Database.SetSetting("operator_name", OperatorName);
+        AppServices.Database.SetSetting("csc_vle_id", CscVleId);
+        AppServices.Database.SetSetting("contact_number", ContactNumber);
+        AppServices.Database.SetSetting("shop_address", ShopAddress);
+        AppServices.Database.SetSetting("shop_upi_vpa", ShopUpiVpa);
+        AppServices.Database.SetSetting("shop_upi_id", ShopUpiVpa); // Keep both keys synchronized
+        AppServices.Database.SetSetting("payee_name", PayeeName);
+        AppServices.Database.SetSetting("close_behavior", SelectedCloseBehaviorIndex.ToString());
+
+        HasUnsavedChanges = false;
+        IsSaved = true;
+        SaveStatusText = "All changes saved";
+    }
+
+    public void ReloadShopProfile()
+    {
+        ShopName = AppServices.Database.GetSetting("shop_name", ShopName) ?? ShopName;
+        OperatorName = AppServices.Database.GetSetting("operator_name", OperatorName) ?? OperatorName;
+        CscVleId = AppServices.Database.GetSetting("csc_vle_id", CscVleId) ?? CscVleId;
+        ContactNumber = AppServices.Database.GetSetting("contact_number", ContactNumber) ?? ContactNumber;
+        ShopAddress = AppServices.Database.GetSetting("shop_address", ShopAddress) ?? ShopAddress;
+        ShopUpiVpa = AppServices.Database.GetSetting("shop_upi_vpa")
+                     ?? AppServices.Database.GetSetting("shop_upi_id", ShopUpiVpa)
+                     ?? ShopUpiVpa;
+        PayeeName = AppServices.Database.GetSetting("payee_name", PayeeName) ?? PayeeName;
+
+        HasUnsavedChanges = false;
+        IsSaved = true;
+        SaveStatusText = "Settings updated";
     }
 
     // ==========================================
@@ -369,24 +389,7 @@ public partial class SettingsViewModel : StatusViewModel
     [RelayCommand]
     public void SaveAllChanges()
     {
-        // Persist café profile settings
-        AppServices.Database.SetSetting("shop_name", ShopName);
-        AppServices.Database.SetSetting("operator_name", OperatorName);
-        AppServices.Database.SetSetting("csc_vle_id", CscVleId);
-        AppServices.Database.SetSetting("contact_number", ContactNumber);
-        AppServices.Database.SetSetting("shop_address", ShopAddress);
-        AppServices.Database.SetSetting("shop_upi_vpa", ShopUpiVpa);
-        AppServices.Database.SetSetting("shop_upi_id", ShopUpiVpa); // Keep both keys synchronized
-        AppServices.Database.SetSetting("payee_name", PayeeName);
-
-        // Persist hardware settings
-        AppServices.Database.SetSetting("default_bw_printer", DefaultBwPrinter);
-        AppServices.Database.SetSetting("default_color_printer", DefaultColorPrinter);
-
-        // Persist close behavior
-        AppServices.Database.SetSetting("close_behavior", SelectedCloseBehaviorIndex.ToString());
-
-        HasUnsavedChanges = false;
+        AutoSaveProfile();
         ShowSuccess("All settings saved.");
     }
 
@@ -472,28 +475,121 @@ public partial class SettingsViewModel : StatusViewModel
     }
 
     [RelayCommand]
-    public void BackupDatabase()
+    public async Task BackupDatabaseAsync()
     {
         try
         {
+            if (!File.Exists(DatabasePath))
+            {
+                ShowWarning("Database file not found to backup.");
+                return;
+            }
+
+            var suggestedName = $"sevadesk_backup_{DateTime.Now:yyyy-MM-dd}.db";
+            var destination = await AppServices.Pickers.PickSaveFileAsync(
+                suggestedName, ".db", "SQLite Database (*.db)");
+
+            if (string.IsNullOrWhiteSpace(destination))
+            {
+                // User cancelled file picker
+                return;
+            }
+
+            // Ensure destination directory exists
+            var destDir = Path.GetDirectoryName(destination);
+            if (!string.IsNullOrWhiteSpace(destDir))
+            {
+                Directory.CreateDirectory(destDir);
+            }
+
+            // Flush SQLite connection pool so we copy complete, committed data
+            try { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); } catch { }
+            File.Copy(DatabasePath, destination, overwrite: true);
+
+            ShowSuccess($"Backup saved successfully: {Path.GetFileName(destination)}");
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Backup failed: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    public async Task RestoreDatabaseAsync()
+    {
+        try
+        {
+            var pickedPath = await AppServices.Pickers.PickFileAsync(new[] { ".db" });
+            if (string.IsNullOrWhiteSpace(pickedPath))
+            {
+                // User cancelled file picker
+                return;
+            }
+
+            if (!File.Exists(pickedPath))
+            {
+                ShowWarning("Selected backup file could not be found.");
+                return;
+            }
+
+            var fileInfo = new FileInfo(pickedPath);
+            if (fileInfo.Length == 0)
+            {
+                ShowWarning("Selected backup file is empty and cannot be restored.");
+                return;
+            }
+
+            // Confirmation warning
+            var confirm = await AppServices.Dialogs.ShowConfirmationAsync(
+                title: "Restore Database Backup",
+                content: $"Restoring this backup will replace your current customer records and sessions with:\n{Path.GetFileName(pickedPath)}\n\nAn automatic safety backup of your current database will be saved before restoring.\n\nThe app will restart immediately to load your restored records. Do you wish to continue?",
+                primaryButtonText: "Restore & Restart",
+                secondaryButtonText: "Cancel");
+
+            if (confirm != Microsoft.UI.Xaml.Controls.ContentDialogResult.Primary)
+            {
+                return;
+            }
+
+            // 1. Stop background file watchers
+            AppServices.FileWatcher.StopWatchers();
+
+            // 2. Create safety snapshot of current database
             if (File.Exists(DatabasePath))
             {
                 var dir = Path.GetDirectoryName(DatabasePath) ?? string.Empty;
                 var backupDir = Path.Combine(dir, "Backups");
                 Directory.CreateDirectory(backupDir);
                 var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                var backupPath = Path.Combine(backupDir, $"sevadesk_backup_{timestamp}.db");
-                File.Copy(DatabasePath, backupPath, true);
-                ShowSuccess($"Backup created successfully: {Path.GetFileName(backupPath)}");
+                var safetyPath = Path.Combine(backupDir, $"sevadesk_safety_before_restore_{timestamp}.db");
+                File.Copy(DatabasePath, safetyPath, overwrite: true);
             }
-            else
+
+            // 3. Clear SQLite pools and wait briefly
+            try { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); } catch { }
+            await Task.Delay(300);
+
+            // 4. Overwrite DatabasePath with the picked backup file
+            File.Copy(pickedPath, DatabasePath, overwrite: true);
+
+            // 5. Restart application
+            try
             {
-                ShowWarning("Database file not found to backup.");
+                Microsoft.Windows.AppLifecycle.AppInstance.Restart(string.Empty);
+            }
+            catch
+            {
+                var exe = Environment.ProcessPath;
+                if (!string.IsNullOrWhiteSpace(exe))
+                {
+                    Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true });
+                }
+                Microsoft.UI.Xaml.Application.Current.Exit();
             }
         }
         catch (Exception ex)
         {
-            ShowError($"Backup failed: {ex.Message}");
+            ShowError($"Restore failed: {ex.Message}");
         }
     }
 

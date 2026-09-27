@@ -28,6 +28,25 @@ public sealed partial class CompleteSessionDialog : ContentDialog
         TxtMobile.Text = customer.Mobile ?? string.Empty;
         TxtIdRef.Text = customer.IdReference ?? string.Empty;
         TxtVillage.Text = customer.Village ?? string.Empty;
+
+        TxtMobile.ConfigureNumericMobileInput(_ => ValidateInputs());
+        ValidateInputs();
+    }
+
+    private void ValidateInputs()
+    {
+        var mobile = TxtMobile.Text?.Trim() ?? string.Empty;
+        if (mobile.Length > 0 && mobile.Length < 10)
+        {
+            TxtMobileError.Text = $"Please enter 10 digits ({mobile.Length}/10 entered)";
+            TxtMobileError.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+            IsPrimaryButtonEnabled = false;
+        }
+        else
+        {
+            TxtMobileError.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+            IsPrimaryButtonEnabled = true;
+        }
     }
 
     public void ApplyToCustomer(Customer customer)

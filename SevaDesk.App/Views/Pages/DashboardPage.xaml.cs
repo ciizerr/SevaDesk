@@ -132,6 +132,32 @@ public sealed partial class DashboardPage : Page
         MainWindow.Instance?.NavigateTo(typeof(PaymentsPage));
     }
 
+    private async void RecentPayment_ItemClick(object sender, ItemClickEventArgs e)
+    {
+        if (e.ClickedItem is DashboardRecentPaymentItem item)
+        {
+            Customer? customer = null;
+            if (!string.IsNullOrWhiteSpace(item.Payment.CustomerId) && item.Payment.CustomerId != "walk-in")
+            {
+                customer = await AppServices.Customers.GetByIdAsync(item.Payment.CustomerId);
+            }
+
+            Session? session = null;
+            if (!string.IsNullOrWhiteSpace(item.Payment.SessionId) && customer != null)
+            {
+                var sessions = await AppServices.Sessions.GetCustomerSessionsAsync(customer.Id);
+                session = sessions.FirstOrDefault(s => s.Id == item.Payment.SessionId);
+            }
+
+            var receiptInfo = CompletedReceiptInfo.FromPayment(item.Payment, customer, session);
+            var dialog = new ReceiptDialog(receiptInfo)
+            {
+                XamlRoot = XamlRoot
+            };
+            await dialog.ShowAsync();
+        }
+    }
+
     private async void NewCustomerSession_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new NewCustomerDialog
@@ -207,7 +233,7 @@ public sealed partial class DashboardPage : Page
             return;
 
         var customer = currentSession.Customer;
-        if (customer != null && (string.IsNullOrWhiteSpace(customer.Mobile) || string.IsNullOrWhiteSpace(customer.IdReference)))
+        if (customer != null && string.IsNullOrWhiteSpace(customer.Mobile))
         {
             var dialog = new CompleteSessionDialog(customer)
             {
@@ -232,6 +258,7 @@ public sealed partial class DashboardPage : Page
         {
             CustomerName = customer?.Name ?? "Customer",
             CustomerId = customer?.Id,
+            CustomerAddress = customer?.Village,
             SessionId = currentSession.Session.Id,
             Items = []
         };

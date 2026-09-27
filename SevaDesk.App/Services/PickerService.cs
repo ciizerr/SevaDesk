@@ -66,4 +66,19 @@ public class PickerService : IPickerService
         var files = await picker.PickMultipleFilesAsync();
         return files.Select(f => f.Path).ToList();
     }
+
+    public async Task<string?> PickSaveFileAsync(string suggestedFileName, string extension, string fileTypeDescription)
+    {
+        var picker = new FileSavePicker
+        {
+            SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+            SuggestedFileName = suggestedFileName
+        };
+        var ext = extension.StartsWith('.') ? extension : "." + extension;
+        picker.FileTypeChoices.Add(fileTypeDescription, new List<string> { ext });
+        EnsureHwnd(picker);
+
+        var file = await picker.PickSaveFileAsync();
+        return file?.Path;
+    }
 }

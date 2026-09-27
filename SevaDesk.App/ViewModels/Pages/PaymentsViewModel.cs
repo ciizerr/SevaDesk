@@ -270,6 +270,12 @@ public partial class PaymentsViewModel : StatusViewModel
     private string _customerName = "Walk-in Customer";
 
     [ObservableProperty]
+    private string _customerMobile = string.Empty;
+
+    [ObservableProperty]
+    private string? _customerAddress;
+
+    [ObservableProperty]
     private string? _currentCustomerId;
 
     [ObservableProperty]
@@ -309,6 +315,49 @@ public partial class PaymentsViewModel : StatusViewModel
 
     [ObservableProperty]
     private bool _isGeneratingQr;
+
+    // --- Checkout Payment Mode (Cash vs UPI) & Cash Tender ---
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCashMode))]
+    [NotifyPropertyChangedFor(nameof(IsUpiMode))]
+    private string _checkoutPaymentMode = "Cash";
+
+    public bool IsCashMode => string.Equals(CheckoutPaymentMode, "Cash", StringComparison.OrdinalIgnoreCase);
+    public bool IsUpiMode => string.Equals(CheckoutPaymentMode, "UPI", StringComparison.OrdinalIgnoreCase);
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CashChangeToReturn))]
+    [NotifyPropertyChangedFor(nameof(CashShortage))]
+    [NotifyPropertyChangedFor(nameof(HasChangeToReturn))]
+    [NotifyPropertyChangedFor(nameof(HasExactCash))]
+    [NotifyPropertyChangedFor(nameof(HasCashShortage))]
+    [NotifyPropertyChangedFor(nameof(FormattedCashReceived))]
+    [NotifyPropertyChangedFor(nameof(FormattedChangeToReturn))]
+    [NotifyPropertyChangedFor(nameof(FormattedCashShortage))]
+    private decimal _cashReceivedAmount;
+
+    [ObservableProperty]
+    private string _cashReceivedInputText = string.Empty;
+
+    public decimal CashChangeToReturn => Math.Max(0, CashReceivedAmount - GrandTotal);
+    public decimal CashShortage => Math.Max(0, GrandTotal - CashReceivedAmount);
+    public bool HasChangeToReturn => CashReceivedAmount > GrandTotal && GrandTotal > 0;
+    public bool HasExactCash => CashReceivedAmount == GrandTotal && GrandTotal > 0;
+    public bool HasCashShortage => CashReceivedAmount > 0 && CashReceivedAmount < GrandTotal;
+
+    public string FormattedCashReceived => $"₹{CashReceivedAmount:N0}";
+    public string FormattedChangeToReturn => $"₹{CashChangeToReturn:N0}";
+    public string FormattedCashShortage => $"₹{CashShortage:N0}";
+
+    // --- Post-Payment Receipt State ---
+    [ObservableProperty]
+    private CompletedReceiptInfo? _lastCompletedReceipt;
+
+    [ObservableProperty]
+    private bool _hasRecentCompletedPayment;
+
+    [ObservableProperty]
+    private string _recentPaymentSuccessMessage = string.Empty;
 
     [ObservableProperty]
     private bool _isEditMode;
@@ -757,11 +806,68 @@ public partial class PaymentsViewModel : StatusViewModel
         DiscountValue = 0;
         DiscountInputText = string.Empty;
         IsPercentageDiscount = false;
+        CashReceivedAmount = 0;
+        CashReceivedInputText = string.Empty;
         UpdateCartTotals();
         CustomerName = "Walk-in Customer";
+        CustomerMobile = string.Empty;
+        CustomerAddress = null;
         CurrentCustomerId = null;
         CurrentSessionId = null;
         ShowInfo("Current bill cleared.");
+    }
+
+    [RelayCommand]
+    public void SelectWalkInCustomer()
+    {
+        CustomerName = "Walk-in Customer";
+        CustomerMobile = string.Empty;
+        CustomerAddress = null;
+        CurrentCustomerId = null;
+        CurrentSessionId = null;
+    }
+
+    [RelayCommand]
+    public void SwitchPaymentMode(string mode)
+    {
+        CheckoutPaymentMode = mode;
+        if (IsUpiMode)
+        {
+            RegenerateQrCode();
+        }
+    }
+
+    public void SetCashReceived(decimal amount)
+    {
+        CashReceivedAmount = amount;
+        CashReceivedInputText = amount > 0 ? amount.ToString("N0") : string.Empty;
+    }
+
+    public void SetExactCash()
+    {
+        SetCashReceived(GrandTotal);
+    }
+
+    public void UpdateCashReceivedInput(string input)
+    {
+        CashReceivedInputText = input;
+        var clean = input.Trim().TrimStart('₹').Replace(",", "");
+        if (decimal.TryParse(clean, NumberStyles.Any, CultureInfo.InvariantCulture, out var amt) ||
+            decimal.TryParse(clean, NumberStyles.Any, CultureInfo.CurrentCulture, out amt))
+        {
+            CashReceivedAmount = Math.Max(0, amt);
+        }
+        else
+        {
+            CashReceivedAmount = 0;
+        }
+    }
+
+    [RelayCommand]
+    public void DismissRecentPaymentBanner()
+    {
+        HasRecentCompletedPayment = false;
+        RecentPaymentSuccessMessage = string.Empty;
     }
 
     [RelayCommand]
@@ -773,8 +879,18 @@ public partial class PaymentsViewModel : StatusViewModel
         var custName = string.IsNullOrWhiteSpace(CustomerName) ? "Walk-in Customer" : CustomerName.Trim();
         
         var itemsSummaryList = new List<string>();
+        var receiptItems = new List<ReceiptItemInfo>();
+
         foreach (var c in CartItems)
         {
+            receiptItems.Add(new ReceiptItemInfo
+            {
+                Name = c.ServiceName,
+                Quantity = c.Quantity,
+                Rate = c.Rate,
+                Total = c.Total
+            });
+
             if (c.IsRateModified)
             {
                 itemsSummaryList.Add($"{c.ServiceName} x{c.Quantity} @ ₹{c.Rate:N0} (orig ₹{c.OriginalRate:N0})");
@@ -783,10 +899,6 @@ public partial class PaymentsViewModel : StatusViewModel
             {
                 itemsSummaryList.Add($"{c.ServiceName} x{c.Quantity} @ ₹{c.Rate:N0}");
             }
-        }
-        if (HasDiscount)
-        {
-            itemsSummaryList.Add($"[Disc: {FormattedDiscount}]");
         }
         var itemsSummary = string.Join(", ", itemsSummaryList);
 
@@ -828,12 +940,34 @@ public partial class PaymentsViewModel : StatusViewModel
 
         ShowSuccess($"Payment of ₹{GrandTotal:N0} recorded via {paymentMode} ({invoiceNo})!");
 
+        // Snapshot receipt before clearing
+        LastCompletedReceipt = new CompletedReceiptInfo
+        {
+            InvoiceNo = invoiceNo,
+            CustomerName = custName,
+            CustomerMobile = CustomerMobile,
+            CustomerAddress = CustomerAddress,
+            PaymentDate = DateTime.Now,
+            SubTotal = SubTotal,
+            Discount = CalculatedDiscount,
+            GrandTotal = GrandTotal,
+            PaymentMode = paymentMode,
+            ItemsSummary = itemsSummary,
+            Items = receiptItems
+        };
+        RecentPaymentSuccessMessage = $"Payment of ₹{GrandTotal:N0} recorded via {paymentMode} ({invoiceNo})";
+        HasRecentCompletedPayment = true;
+
         CartItems.Clear();
         DiscountValue = 0;
         DiscountInputText = string.Empty;
         IsPercentageDiscount = false;
+        CashReceivedAmount = 0;
+        CashReceivedInputText = string.Empty;
         UpdateCartTotals();
         CustomerName = "Walk-in Customer";
+        CustomerMobile = string.Empty;
+        CustomerAddress = null;
         CurrentCustomerId = null;
         CurrentSessionId = null;
 
@@ -860,6 +994,14 @@ public partial class PaymentsViewModel : StatusViewModel
         OnPropertyChanged(nameof(DiscountSummaryText));
 
         GrandTotal = Math.Max(0, SubTotal - CalculatedDiscount);
+        OnPropertyChanged(nameof(CashChangeToReturn));
+        OnPropertyChanged(nameof(CashShortage));
+        OnPropertyChanged(nameof(HasChangeToReturn));
+        OnPropertyChanged(nameof(HasExactCash));
+        OnPropertyChanged(nameof(HasCashShortage));
+        OnPropertyChanged(nameof(FormattedCashReceived));
+        OnPropertyChanged(nameof(FormattedChangeToReturn));
+        OnPropertyChanged(nameof(FormattedCashShortage));
         UpiDeepLink = AppServices.QrCode.BuildUpiPayload(ShopUpiId, PayeeName, GrandTotal > 0 ? GrandTotal : null, "Cyber Cafe Bill");
         RegenerateQrCode();
     }
@@ -967,6 +1109,11 @@ public partial class PaymentsViewModel : StatusViewModel
             CustomerName = handover.CustomerName;
         }
 
+        if (!string.IsNullOrWhiteSpace(handover.CustomerAddress))
+        {
+            CustomerAddress = handover.CustomerAddress;
+        }
+
         CurrentCustomerId = handover.CustomerId;
         CurrentSessionId = handover.SessionId;
 
@@ -1055,6 +1202,8 @@ public partial class PaymentsViewModel : StatusViewModel
         if (session?.Customer == null) return;
 
         CustomerName = session.Customer.Name;
+        CustomerMobile = session.Customer.Mobile ?? string.Empty;
+        CustomerAddress = session.Customer.Village;
         CurrentCustomerId = session.Customer.Id;
         CurrentSessionId = session.Session.Id;
 

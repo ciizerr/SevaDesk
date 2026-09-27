@@ -10,12 +10,12 @@
     mc:Ignorable="d">
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Spacing="24" Padding="32,24,32,48" MaxWidth="960" HorizontalAlignment="Left">
+        <StackPanel Spacing="24" Padding="32,28,32,60" MaxWidth="920" HorizontalAlignment="Stretch">
 
             <!-- ================================================================ -->
-            <!-- HERO HEADER CARD                                                 -->
+            <!-- 1. HERO HEADER CARD                                              -->
             <!-- ================================================================ -->
-            <Border CornerRadius="12" Padding="24"
+            <Border CornerRadius="12" Padding="28,24"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1">
@@ -26,9 +26,9 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- Rectangular Logo with text -->
+                    <!-- Rectangular Logo with subtle frame -->
                     <Border Grid.Column="0" CornerRadius="8"
-                            Width="180" Height="88"
+                            Width="170" Height="84"
                             Background="{ThemeResource LayerFillColorAltBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                             BorderThickness="1"
@@ -41,8 +41,8 @@
                                AutomationProperties.Name="SevaDesk Logo" />
                     </Border>
 
-                    <!-- App Title + Version + Tagline + Build info -->
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="6">
+                    <!-- App Title, Version Badge & Plain Language Tagline -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8">
                         <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                             <TextBlock Text="SevaDesk"
                                        Style="{StaticResource TitleTextBlockStyle}"
@@ -51,27 +51,56 @@
                             <Border Background="{ThemeResource AccentFillColorDefaultBrush}"
                                     CornerRadius="4" Padding="8,3" VerticalAlignment="Center">
                                 <TextBlock Text="{x:Bind ViewModel.AppVersionDisplay, Mode=OneWay}"
-                                           FontSize="11" FontWeight="SemiBold"
+                                           FontSize="12" FontWeight="SemiBold"
                                            Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
                             </Border>
                         </StackPanel>
+
                         <TextBlock loc:Loc.Key="Settings.About.BrandTagline"
-                                   Text="Next-Gen Cyber Café &amp; CSC Center Management System"
+                                   Text="Smart counter and customer management assistant for cyber cafes and digital service centers."
                                    Style="{StaticResource BodyTextBlockStyle}"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <TextBlock Text="{x:Bind ViewModel.BuildInfoDisplay, Mode=OneWay}"
-                                   Style="{StaticResource CaptionTextBlockStyle}"
-                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   TextWrapping="Wrap" />
+
+                        <!-- Reassuring Badges Row -->
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,2,0,0">
+                            <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                                    CornerRadius="6" Padding="8,4"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE8C9;" FontSize="11" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                    <TextBlock Text="100% Offline" FontSize="11" FontWeight="Medium" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                                    CornerRadius="6" Padding="8,4"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE72E;" FontSize="11" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                    <TextBlock Text="Local PC Privacy" FontSize="11" FontWeight="Medium" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                                    CornerRadius="6" Padding="8,4"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE734;" FontSize="11" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                    <TextBlock Text="Free to Use" FontSize="11" FontWeight="Medium" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
                     </StackPanel>
 
-                    <!-- Primary Action Buttons (GitHub Repo) -->
+                    <!-- Top Action Buttons -->
                     <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="8">
                         <Button Style="{StaticResource AccentButtonStyle}"
                                 Command="{x:Bind ViewModel.OpenGitHubCommand}"
                                 AutomationProperties.Name="Open GitHub Repository"
                                 AutomationProperties.AutomationId="BtnAboutGitHub">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Viewbox Width="15" Height="15">
+                                <Viewbox Width="14" Height="14">
                                     <Path Fill="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
                                           Data="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
                                 </Viewbox>
@@ -79,7 +108,7 @@
                             </StackPanel>
                         </Button>
                         <Button Command="{x:Bind ViewModel.OpenCommunityCommand}"
-                                AutomationProperties.Name="Open GitHub Discussions"
+                                AutomationProperties.Name="Open Community Discussions"
                                 AutomationProperties.AutomationId="BtnAboutDiscussions">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <FontIcon Glyph="&#xE8BD;" FontSize="13" />
@@ -91,194 +120,400 @@
             </Border>
 
             <!-- ================================================================ -->
-            <!-- TWO-COLUMN CONTENT CARDS: SYSTEM SPECS & COMMUNITY/FEEDBACK       -->
+            <!-- 2. DATA PRIVACY & LOCAL STORAGE CARD                             -->
             <!-- ================================================================ -->
-            <Grid ColumnSpacing="20">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
+            <Border CornerRadius="12" Padding="24"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="18">
+                    <!-- Section Title -->
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                                CornerRadius="6" Width="34" Height="34"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                            <FontIcon Glyph="&#xE72E;" FontSize="15"
+                                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Spacing="1">
+                            <TextBlock loc:Loc.Key="Settings.About.PrivacySectionTitle"
+                                       Text="Data Privacy &amp; Local Storage"
+                                       FontWeight="SemiBold"
+                                       Style="{StaticResource SubtitleTextBlockStyle}" />
+                            <TextBlock loc:Loc.Key="Settings.About.PrivacySectionDesc"
+                                       Text="Your business records, customer details, and invoices stay safe on this computer"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </StackPanel>
 
-                <!-- LEFT CARD: Application & Runtime Specs -->
-                <Border Grid.Column="0" CornerRadius="12" Padding="20"
-                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1">
-                    <StackPanel Spacing="16">
-                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                            <Border Background="{ThemeResource LayerFillColorAltBrush}"
-                                    CornerRadius="6" Width="32" Height="32"
-                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                                <FontIcon Glyph="&#xE946;" FontSize="15"
-                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel Spacing="1">
-                                <TextBlock loc:Loc.Key="Settings.About.AppSectionTitle"
-                                           Text="Application &amp; Runtime"
-                                           FontWeight="SemiBold"
-                                           Style="{StaticResource SubtitleTextBlockStyle}" />
-                                <TextBlock Text="Core technology and platform stack"
+                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                    <!-- 3 Core Owner Assurances -->
+                    <Grid ColumnSpacing="20">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Col 0: 100% Offline -->
+                        <Border Grid.Column="0" Background="{ThemeResource LayerFillColorAltBrush}"
+                                CornerRadius="8" Padding="16,14"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                            <StackPanel Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE8C9;" FontSize="14" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                    <TextBlock Text="100% Offline" FontWeight="SemiBold" FontSize="13" />
+                                </StackPanel>
+                                <TextBlock Text="Works completely without internet. No cloud account, external server, or recurring fees are required for your daily work."
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           TextWrapping="Wrap" LineHeight="18" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Col 1: Shop Privacy -->
+                        <Border Grid.Column="1" Background="{ThemeResource LayerFillColorAltBrush}"
+                                CornerRadius="8" Padding="16,14"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                            <StackPanel Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE72D;" FontSize="14" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                    <TextBlock Text="Private to Your Shop" FontWeight="SemiBold" FontSize="13" />
+                                </StackPanel>
+                                <TextBlock Text="Customer phone numbers, visiting logs, photo scans, and bills never leave this PC. Your records remain strictly confidential."
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           TextWrapping="Wrap" LineHeight="18" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Col 2: Easy Backup & Portability -->
+                        <Border Grid.Column="2" Background="{ThemeResource LayerFillColorAltBrush}"
+                                CornerRadius="8" Padding="16,14"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                            <StackPanel Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <FontIcon Glyph="&#xE777;" FontSize="14" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                    <TextBlock Text="Easy Backup &amp; Transfer" FontWeight="SemiBold" FontSize="13" />
+                                </StackPanel>
+                                <TextBlock Text="All customer records and settings are stored locally. You can copy or back up this data folder to a USB drive anytime."
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           TextWrapping="Wrap" LineHeight="18" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Action Banner: Data Folder Location + 1-Click Open Folder Button -->
+                    <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                            CornerRadius="8" Padding="18,14"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="4">
+                                <TextBlock Text="Local Storage Location on this PC"
                                            Style="{StaticResource CaptionTextBlockStyle}"
                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="{x:Bind ViewModel.DataFolderPath, Mode=OneWay}"
+                                           Style="{StaticResource BodyStrongTextBlockStyle}"
+                                           FontFamily="Consolas, Segoe UI"
+                                           TextWrapping="Wrap" />
                             </StackPanel>
-                        </StackPanel>
-
-                        <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
-
-                        <!-- Key-Value Metadata Grid -->
-                        <Grid RowSpacing="12" ColumnSpacing="12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-
-                            <!-- Row 0: UI Framework -->
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="UI Framework"
-                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <TextBlock Grid.Row="0" Grid.Column="1" Text="WinUI 3 (Windows App SDK 2.4)"
-                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                       FontWeight="Medium" TextAlignment="Right" />
-
-                            <!-- Row 1: Runtime -->
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Runtime Engine"
-                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <TextBlock Grid.Row="1" Grid.Column="1" Text=".NET 8.0 (win-x64)"
-                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                       FontWeight="Medium" TextAlignment="Right" />
-
-                            <!-- Row 2: Database -->
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Local Storage"
-                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <TextBlock Grid.Row="2" Grid.Column="1" Text="SQLite Database (WAL Mode)"
-                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                       FontWeight="Medium" TextAlignment="Right" />
-
-                            <!-- Row 3: License -->
-                            <TextBlock Grid.Row="3" Grid.Column="0" Text="License"
-                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <TextBlock Grid.Row="3" Grid.Column="1" Text="MIT (Free &amp; Open Source)"
-                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                       FontWeight="Medium" TextAlignment="Right" />
-
-                            <!-- Row 4: Maintainer -->
-                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Developer"
-                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{x:Bind ViewModel.DeveloperName, Mode=OneWay}"
-                                       Style="{StaticResource CaptionTextBlockStyle}"
-                                       FontWeight="Medium" TextAlignment="Right" />
+                            <Button Grid.Column="1"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Command="{x:Bind ViewModel.OpenDataFolderCommand}"
+                                    AutomationProperties.Name="Open Local Data Folder in File Explorer"
+                                    AutomationProperties.AutomationId="BtnAboutOpenDataFolder"
+                                    VerticalAlignment="Center"
+                                    Padding="14,9">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE838;" FontSize="14" />
+                                    <TextBlock Text="Open Data Folder" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Button>
                         </Grid>
-                    </StackPanel>
-                </Border>
+                    </Border>
+                </StackPanel>
+            </Border>
 
-                <!-- RIGHT CARD: Feedback & Bug Reports -->
-                <Border Grid.Column="1" CornerRadius="12" Padding="20"
-                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1">
-                    <StackPanel Spacing="16">
-                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                            <Border Background="{ThemeResource LayerFillColorAltBrush}"
-                                    CornerRadius="6" Width="32" Height="32"
-                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                                <FontIcon Glyph="&#xE939;" FontSize="15"
-                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel Spacing="1">
-                                <TextBlock loc:Loc.Key="Settings.About.FeedbackTitle"
-                                           Text="Issues &amp; Feedback"
-                                           FontWeight="SemiBold"
-                                           Style="{StaticResource SubtitleTextBlockStyle}" />
-                                <TextBlock loc:Loc.Key="Settings.About.FeedbackDesc"
-                                           Text="Encountered a bug or want to suggest a new feature?"
+            <!-- ================================================================ -->
+            <!-- 3. CORE DAILY WORKFLOWS (WHAT SEVADESK DOES)                     -->
+            <!-- ================================================================ -->
+            <Border CornerRadius="12" Padding="24"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="18">
+                    <!-- Section Title -->
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                                CornerRadius="6" Width="34" Height="34"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                            <FontIcon Glyph="&#xE71D;" FontSize="15"
+                                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Spacing="1">
+                            <TextBlock loc:Loc.Key="Settings.About.WorkflowsTitle"
+                                       Text="Core Daily Workflows"
+                                       FontWeight="SemiBold"
+                                       Style="{StaticResource SubtitleTextBlockStyle}" />
+                            <TextBlock loc:Loc.Key="Settings.About.WorkflowsDesc"
+                                       Text="Key tools designed to speed up your everyday cyber cafe and digital counter tasks"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                    <!-- 2x2 Feature Grid -->
+                    <Grid RowSpacing="14" ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Module 1: Active Counter Desk -->
+                        <Border Grid.Row="0" Grid.Column="0"
+                                Background="{ThemeResource LayerFillColorAltBrush}"
+                                CornerRadius="8" Padding="16,14"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                            <StackPanel Spacing="6">
+                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                            CornerRadius="4" Width="28" Height="28">
+                                        <FontIcon Glyph="&#xE7EE;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <TextBlock Text="Active Counter Desk" FontWeight="SemiBold" FontSize="14" />
+                                </StackPanel>
+                                <TextBlock Text="Track customer computer usage time, manage pending work, and organize active tasks with live billing at your desk."
                                            Style="{StaticResource CaptionTextBlockStyle}"
-                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           TextWrapping="Wrap" LineHeight="18" />
                             </StackPanel>
-                        </StackPanel>
+                        </Border>
 
-                        <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+                        <!-- Module 2: Billing & WhatsApp Sharing -->
+                        <Border Grid.Row="0" Grid.Column="1"
+                                Background="{ThemeResource LayerFillColorAltBrush}"
+                                CornerRadius="8" Padding="16,14"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                            <StackPanel Spacing="6">
+                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                            CornerRadius="4" Width="28" Height="28">
+                                        <FontIcon Glyph="&#xE8C7;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <TextBlock Text="Billing &amp; Invoices" FontWeight="SemiBold" FontSize="14" />
+                                </StackPanel>
+                                <TextBlock Text="Create clean invoices with UPI QR codes, automatically calculate charges, and share laser-sharp A4 PDF bills straight to WhatsApp."
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           TextWrapping="Wrap" LineHeight="18" />
+                            </StackPanel>
+                        </Border>
 
-                        <StackPanel Spacing="10">
-                            <!-- Report Bug -->
-                            <Button HorizontalAlignment="Stretch"
-                                    Command="{x:Bind ViewModel.ReportBugCommand}"
-                                    AutomationProperties.Name="Report a Bug on GitHub"
-                                    AutomationProperties.AutomationId="BtnAboutReportBug">
-                                <Grid ColumnDefinitions="Auto,*,Auto" HorizontalAlignment="Stretch">
-                                    <FontIcon Grid.Column="0" Glyph="&#xEBE8;" FontSize="14" Margin="0,0,10,0" />
-                                    <TextBlock Grid.Column="1" loc:Loc.Key="Settings.About.ReportBugBtn"
-                                               Text="Report a Bug" VerticalAlignment="Center" />
-                                    <FontIcon Grid.Column="2" Glyph="&#xE8A7;" FontSize="11"
-                                              Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                </Grid>
-                            </Button>
+                        <!-- Module 3: Document Hub & Presets -->
+                        <Border Grid.Row="1" Grid.Column="0"
+                                Background="{ThemeResource LayerFillColorAltBrush}"
+                                CornerRadius="8" Padding="16,14"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                            <StackPanel Spacing="6">
+                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                            CornerRadius="4" Width="28" Height="28">
+                                        <FontIcon Glyph="&#xE8A5;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <TextBlock Text="Document Hub &amp; Presets" FontWeight="SemiBold" FontSize="14" />
+                                </StackPanel>
+                                <TextBlock Text="1-click photo sizing under 50KB, signature cropping under 20KB, and auto-organized customer document folders."
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           TextWrapping="Wrap" LineHeight="18" />
+                            </StackPanel>
+                        </Border>
 
-                            <!-- Request Feature -->
-                            <Button HorizontalAlignment="Stretch"
-                                    Command="{x:Bind ViewModel.RequestFeatureCommand}"
-                                    AutomationProperties.Name="Request Feature on GitHub"
-                                    AutomationProperties.AutomationId="BtnAboutRequestFeature">
-                                <Grid ColumnDefinitions="Auto,*,Auto" HorizontalAlignment="Stretch">
-                                    <FontIcon Grid.Column="0" Glyph="&#xE734;" FontSize="14" Margin="0,0,10,0" />
-                                    <TextBlock Grid.Column="1" loc:Loc.Key="Settings.About.RequestFeatureBtn"
-                                               Text="Request Feature" VerticalAlignment="Center" />
-                                    <FontIcon Grid.Column="2" Glyph="&#xE8A7;" FontSize="11"
-                                              Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                </Grid>
-                            </Button>
+                        <!-- Module 4: Customer Directory -->
+                        <Border Grid.Row="1" Grid.Column="1"
+                                Background="{ThemeResource LayerFillColorAltBrush}"
+                                CornerRadius="8" Padding="16,14"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                            <StackPanel Spacing="6">
+                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                            CornerRadius="4" Width="28" Height="28">
+                                        <FontIcon Glyph="&#xE77B;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <TextBlock Text="Customer Directory" FontWeight="SemiBold" FontSize="14" />
+                                </StackPanel>
+                                <TextBlock Text="Search customers instantly by phone number, name, or village. Look up past visit histories, previous bills, and stored files."
+                                           Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           TextWrapping="Wrap" LineHeight="18" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </StackPanel>
+            </Border>
 
-                            <!-- Community Discussions -->
-                            <Button HorizontalAlignment="Stretch"
-                                    Command="{x:Bind ViewModel.OpenCommunityCommand}"
-                                    AutomationProperties.Name="Join Community Discussions"
-                                    AutomationProperties.AutomationId="BtnAboutCommunity">
-                                <Grid ColumnDefinitions="Auto,*,Auto" HorizontalAlignment="Stretch">
-                                    <FontIcon Grid.Column="0" Glyph="&#xE8BD;" FontSize="14" Margin="0,0,10,0" />
-                                    <TextBlock Grid.Column="1" loc:Loc.Key="Settings.About.CommunityBtn"
-                                               Text="GitHub Discussions" VerticalAlignment="Center" />
-                                    <FontIcon Grid.Column="2" Glyph="&#xE8A7;" FontSize="11"
-                                              Foreground="{ThemeResource TextFillColorTertiaryBrush}" />
-                                </Grid>
-                            </Button>
+            <!-- ================================================================ -->
+            <!-- 4. HELP, UPDATES & FEEDBACK CARD                                 -->
+            <!-- ================================================================ -->
+            <Border CornerRadius="12" Padding="24"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1">
+                <StackPanel Spacing="18">
+                    <!-- Section Title -->
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                                CornerRadius="6" Width="34" Height="34"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                            <FontIcon Glyph="&#xE897;" FontSize="15"
+                                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Spacing="1">
+                            <TextBlock loc:Loc.Key="Settings.About.FeedbackTitle"
+                                       Text="Help, Updates &amp; Support"
+                                       FontWeight="SemiBold"
+                                       Style="{StaticResource SubtitleTextBlockStyle}" />
+                            <TextBlock loc:Loc.Key="Settings.About.FeedbackDesc"
+                                       Text="Check for new versions, report an issue, or ask a question in the community"
+                                       Style="{StaticResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
                     </StackPanel>
-                </Border>
-            </Grid>
+
+                    <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                    <!-- 4 Spacious Action Buttons in 2 Columns -->
+                    <Grid RowSpacing="10" ColumnSpacing="16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Check for Updates -->
+                        <Button Grid.Row="0" Grid.Column="0"
+                                HorizontalAlignment="Stretch"
+                                Padding="14,12"
+                                Command="{x:Bind ViewModel.OpenGitHubCommand}"
+                                AutomationProperties.Name="Check for Updates on GitHub"
+                                AutomationProperties.AutomationId="BtnAboutCheckUpdates">
+                            <Grid ColumnDefinitions="Auto,*,Auto" HorizontalAlignment="Stretch">
+                                <FontIcon Grid.Column="0" Glyph="&#xE895;" FontSize="14" Margin="0,0,12,0"
+                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock Text="Check for Updates" FontWeight="SemiBold" FontSize="13" />
+                                    <TextBlock Text="View releases and latest features on GitHub"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                                <FontIcon Grid.Column="2" Glyph="&#xE8A7;" FontSize="11"
+                                          Foreground="{ThemeResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" />
+                            </Grid>
+                        </Button>
+
+                        <!-- Report Bug -->
+                        <Button Grid.Row="0" Grid.Column="1"
+                                HorizontalAlignment="Stretch"
+                                Padding="14,12"
+                                Command="{x:Bind ViewModel.ReportBugCommand}"
+                                AutomationProperties.Name="Report a Problem"
+                                AutomationProperties.AutomationId="BtnAboutReportBug">
+                            <Grid ColumnDefinitions="Auto,*,Auto" HorizontalAlignment="Stretch">
+                                <FontIcon Grid.Column="0" Glyph="&#xEBE8;" FontSize="14" Margin="0,0,12,0"
+                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock loc:Loc.Key="Settings.About.ReportBugBtn" Text="Report a Problem" FontWeight="SemiBold" FontSize="13" />
+                                    <TextBlock Text="Facing an error or printing glitch? Let us know"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                                <FontIcon Grid.Column="2" Glyph="&#xE8A7;" FontSize="11"
+                                          Foreground="{ThemeResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" />
+                            </Grid>
+                        </Button>
+
+                        <!-- Suggest Feature -->
+                        <Button Grid.Row="1" Grid.Column="0"
+                                HorizontalAlignment="Stretch"
+                                Padding="14,12"
+                                Command="{x:Bind ViewModel.RequestFeatureCommand}"
+                                AutomationProperties.Name="Suggest a Feature"
+                                AutomationProperties.AutomationId="BtnAboutRequestFeature">
+                            <Grid ColumnDefinitions="Auto,*,Auto" HorizontalAlignment="Stretch">
+                                <FontIcon Grid.Column="0" Glyph="&#xE734;" FontSize="14" Margin="0,0,12,0"
+                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock loc:Loc.Key="Settings.About.RequestFeatureBtn" Text="Suggest an Idea" FontWeight="SemiBold" FontSize="13" />
+                                    <TextBlock Text="Request a feature to improve your counter workflow"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                                <FontIcon Grid.Column="2" Glyph="&#xE8A7;" FontSize="11"
+                                          Foreground="{ThemeResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" />
+                            </Grid>
+                        </Button>
+
+                        <!-- Community Discussions -->
+                        <Button Grid.Row="1" Grid.Column="1"
+                                HorizontalAlignment="Stretch"
+                                Padding="14,12"
+                                Command="{x:Bind ViewModel.OpenCommunityCommand}"
+                                AutomationProperties.Name="Ask in Community"
+                                AutomationProperties.AutomationId="BtnAboutCommunity">
+                            <Grid ColumnDefinitions="Auto,*,Auto" HorizontalAlignment="Stretch">
+                                <FontIcon Grid.Column="0" Glyph="&#xE8BD;" FontSize="14" Margin="0,0,12,0"
+                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                    <TextBlock loc:Loc.Key="Settings.About.CommunityBtn" Text="Community Discussions" FontWeight="SemiBold" FontSize="13" />
+                                    <TextBlock Text="Connect and exchange tips with other shop owners"
+                                               Style="{StaticResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                                <FontIcon Grid.Column="2" Glyph="&#xE8A7;" FontSize="11"
+                                          Foreground="{ThemeResource TextFillColorTertiaryBrush}" VerticalAlignment="Center" />
+                            </Grid>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </Border>
 
             <!-- ================================================================ -->
-            <!-- DANGER ZONE CARD: SYSTEM MAINTENANCE & DATA RESET                -->
+            <!-- 5. SYSTEM MAINTENANCE & DATA MANAGEMENT (DISCREET BOTTOM SECTION)-->
             <!-- ================================================================ -->
-            <Border CornerRadius="12" Padding="20"
+            <Border CornerRadius="12" Padding="24"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1">
                 <StackPanel Spacing="16">
+                    <!-- Section Title -->
                     <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                        <Border Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
-                                CornerRadius="6" Width="32" Height="32"
+                        <Border Background="{ThemeResource LayerFillColorAltBrush}"
+                                CornerRadius="6" Width="34" Height="34"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                            <FontIcon Glyph="&#xE7BA;" FontSize="15"
-                                      Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                            <FontIcon Glyph="&#xE90F;" FontSize="15"
+                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Spacing="1">
                             <TextBlock Text="System Maintenance &amp; Reset"
                                        FontWeight="SemiBold"
                                        Style="{StaticResource SubtitleTextBlockStyle}" />
-                            <TextBlock Text="Reset configuration preferences or erase local data"
+                            <TextBlock Text="Reset configuration preferences or erase local data from this PC"
                                        Style="{StaticResource CaptionTextBlockStyle}"
                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
@@ -287,21 +522,23 @@
                     <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                     <!-- Row 1: Restore Defaults -->
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="3">
                             <TextBlock loc:Loc.Key="Settings.About.ResetTitle"
                                        Text="Restore Default Settings"
                                        FontWeight="SemiBold" FontSize="13" />
                             <TextBlock loc:Loc.Key="Settings.About.ResetDesc"
-                                       Text="Restore all themes, rates, and configuration values to initial factory defaults."
+                                       Text="Restores themes, rates, and configuration to initial factory defaults. Your customer database, sessions, and files will not be affected."
                                        Style="{StaticResource CaptionTextBlockStyle}"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextWrapping="Wrap" />
                         </StackPanel>
                         <Button Grid.Column="1"
                                 Command="{x:Bind ViewModel.ResetDefaultsCommand}"
                                 AutomationProperties.Name="Restore Default Settings"
                                 AutomationProperties.AutomationId="BtnAboutRestoreDefaults"
-                                VerticalAlignment="Center">
+                                VerticalAlignment="Center"
+                                Padding="14,8">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE72C;" FontSize="12" />
                                 <TextBlock loc:Loc.Key="Settings.About.ResetBtn" Text="Restore Defaults" />
@@ -312,20 +549,22 @@
                     <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                     <!-- Row 2: Erase All Data -->
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="3">
                             <TextBlock Text="Erase All Application Data"
                                        FontWeight="SemiBold" FontSize="13"
                                        Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
-                            <TextBlock Text="Permanently deletes all customer sessions, documents, payments, and SQLite records from this PC."
+                            <TextBlock Text="Permanently deletes all customer records, sessions, documents, and payments from this PC. Requires typing RESET to confirm."
                                        Style="{StaticResource CaptionTextBlockStyle}"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextWrapping="Wrap" />
                         </StackPanel>
                         <Button Grid.Column="1"
                                 Command="{x:Bind ViewModel.ResetAppDataCommand}"
                                 AutomationProperties.Name="Erase All Application Data"
                                 AutomationProperties.AutomationId="BtnAboutResetAllData"
-                                VerticalAlignment="Center">
+                                VerticalAlignment="Center"
+                                Padding="14,8">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE74D;" FontSize="12"
                                           Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
@@ -340,10 +579,11 @@
             <!-- ================================================================ -->
             <!-- FOOTER NOTICE                                                    -->
             <!-- ================================================================ -->
-            <TextBlock Text="© 2026 ciizerr · SevaDesk is free and open-source software under the MIT License."
+            <TextBlock Text="SevaDesk · Built for cyber cafes and digital service centers · Free and open-source software under the MIT License."
                        Style="{StaticResource CaptionTextBlockStyle}"
                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                        HorizontalAlignment="Center"
+                       TextAlignment="Center"
                        Margin="0,8,0,0" />
 
         </StackPanel>

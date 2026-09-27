@@ -9,60 +9,60 @@
     xmlns:loc="using:SevaDesk_App.Services"
     xmlns:vm="using:SevaDesk_App.ViewModels.Pages"
     xmlns:ctk="using:CommunityToolkit.WinUI.Controls"
+    IsTabStop="True"
     mc:Ignorable="d">
 
-    <Grid RowDefinitions="Auto,Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*"
+          Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+          PointerPressed="Background_PointerPressed">
 
         <!-- ======================================================== -->
-        <!-- TOP HEADER                                                -->
+        <!-- TOP HEADER: TITLE & SUBTLE AUTO-SAVE STATUS              -->
         <!-- ======================================================== -->
-        <Grid Grid.Row="0" Padding="24,20,24,12" ColumnDefinitions="*,Auto">
+        <Grid Grid.Row="0" Padding="28,20,28,12" ColumnDefinitions="*,Auto">
             <StackPanel Grid.Column="0" Spacing="4">
                 <TextBlock loc:Loc.Key="Settings.Title" Text="Settings"
                            Style="{StaticResource TitleTextBlockStyle}" FontWeight="Bold" />
                 <TextBlock loc:Loc.Key="Settings.Subtitle"
-                           Text="Personalization, cyber café branding, printer configuration, and system information"
+                           Text="Manage your shop details, app appearance, and local storage safety"
                            Style="{StaticResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
 
-            <!-- Save Changes button — visible only when there are unsaved changes -->
-            <Button Grid.Column="1"
-                    x:Name="BtnSaveChanges"
-                    VerticalAlignment="Center"
-                    Style="{StaticResource AccentButtonStyle}"
-                    Click="SaveChanges_Click"
-                    Visibility="{x:Bind local:SettingsPage.BoolToVisibility(ViewModel.HasUnsavedChanges), Mode=OneWay}">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <FontIcon Glyph="&#xE74E;" FontSize="14" />
-                    <TextBlock Text="Save Changes" />
+            <!-- Subtle Auto-Save Indicator -->
+            <Border Grid.Column="1"
+                    Background="{ThemeResource LayerFillColorAltBrush}"
+                    CornerRadius="6" Padding="12,6"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                    VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <FontIcon Glyph="&#xE73E;" FontSize="12"
+                              Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                    <TextBlock Text="{x:Bind ViewModel.SaveStatusText, Mode=OneWay}"
+                               FontSize="12" FontWeight="Medium"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
-            </Button>
+            </Border>
         </Grid>
 
         <!-- ======================================================== -->
-        <!-- SEGMENTED TAB NAVIGATION (with icons)                    -->
+        <!-- 3 SIMPLE TABS: SHOP PROFILE, APPEARANCE, STORAGE         -->
         <!-- ======================================================== -->
         <Border Grid.Row="1" BorderThickness="0,0,0,1"
                 BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
-                Padding="24,0,24,8">
+                Padding="28,0,28,8">
             <SelectorBar x:Name="TabSelector" SelectionChanged="TabSelector_SelectionChanged">
+                <SelectorBarItem x:Name="TabProfile" loc:Loc.Key="Settings.Tab.Profile" Text="Shop Profile">
+                    <SelectorBarItem.Icon>
+                        <FontIcon Glyph="&#xE7EE;" />
+                    </SelectorBarItem.Icon>
+                </SelectorBarItem>
                 <SelectorBarItem x:Name="TabAppearance" loc:Loc.Key="Settings.Tab.Appearance" Text="Appearance">
                     <SelectorBarItem.Icon>
                         <FontIcon Glyph="&#xE771;" />
                     </SelectorBarItem.Icon>
                 </SelectorBarItem>
-                <SelectorBarItem x:Name="TabProfile" loc:Loc.Key="Settings.Tab.Profile" Text="Café Profile">
-                    <SelectorBarItem.Icon>
-                        <FontIcon Glyph="&#xE7EE;" />
-                    </SelectorBarItem.Icon>
-                </SelectorBarItem>
-                <SelectorBarItem x:Name="TabHardware" loc:Loc.Key="Settings.Tab.Hardware" Text="Hardware &amp; Rates">
-                    <SelectorBarItem.Icon>
-                        <FontIcon Glyph="&#xE9A1;" />
-                    </SelectorBarItem.Icon>
-                </SelectorBarItem>
-                <SelectorBarItem x:Name="TabStorage" loc:Loc.Key="Settings.Tab.Storage" Text="Storage &amp; Automation">
+                <SelectorBarItem x:Name="TabStorage" loc:Loc.Key="Settings.Tab.Storage" Text="Storage">
                     <SelectorBarItem.Icon>
                         <FontIcon Glyph="&#xE8B7;" />
                     </SelectorBarItem.Icon>
@@ -73,16 +73,141 @@
         <!-- ======================================================== -->
         <!-- MAIN SCROLLABLE CONTENT                                  -->
         <!-- ======================================================== -->
-        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-            <StackPanel Spacing="16" Padding="24,16,24,32" MaxWidth="1040" HorizontalAlignment="Left">
+        <ScrollViewer Grid.Row="2"
+                      VerticalScrollBarVisibility="Auto"
+                      Background="Transparent"
+                      PointerPressed="Background_PointerPressed">
+            <StackPanel Spacing="16" Padding="28,18,28,48" MaxWidth="1040" HorizontalAlignment="Left">
+
+                <!-- ======================================================== -->
+                <!-- 1. SHOP PROFILE TAB (DEFAULT ACTIVE)                     -->
+                <!-- ======================================================== -->
+                <StackPanel x:Name="PanelProfile" Spacing="6">
+                    <TextBlock loc:Loc.Key="Settings.Cafe.Header"
+                               Text="Shop &amp; Billing Details"
+                               Style="{StaticResource SubtitleTextBlockStyle}"
+                               FontSize="14" FontWeight="SemiBold"
+                               Margin="0,0,0,4" />
+
+                    <!-- Shop Name -->
+                    <ctk:SettingsCard
+                        Header="Shop Name"
+                        Description="Your cyber café or CSC center name printed on bills and receipts">
+                        <ctk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE7EE;" />
+                        </ctk:SettingsCard.HeaderIcon>
+                        <TextBox Width="340"
+                                 Text="{x:Bind ViewModel.ShopName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 LostFocus="Input_LostFocus" />
+                    </ctk:SettingsCard>
+
+                    <!-- Operator Name -->
+                    <ctk:SettingsCard
+                        Header="Operator / Owner Name"
+                        Description="Primary cashier or center operator name">
+                        <ctk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE77B;" />
+                        </ctk:SettingsCard.HeaderIcon>
+                        <TextBox Width="340"
+                                 Text="{x:Bind ViewModel.OperatorName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 LostFocus="Input_LostFocus" />
+                    </ctk:SettingsCard>
+
+                    <!-- CSC ID -->
+                    <ctk:SettingsCard
+                        Header="CSC Center ID / Shop Code"
+                        Description="Official registration ID or center reference code (optional)">
+                        <ctk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE8EC;" />
+                        </ctk:SettingsCard.HeaderIcon>
+                        <TextBox Width="340" FontFamily="Consolas"
+                                 Text="{x:Bind ViewModel.CscVleId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 LostFocus="Input_LostFocus" />
+                    </ctk:SettingsCard>
+
+                    <!-- WhatsApp Contact -->
+                    <ctk:SettingsCard
+                        Header="WhatsApp / Support Phone Number"
+                        Description="Customer support number shown on invoices and receipts">
+                        <ctk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE717;" />
+                        </ctk:SettingsCard.HeaderIcon>
+                        <TextBox Width="340"
+                                 Text="{x:Bind ViewModel.ContactNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 LostFocus="Input_LostFocus" />
+                    </ctk:SettingsCard>
+
+                    <!-- Shop Address -->
+                    <ctk:SettingsCard
+                        Header="Shop Address"
+                        Description="Location address shown on receipts and customer invoices">
+                        <ctk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE707;" />
+                        </ctk:SettingsCard.HeaderIcon>
+                        <TextBox Width="340"
+                                 Text="{x:Bind ViewModel.ShopAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 LostFocus="Input_LostFocus" />
+                    </ctk:SettingsCard>
+
+                    <!-- Section: UPI Payments -->
+                    <TextBlock loc:Loc.Key="Settings.Cafe.UpiHeader"
+                               Text="Digital UPI Payments"
+                               Style="{StaticResource SubtitleTextBlockStyle}"
+                               FontSize="14" FontWeight="SemiBold"
+                               Margin="0,14,0,4" />
+
+                    <!-- Shop UPI ID -->
+                    <ctk:SettingsCard
+                        Header="Shop UPI ID (VPA)"
+                        Description="Payment destination for customer UPI QR codes (e.g. yourshop@upi)">
+                        <ctk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE8C7;" />
+                        </ctk:SettingsCard.HeaderIcon>
+                        <TextBox Width="340" FontFamily="Consolas"
+                                 Text="{x:Bind ViewModel.ShopUpiVpa, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 LostFocus="Input_LostFocus" />
+                    </ctk:SettingsCard>
+
+                    <!-- Payee Display Name -->
+                    <ctk:SettingsCard
+                        Header="UPI Payee Name"
+                        Description="Business or account name shown inside customer UPI apps when scanning">
+                        <ctk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE779;" />
+                        </ctk:SettingsCard.HeaderIcon>
+                        <TextBox Width="340"
+                                 Text="{x:Bind ViewModel.PayeeName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 LostFocus="Input_LostFocus" />
+                    </ctk:SettingsCard>
+
+                    <!-- Section: Welcome Setup & Onboarding -->
+                    <TextBlock Text="Welcome Setup &amp; Onboarding"
+                               Style="{StaticResource SubtitleTextBlockStyle}"
+                               FontSize="14" FontWeight="SemiBold"
+                               Margin="0,14,0,4" />
+
+                    <ctk:SettingsCard
+                        Header="Replay Welcome Setup"
+                        Description="Run the initial first-time onboarding wizard again anytime">
+                        <ctk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE7EE;" />
+                        </ctk:SettingsCard.HeaderIcon>
+                        <Button Click="ReplayOnboarding_Click">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon Glyph="&#xE768;" FontSize="12" />
+                                <TextBlock loc:Loc.Key="Settings.Shop.ReplaySetupBtn" Text="Launch Setup Wizard" />
+                            </StackPanel>
+                        </Button>
+                    </ctk:SettingsCard>
+                </StackPanel>
 
 
                 <!-- ======================================================== -->
-                <!-- 1. APPEARANCE TAB                                        -->
+                <!-- 2. APPEARANCE TAB                                        -->
                 <!-- ======================================================== -->
-                <StackPanel x:Name="PanelAppearance" Spacing="4">
+                <StackPanel x:Name="PanelAppearance" Spacing="6" Visibility="Collapsed">
                     <TextBlock loc:Loc.Key="Settings.Appearance.ThemeGroup"
-                               Text="Application Theme"
+                               Text="Application Theme &amp; Window"
                                Style="{StaticResource SubtitleTextBlockStyle}"
                                FontSize="14" FontWeight="SemiBold"
                                Margin="0,0,0,4" />
@@ -94,7 +219,7 @@
                         <ctk:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE793;" />
                         </ctk:SettingsCard.HeaderIcon>
-                        <ComboBox Width="180"
+                        <ComboBox Width="200"
                                   SelectedIndex="{x:Bind ViewModel.SelectedThemeIndex, Mode=TwoWay}">
                             <ComboBoxItem loc:Loc.Key="Settings.Appearance.ThemeSystem" Content="Windows Default" />
                             <ComboBoxItem loc:Loc.Key="Settings.Appearance.ThemeLight" Content="Light" />
@@ -104,8 +229,8 @@
 
                     <!-- Mica Backdrop -->
                     <ctk:SettingsCard
-                        Header="Windows 11 Mica Backdrop"
-                        Description="Translucent window backdrop reflecting your desktop wallpaper">
+                        Header="Windows 11 Mica Effect"
+                        Description="Translucent window background reflecting your desktop wallpaper">
                         <ctk:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE81E;" />
                         </ctk:SettingsCard.HeaderIcon>
@@ -115,29 +240,30 @@
 
                     <!-- Window Close Action -->
                     <ctk:SettingsCard
-                        Header="Window Close Action"
-                        Description="Choose whether clicking 'X' minimizes to the system tray or exits the app">
+                        Header="When Closing the Window"
+                        Description="Choose what happens when clicking the 'X' button">
                         <ctk:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE8BB;" />
                         </ctk:SettingsCard.HeaderIcon>
-                        <ComboBox Width="180"
+                        <ComboBox Width="200"
                                   SelectedIndex="{x:Bind ViewModel.SelectedCloseBehaviorIndex, Mode=TwoWay}">
                             <ComboBoxItem loc:Loc.Key="Settings.General.ClosePrompt" Content="Always Ask" />
-                            <ComboBoxItem loc:Loc.Key="Settings.General.CloseMinimize" Content="Minimize to Tray" />
+                            <ComboBoxItem loc:Loc.Key="Settings.General.CloseMinimize" Content="Minimize to System Tray" />
                             <ComboBoxItem loc:Loc.Key="Settings.General.CloseExit" Content="Exit Application" />
                         </ComboBox>
                     </ctk:SettingsCard>
 
+                    <!-- Section: Language -->
                     <TextBlock loc:Loc.Key="Settings.Appearance.LanguageGroup"
-                               Text="Language &amp; Regional Preferences"
+                               Text="Language &amp; Region"
                                Style="{StaticResource SubtitleTextBlockStyle}"
                                FontSize="14" FontWeight="SemiBold"
-                               Margin="0,12,0,4" />
+                               Margin="0,14,0,4" />
 
-                    <!-- Language -->
+                    <!-- Language Selector -->
                     <ctk:SettingsCard
                         Header="Language / भाषा"
-                        Description="Select your application display language or sync new translations from GitHub">
+                        Description="Choose your application display language">
                         <ctk:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE774;" />
                         </ctk:SettingsCard.HeaderIcon>
@@ -148,7 +274,7 @@
                                       DisplayMemberPath="DisplayName" />
                             <Button Click="CheckLanguageUpdates_Click"
                                     IsEnabled="{x:Bind local:SettingsPage.Not(ViewModel.IsCheckingLanguageUpdates), Mode=OneWay}"
-                                    ToolTipService.ToolTip="Check GitHub repository for new language translations">
+                                    ToolTipService.ToolTip="Check for latest translations">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <FontIcon Glyph="&#xE895;" FontSize="13" />
                                     <TextBlock loc:Loc.Key="Settings.Appearance.CheckUpdatesBtn" Text="Sync Languages" />
@@ -160,145 +286,19 @@
 
 
                 <!-- ======================================================== -->
-                <!-- 2. CAFÉ PROFILE TAB                                      -->
+                <!-- 3. STORAGE & AUTOMATION TAB                              -->
                 <!-- ======================================================== -->
-                <StackPanel x:Name="PanelProfile" Spacing="4" Visibility="Collapsed">
-                    <TextBlock loc:Loc.Key="Settings.Cafe.Header"
-                               Text="Center &amp; Operator Details"
-                               Style="{StaticResource SubtitleTextBlockStyle}"
-                               FontSize="14" FontWeight="SemiBold"
-                               Margin="0,0,0,4" />
-
-                    <ctk:SettingsCard
-                        Header="Cyber Café / CSC Center Name"
-                        Description="Printed on customer receipts, invoices, and payment screens">
-                        <ctk:SettingsCard.HeaderIcon>
-                            <FontIcon Glyph="&#xE7EE;" />
-                        </ctk:SettingsCard.HeaderIcon>
-                        <TextBox Width="320"
-                                 Text="{x:Bind ViewModel.ShopName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    </ctk:SettingsCard>
-
-                    <ctk:SettingsCard
-                        Header="VLE / Operator Name"
-                        Description="Primary cashier &amp; system operator name">
-                        <ctk:SettingsCard.HeaderIcon>
-                            <FontIcon Glyph="&#xE77B;" />
-                        </ctk:SettingsCard.HeaderIcon>
-                        <TextBox Width="320"
-                                 Text="{x:Bind ViewModel.OperatorName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    </ctk:SettingsCard>
-
-                    <ctk:SettingsCard
-                        Header="CSC VLE ID / Shop Code"
-                        Description="Official registration ID for CSC or cyber café center">
-                        <ctk:SettingsCard.HeaderIcon>
-                            <FontIcon Glyph="&#xE8EC;" />
-                        </ctk:SettingsCard.HeaderIcon>
-                        <TextBox Width="320" FontFamily="Consolas"
-                                 Text="{x:Bind ViewModel.CscVleId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    </ctk:SettingsCard>
-
-                    <ctk:SettingsCard
-                        Header="WhatsApp / Support Phone Number"
-                        Description="Customer support phone displayed on bills">
-                        <ctk:SettingsCard.HeaderIcon>
-                            <FontIcon Glyph="&#xE717;" />
-                        </ctk:SettingsCard.HeaderIcon>
-                        <TextBox Width="320"
-                                 Text="{x:Bind ViewModel.ContactNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    </ctk:SettingsCard>
-
-                    <ctk:SettingsCard
-                        Header="Shop Physical Address"
-                        Description="Location address shown on receipts &amp; certificate printouts">
-                        <ctk:SettingsCard.HeaderIcon>
-                            <FontIcon Glyph="&#xE707;" />
-                        </ctk:SettingsCard.HeaderIcon>
-                        <TextBox Width="320"
-                                 Text="{x:Bind ViewModel.ShopAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    </ctk:SettingsCard>
-
-                    <TextBlock loc:Loc.Key="Settings.Cafe.UpiHeader"
-                               Text="Digital UPI Payments"
-                               Style="{StaticResource SubtitleTextBlockStyle}"
-                               FontSize="14" FontWeight="SemiBold"
-                               Margin="0,12,0,4" />
-
-                    <ctk:SettingsCard
-                        Header="Shop UPI VPA (UPI ID)"
-                        Description="Destination address for dynamic UPI QR code generator (e.g. yourshop@upi)">
-                        <ctk:SettingsCard.HeaderIcon>
-                            <FontIcon Glyph="&#xE8C7;" />
-                        </ctk:SettingsCard.HeaderIcon>
-                        <TextBox Width="320" FontFamily="Consolas"
-                                 Text="{x:Bind ViewModel.ShopUpiVpa, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    </ctk:SettingsCard>
-
-                    <ctk:SettingsCard
-                        Header="UPI Payee Display Name"
-                        Description="Account holder / business name shown inside customer UPI apps">
-                        <ctk:SettingsCard.HeaderIcon>
-                            <FontIcon Glyph="&#xE779;" />
-                        </ctk:SettingsCard.HeaderIcon>
-                        <TextBox Width="320"
-                                 Text="{x:Bind ViewModel.PayeeName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    </ctk:SettingsCard>
-                </StackPanel>
-
-
-                <!-- ======================================================== -->
-                <!-- 3. HARDWARE & RATES TAB                                  -->
-                <!-- ======================================================== -->
-                <StackPanel x:Name="PanelHardware" Spacing="4" Visibility="Collapsed">
-                    <TextBlock loc:Loc.Key="Settings.Hardware.PrintersHeader"
-                               Text="Connected Printers"
-                               Style="{StaticResource SubtitleTextBlockStyle}"
-                               FontSize="14" FontWeight="SemiBold"
-                               Margin="0,0,0,4" />
-
-                    <ctk:SettingsCard
-                        Header="Counter B&amp;W Laser Printer"
-                        Description="Default hardware output for document and form printing">
-                        <ctk:SettingsCard.HeaderIcon>
-                            <FontIcon Glyph="&#xE749;" />
-                        </ctk:SettingsCard.HeaderIcon>
-                        <ComboBox Width="300" IsEditable="True"
-                                  ItemsSource="{x:Bind ViewModel.InstalledPrinters}"
-                                  Text="{x:Bind ViewModel.DefaultBwPrinter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    </ctk:SettingsCard>
-
-                    <ctk:SettingsCard
-                        Header="Photo &amp; Color Inkjet Printer"
-                        Description="High resolution printer for photo, certificate, and color work">
-                        <ctk:SettingsCard.HeaderIcon>
-                            <FontIcon Glyph="&#xE749;" />
-                        </ctk:SettingsCard.HeaderIcon>
-                        <ComboBox Width="300" IsEditable="True"
-                                  ItemsSource="{x:Bind ViewModel.InstalledPrinters}"
-                                  Text="{x:Bind ViewModel.DefaultColorPrinter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                    </ctk:SettingsCard>
-                </StackPanel>
-
-
-                <!-- ======================================================== -->
-                <!-- 4. STORAGE & AUTOMATION TAB                              -->
-                <!-- ======================================================== -->
-                <StackPanel x:Name="PanelStorage" Spacing="4" Visibility="Collapsed">
+                <StackPanel x:Name="PanelStorage" Spacing="6" Visibility="Collapsed">
                     <TextBlock loc:Loc.Key="Settings.Storage.Header"
-                               Text="Working Folders &amp; Ingestion"
+                               Text="Customer Files &amp; Storage Locations"
                                Style="{StaticResource SubtitleTextBlockStyle}"
                                FontSize="14" FontWeight="SemiBold"
                                Margin="0,0,0,4" />
 
                     <!-- Working Root Directory -->
                     <ctk:SettingsCard
-                        Header="Desktop Working Root Directory">
-                        <ctk:SettingsCard.Description>
-                            <TextBlock Text="{x:Bind ViewModel.WorkingRootPath, Mode=OneWay}"
-                                       FontFamily="Consolas" FontSize="11"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        </ctk:SettingsCard.Description>
+                        Header="Customer Working Folder"
+                        Description="Where customer folders, photos, and scanned documents are stored">
                         <ctk:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xED25;" />
                         </ctk:SettingsCard.HeaderIcon>
@@ -318,14 +318,15 @@
                         </StackPanel>
                     </ctk:SettingsCard>
 
+                    <!-- Working Root Path Caption -->
+                    <TextBlock Text="{x:Bind ViewModel.WorkingRootPath, Mode=OneWay}"
+                               FontFamily="Consolas" FontSize="11" Margin="44,-2,0,4"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+
                     <!-- Backup Database Folder -->
                     <ctk:SettingsCard
-                        Header="Customer Database Backup (Archive) Directory">
-                        <ctk:SettingsCard.Description>
-                            <TextBlock Text="{x:Bind ViewModel.BackupRootPath, Mode=OneWay}"
-                                       FontFamily="Consolas" FontSize="11"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        </ctk:SettingsCard.Description>
+                        Header="Backup Archive Folder"
+                        Description="Where customer database backup archives are safely stored">
                         <ctk:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE792;" />
                         </ctk:SettingsCard.HeaderIcon>
@@ -338,32 +339,70 @@
                         </Button>
                     </ctk:SettingsCard>
 
-                    <!-- Auto-delete Working Folders after backup sync -->
+                    <!-- Backup Archive Path Caption -->
+                    <TextBlock Text="{x:Bind ViewModel.BackupRootPath, Mode=OneWay}"
+                               FontFamily="Consolas" FontSize="11" Margin="44,-2,0,4"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+
+                    <!-- Auto-delete Working Folders with Slider & Preset Chips -->
                     <ctk:SettingsCard
-                        Header="Auto-Delete Desktop Working Folders"
-                        Description="After a successful backup sync, delete the customer's Desktop working folder on next startup. Set 0 to delete immediately on next startup.">
+                        Header="Auto-Clean Desktop Customer Folders"
+                        Description="After customer files are backed up, automatically remove their Desktop working folder to keep your screen clean">
                         <ctk:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xE74D;" />
                         </ctk:SettingsCard.HeaderIcon>
-                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                            <NumberBox
-                                Value="{x:Bind ViewModel.WorkingFolderTtlHours, Mode=TwoWay}"
-                                Minimum="0"
-                                Maximum="720"
-                                SmallChange="1"
-                                LargeChange="24"
-                                SpinButtonPlacementMode="Inline"
-                                Width="140" />
-                            <TextBlock Text="hours after sync" VerticalAlignment="Center"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <StackPanel Width="420" Spacing="8" Margin="0,4,0,4">
+                            <!-- Live status display (zero toast spam while dragging) -->
+                            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                                <TextBlock Text="Clean timing:" Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                                <TextBlock Text="{x:Bind ViewModel.WorkingFolderTtlDisplay, Mode=OneWay}"
+                                           FontWeight="SemiBold" FontSize="13"
+                                           Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" VerticalAlignment="Center" />
+                            </StackPanel>
+
+                            <!-- Responsive Slider -->
+                            <Slider x:Name="SldTtlHours"
+                                    Minimum="0" Maximum="168"
+                                    StepFrequency="1"
+                                    Value="{x:Bind ViewModel.WorkingFolderTtlHours, Mode=TwoWay}"
+                                    ValueChanged="SldTtlHours_ValueChanged"
+                                    PointerCaptureLost="SldTtlHours_PointerCaptureLost"
+                                    PointerReleased="SldTtlHours_PointerReleased"
+                                    HorizontalAlignment="Stretch" />
+
+                            <!-- Preset Chips -->
+                            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+                                <Button Tag="0" Click="PresetHours_Click" Padding="8,4" FontSize="11"
+                                        ToolTipService.ToolTip="Clean immediately on next startup">
+                                    <TextBlock Text="Immediate" />
+                                </Button>
+                                <Button Tag="12" Click="PresetHours_Click" Padding="8,4" FontSize="11"
+                                        ToolTipService.ToolTip="12 Hours">
+                                    <TextBlock Text="12 Hours" />
+                                </Button>
+                                <Button Tag="24" Click="PresetHours_Click" Padding="8,4" FontSize="11"
+                                        ToolTipService.ToolTip="24 Hours (1 Day)">
+                                    <TextBlock Text="24 Hours" />
+                                </Button>
+                                <Button Tag="48" Click="PresetHours_Click" Padding="8,4" FontSize="11"
+                                        ToolTipService.ToolTip="48 Hours (2 Days)">
+                                    <TextBlock Text="2 Days" />
+                                </Button>
+                                <Button Tag="168" Click="PresetHours_Click" Padding="8,4" FontSize="11"
+                                        ToolTipService.ToolTip="168 Hours (7 Days)">
+                                    <TextBlock Text="7 Days" />
+                                </Button>
+                            </StackPanel>
                         </StackPanel>
                     </ctk:SettingsCard>
 
-                    <!-- Watched Ingestion Folders (Expander) -->
+                    <!-- Auto-Detect Incoming Files (Expander) -->
                     <ctk:SettingsExpander
                         Header="Auto-Detect Incoming Files"
-                        Description="Watch system and scanner folders to automatically route files to the active customer"
-                        IsExpanded="True">
+                        Description="Watch folders to automatically route downloaded or scanned files to the active customer"
+                        IsExpanded="True"
+                        Margin="0,4,0,0">
                         <ctk:SettingsExpander.HeaderIcon>
                             <FontIcon Glyph="&#xEC4F;" />
                         </ctk:SettingsExpander.HeaderIcon>
@@ -376,7 +415,7 @@
 
                         <ctk:SettingsExpander.Items>
                             <ctk:SettingsCard Header="Downloads"
-                                              Description="Watch the system Downloads folder for incoming files">
+                                              Description="Watch system Downloads folder for incoming files">
                                 <ctk:SettingsCard.HeaderIcon>
                                     <FontIcon Glyph="&#xE896;" />
                                 </ctk:SettingsCard.HeaderIcon>
@@ -384,7 +423,7 @@
                                               OnContent="" OffContent="" />
                             </ctk:SettingsCard>
                             <ctk:SettingsCard Header="Desktop"
-                                              Description="Watch the system Desktop folder for incoming files">
+                                              Description="Watch system Desktop folder for incoming files">
                                 <ctk:SettingsCard.HeaderIcon>
                                     <FontIcon Glyph="&#xE7F4;" />
                                 </ctk:SettingsCard.HeaderIcon>
@@ -392,7 +431,7 @@
                                               OnContent="" OffContent="" />
                             </ctk:SettingsCard>
                             <ctk:SettingsCard Header="Documents"
-                                              Description="Watch the system Documents folder for incoming files">
+                                              Description="Watch system Documents folder for incoming files">
                                 <ctk:SettingsCard.HeaderIcon>
                                     <FontIcon Glyph="&#xE8A5;" />
                                 </ctk:SettingsCard.HeaderIcon>
@@ -432,9 +471,9 @@
                     <!-- Floating Overlay Widget -->
                     <ctk:SettingsExpander
                         Header="Floating Incoming File HUD Widget"
-                        Description="Pop up an always-on-top overlay widget to 1-click move files when SevaDesk is minimized"
+                        Description="Always-on-top quick box to 1-click move files when SevaDesk is minimized"
                         IsExpanded="False"
-                        Margin="0,8,0,0">
+                        Margin="0,4,0,0">
                         <ctk:SettingsExpander.HeaderIcon>
                             <FontIcon Glyph="&#xE78B;" />
                         </ctk:SettingsExpander.HeaderIcon>
@@ -442,8 +481,8 @@
                                       OnContent="" OffContent="" />
                         <ctk:SettingsExpander.Items>
                             <ctk:SettingsCard
-                                Header="Overlay Screen Placement"
-                                Description="Choose which corner of the monitor the floating triage popup appears in">
+                                Header="Widget Screen Position"
+                                Description="Which corner of the monitor the floating popup appears in">
                                 <ctk:SettingsCard.HeaderIcon>
                                     <FontIcon Glyph="&#xE744;" />
                                 </ctk:SettingsCard.HeaderIcon>
@@ -458,47 +497,40 @@
                         </ctk:SettingsExpander.Items>
                     </ctk:SettingsExpander>
 
+                    <!-- Section: Database Safety -->
                     <TextBlock loc:Loc.Key="Settings.Storage.DbHeader"
                                Text="Database &amp; Data Safety"
                                Style="{StaticResource SubtitleTextBlockStyle}"
                                FontSize="14" FontWeight="SemiBold"
-                               Margin="0,12,0,4" />
+                               Margin="0,14,0,4" />
 
-                    <!-- Auto-Archive Sessions -->
+                    <!-- Database Backup & Restore -->
                     <ctk:SettingsCard
-                        Header="Auto-Archive Customer Sessions"
-                        Description="Automatically archive completed customer folders older than duration">
-                        <ctk:SettingsCard.HeaderIcon>
-                            <FontIcon Glyph="&#xF0E2;" />
-                        </ctk:SettingsCard.HeaderIcon>
-                        <ComboBox Width="180"
-                                  SelectedIndex="{x:Bind ViewModel.AutoArchiveDaysIndex, Mode=TwoWay}">
-                            <ComboBoxItem Content="After 7 days" />
-                            <ComboBoxItem Content="After 15 days" />
-                            <ComboBoxItem Content="After 30 days" />
-                            <ComboBoxItem Content="After 60 days" />
-                            <ComboBoxItem Content="Never" />
-                        </ComboBox>
-                    </ctk:SettingsCard>
-
-                    <!-- Database Backup -->
-                    <ctk:SettingsCard
-                        Header="SQLite Application Database">
-                        <ctk:SettingsCard.Description>
-                            <TextBlock Text="{x:Bind ViewModel.DatabasePath, Mode=OneWay}"
-                                       FontFamily="Consolas" FontSize="11"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        </ctk:SettingsCard.Description>
+                        Header="SQLite Customer Database"
+                        Description="Save a backup to a USB drive or folder, or restore records from a backup file">
                         <ctk:SettingsCard.HeaderIcon>
                             <FontIcon Glyph="&#xEDA3;" />
                         </ctk:SettingsCard.HeaderIcon>
-                        <Button Click="Backup_Click" Style="{StaticResource AccentButtonStyle}">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE792;" FontSize="14" />
-                                <TextBlock loc:Loc.Key="Settings.Storage.DbBackupBtn" Text="Backup Database Now" />
-                            </StackPanel>
-                        </Button>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Click="Backup_Click" Style="{StaticResource AccentButtonStyle}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE792;" FontSize="14" />
+                                    <TextBlock loc:Loc.Key="Settings.Storage.DbBackupBtn" Text="Backup Database..." />
+                                </StackPanel>
+                            </Button>
+                            <Button Click="Restore_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE777;" FontSize="14" />
+                                    <TextBlock loc:Loc.Key="Settings.Storage.DbRestoreBtn" Text="Restore Backup..." />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
                     </ctk:SettingsCard>
+
+                    <!-- Database Path Caption -->
+                    <TextBlock Text="{x:Bind ViewModel.DatabasePath, Mode=OneWay}"
+                               FontFamily="Consolas" FontSize="11" Margin="44,-2,0,0"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
                 </StackPanel>
 
             </StackPanel>

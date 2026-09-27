@@ -2,6 +2,7 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using SevaDesk.Core.Models;
@@ -150,6 +151,33 @@ public sealed partial class ResourcesPage : Page
             ViewModel.OpenDocument(item);
         }
     }
+
+    private void CatalogItem_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        ResourceItem? item = null;
+        if (sender is FrameworkElement fe)
+        {
+            item = fe.Tag as ResourceItem ?? fe.DataContext as ResourceItem;
+        }
+
+        if (item != null)
+        {
+            ViewModel.OpenDocument(item);
+        }
+    }
+
+    private void CatalogListView_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Enter)
+        {
+            if (ViewModel.SelectedResource != null)
+            {
+                ViewModel.OpenDocument(ViewModel.SelectedResource);
+                e.Handled = true;
+            }
+        }
+    }
+
 
     private void QuickPrint_Click(object sender, RoutedEventArgs e)
     {
