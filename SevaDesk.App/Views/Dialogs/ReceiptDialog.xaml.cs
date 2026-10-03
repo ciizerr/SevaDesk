@@ -615,11 +615,15 @@ public sealed partial class ReceiptDialog : ContentDialog
             }
 
             var appUri = new Uri($"whatsapp://send?phone={fullPhone}");
-            var launchedApp = await Windows.System.Launcher.LaunchUriAsync(appUri);
+            var webUri = new Uri($"https://web.whatsapp.com/send?phone={fullPhone}");
 
-            if (!launchedApp)
+            var supportStatus = await Windows.System.Launcher.QueryUriSupportAsync(appUri, Windows.System.LaunchQuerySupportType.Uri);
+            if (supportStatus == Windows.System.LaunchQuerySupportStatus.Available)
             {
-                var webUri = new Uri($"https://wa.me/{fullPhone}");
+                await Windows.System.Launcher.LaunchUriAsync(appUri);
+            }
+            else
+            {
                 await Windows.System.Launcher.LaunchUriAsync(webUri);
             }
 

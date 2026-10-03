@@ -159,29 +159,22 @@ public sealed partial class CustomersPage : Page
 
         try
         {
-            // 1. Try launching native desktop WhatsApp app first
             var appUri = new Uri($"whatsapp://send?phone={fullPhone}");
-            var launchedApp = await Windows.System.Launcher.LaunchUriAsync(appUri);
+            var webUri = new Uri($"https://web.whatsapp.com/send?phone={fullPhone}");
 
-            // 2. If native app didn't launch or isn't installed, fallback to WhatsApp Web
-            if (!launchedApp)
+            var supportStatus = await Windows.System.Launcher.QueryUriSupportAsync(appUri, Windows.System.LaunchQuerySupportType.Uri);
+            if (supportStatus == Windows.System.LaunchQuerySupportStatus.Available)
             {
-                var webUri = new Uri($"https://wa.me/{fullPhone}");
+                await Windows.System.Launcher.LaunchUriAsync(appUri);
+            }
+            else
+            {
                 await Windows.System.Launcher.LaunchUriAsync(webUri);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Fallback to web browser wa.me link
-            try
-            {
-                var webUri = new Uri($"https://wa.me/{fullPhone}");
-                await Windows.System.Launcher.LaunchUriAsync(webUri);
-            }
-            catch (Exception ex)
-            {
-                MainWindow.Instance?.ShowToast($"Could not launch WhatsApp: {ex.Message}", InfoBarSeverity.Error);
-            }
+            MainWindow.Instance?.ShowToast($"Could not launch WhatsApp: {ex.Message}", InfoBarSeverity.Error);
         }
     }
 

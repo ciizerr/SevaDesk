@@ -631,8 +631,7 @@ public partial class SettingsViewModel : StatusViewModel
         }
     }
 
-    [RelayCommand]
-    public void ResetDefaults()
+    public void ResetDefaultsInternal()
     {
         SelectedThemeIndex = 0;
         EnableMicaBackdrop = true;
@@ -654,5 +653,84 @@ public partial class SettingsViewModel : StatusViewModel
 
         SaveAllChanges();
         ShowSuccess("Defaults restored successfully.");
+    }
+
+    [RelayCommand]
+    public async Task ResetDefaultsAsync()
+    {
+        var confirm = await AppServices.Dialogs.ShowConfirmationAsync(
+            title: "Restore Default Settings",
+            content: "This will restore all application settings, rates, and theme preferences to initial defaults.\n\nYour customer database, sessions, and documents will not be affected.\n\nDo you want to proceed?",
+            primaryButtonText: "Restore Defaults",
+            secondaryButtonText: "Cancel");
+
+        if (confirm != ContentDialogResult.Primary) return;
+
+        ResetDefaultsInternal();
+    }
+
+    [RelayCommand]
+    public async Task ResetAppDataAsync()
+    {
+        var first = await AppServices.Dialogs.ShowConfirmationAsync(
+            title: "Reset All App Data",
+            content: "This will permanently delete ALL customer records, sessions, payments, documents, and settings stored in SevaDesk.\n\nThis action cannot be undone.",
+            primaryButtonText: "Continue",
+            secondaryButtonText: "Cancel");
+
+        if (first != ContentDialogResult.Primary) return;
+
+        var (result, typed) = await AppServices.Dialogs.ShowInputAsync(
+            title: "Confirm Reset",
+            content: "Type  RESET  in the box below to confirm you want to erase all data.",
+            placeholderText: "RESET",
+            primaryButtonText: "Erase Everything",
+            secondaryButtonText: "Cancel");
+
+        if (result != ContentDialogResult.Primary) return;
+        if (!string.Equals(typed?.Trim(), "RESET", StringComparison.Ordinal))
+        {
+            ShowWarning("Reset cancelled — confirmation text did not match.");
+            return;
+        }
+
+        try
+        {
+            AppServices.FileWatcher.StopWatchers();
+
+            var connStr = AppServices.Database.ConnectionString;
+            var dbPath = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(connStr).DataSource;
+
+            await Task.Delay(300);
+            try { Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); } catch { }
+
+            if (File.Exists(dbPath))
+                File.Delete(dbPath);
+
+            var backupDir = Path.Combine(Path.GetDirectoryName(dbPath) ?? string.Empty, "Backups");
+            if (Directory.Exists(backupDir))
+                Directory.Delete(backupDir, recursive: true);
+
+            var appDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SevaDesk");
+            var settingsFile = Path.Combine(appDataDir, "settings.json");
+            if (File.Exists(settingsFile)) File.Delete(settingsFile);
+
+            try
+            {
+                Microsoft.Windows.AppLifecycle.AppInstance.Restart(string.Empty);
+            }
+            catch
+            {
+                var exe = Environment.ProcessPath;
+                if (!string.IsNullOrWhiteSpace(exe))
+                    Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true });
+
+                Microsoft.UI.Xaml.Application.Current.Exit();
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Reset failed: {ex.Message}");
+        }
     }
 }

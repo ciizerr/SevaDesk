@@ -524,6 +524,35 @@
                     <TextBlock Text="{x:Bind ViewModel.DatabasePath, Mode=OneWay}"
                                FontFamily="Consolas" FontSize="11" Margin="44,-2,0,0"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+
+                    <!-- Section: Danger Zone -->
+                    <TextBlock Text="Danger Zone"
+                               Style="{StaticResource SubtitleTextBlockStyle}"
+                               FontSize="14" FontWeight="SemiBold"
+                               Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                               Margin="0,14,0,4" />
+
+                    <ctk:SettingsCard
+                        Header="Restore Default Settings"
+                        Description="Reset rates, preferences, and theme settings to initial factory defaults">
+                        <ctk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE777;" />
+                        </ctk:SettingsCard.HeaderIcon>
+                        <Button Command="{x:Bind ViewModel.ResetDefaultsCommand}">
+                            <TextBlock Text="Restore Defaults" />
+                        </Button>
+                    </ctk:SettingsCard>
+
+                    <ctk:SettingsCard
+                        Header="Erase All Application Data"
+                        Description="Permanently delete all customers, sessions, payments, and documents">
+                        <ctk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE74D;" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                        </ctk:SettingsCard.HeaderIcon>
+                        <Button Command="{x:Bind ViewModel.ResetAppDataCommand}" Style="{StaticResource AccentButtonStyle}" Background="{ThemeResource SystemFillColorCriticalBrush}">
+                            <TextBlock Text="Erase Everything" />
+                        </Button>
+                    </ctk:SettingsCard>
                 </StackPanel>
 
             </StackPanel>

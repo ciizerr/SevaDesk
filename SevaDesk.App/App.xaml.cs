@@ -51,5 +51,7 @@ public partial class App : Application
         MainWindow = new MainWindow();
         _window = MainWindow;
         _window.Activate();
+
+        _ = Services.UpdateService.CheckForUpdatesAsync(silent: true);
     }
 }
