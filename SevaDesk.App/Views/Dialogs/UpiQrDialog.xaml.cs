@@ -18,8 +18,8 @@ public sealed partial class UpiQrDialog : ContentDialog
         InitializeComponent();
         this.EnableLightDismiss();
 
-        _vpa = string.IsNullOrWhiteSpace(vpa) ? "sevadesk.csc@upi" : vpa.Trim();
-        _payeeName = string.IsNullOrWhiteSpace(payeeName) ? "SevaDesk Cyber Center" : payeeName.Trim();
+        _vpa = string.IsNullOrWhiteSpace(vpa) ? "" : vpa.Trim();
+        _payeeName = string.IsNullOrWhiteSpace(payeeName) ? "My Shop" : payeeName.Trim();
         _amount = amount;
         _customerName = string.IsNullOrWhiteSpace(customerName) ? "Walk-in Customer" : customerName.Trim();
 
@@ -35,6 +35,12 @@ public sealed partial class UpiQrDialog : ContentDialog
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(_vpa))
+            {
+                TxtVpa.Text = "UPI Not Set";
+                return;
+            }
+            
             var note = _amount > 0 ? $"Bill for {_customerName}" : "Cyber Cafe Services";
             var payload = AppServices.QrCode.BuildUpiPayload(_vpa, _payeeName, _amount, note);
             var bitmap = AppServices.QrCode.GenerateQrBitmap(payload, pixelsPerModule: 10);

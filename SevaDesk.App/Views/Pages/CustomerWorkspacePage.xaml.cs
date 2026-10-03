@@ -316,6 +316,10 @@ public sealed partial class CustomerWorkspacePage : Page
                 {
                     XamlRoot = XamlRoot
                 };
+                dialog.PaymentSettled += async () =>
+                {
+                    await ViewModel.RefreshAsync();
+                };
                 await dialog.ShowAsync();
             }
             else if (item.SessionRow != null)

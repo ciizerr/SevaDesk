@@ -20,13 +20,25 @@ public enum CustomerFilterMode
     Frequent = 2
 }
 
+public enum CustomerInactivityFilter
+{
+    Any = 0,
+    OlderThan1Year = 1,
+    OlderThan2Years = 2,
+    OlderThan3Years = 3,
+    OlderThan4Years = 4,
+    OlderThan5Years = 5
+}
+
 public enum CustomerSortMode
 {
     NameAsc = 0,
     NameDesc = 1,
     Newest = 2,
-    MostVisits = 3,
-    RecentVisit = 4
+    Oldest = 3,
+    MostVisits = 4,
+    RecentVisit = 5,
+    OldestVisit = 6
 }
 
 public partial class CustomersViewModel : StatusViewModel
@@ -59,7 +71,18 @@ public partial class CustomersViewModel : StatusViewModel
     private CustomerFilterMode _selectedFilter = CustomerFilterMode.All;
 
     [ObservableProperty]
+    private CustomerInactivityFilter _selectedInactivity = CustomerInactivityFilter.Any;
+
+    [ObservableProperty]
     private CustomerSortMode _selectedSort = CustomerSortMode.NameAsc;
+
+    public void SetInactivityFilter(CustomerInactivityFilter filter)
+    {
+        if (SelectedInactivity == filter) return;
+        SelectedInactivity = filter;
+        CurrentPage = 1;
+        ApplyFilterAndPagination();
+    }
 
     // Pagination properties
     [ObservableProperty]
@@ -102,10 +125,51 @@ public partial class CustomersViewModel : StatusViewModel
         try
         {
             var list = (await AppServices.Customers.SearchAsync(SearchQuery)).ToList();
+
+            // Fast 1-query batch load of latest visit date and session count for all customers
+            var visitLookup = new Dictionary<string, (DateTime LatestDate, int Count)>();
+            try
+            {
+                using var connection = AppServices.Database.CreateConnection();
+                await connection.OpenAsync();
+                var stats = await connection.QueryAsync<(string CustomerId, string LatestDate, int SessionCount)>(
+                    @"SELECT customer_id AS CustomerId, MAX(started_at) AS LatestDate, COUNT(id) AS SessionCount 
+                      FROM sessions 
+                      WHERE customer_id IS NOT NULL 
+                      GROUP BY customer_id");
+
+                foreach (var s in stats)
+                {
+                    if (!string.IsNullOrWhiteSpace(s.CustomerId) &&
+                        DateTime.TryParse(s.LatestDate, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var dt))
+                    {
+                        visitLookup[s.CustomerId] = (dt.ToLocalTime(), s.SessionCount);
+                    }
+                }
+            }
+            catch { }
+
             _allMasterCustomers.Clear();
             foreach (var c in list)
             {
-                _allMasterCustomers.Add(new CustomerRowModel(c));
+                var row = new CustomerRowModel(c);
+                if (visitLookup.TryGetValue(c.Id, out var v))
+                {
+                    row.LastVisitDate = v.LatestDate;
+                    row.VisitCount = v.Count;
+                    var days = (DateTime.Now.Date - v.LatestDate.Date).TotalDays;
+                    if (days == 0) row.LastVisitText = "Today";
+                    else if (days == 1) row.LastVisitText = "Yesterday";
+                    else if (days < 7) row.LastVisitText = $"{(int)days}d ago";
+                    else row.LastVisitText = v.LatestDate.ToString("dd MMM yyyy");
+                }
+                else
+                {
+                    row.LastVisitDate = null;
+                    row.VisitCount = 0;
+                    row.LastVisitText = "No visits";
+                }
+                _allMasterCustomers.Add(row);
             }
 
             TotalCustomersCount = _allMasterCustomers.Count;
@@ -229,13 +293,37 @@ public partial class CustomersViewModel : StatusViewModel
             filtered = filtered.Where(r => r.VisitCount >= 2);
         }
 
+        // Inactivity Filter (Older than X years without visits)
+        if (SelectedInactivity != CustomerInactivityFilter.Any)
+        {
+            int years = SelectedInactivity switch
+            {
+                CustomerInactivityFilter.OlderThan1Year => 1,
+                CustomerInactivityFilter.OlderThan2Years => 2,
+                CustomerInactivityFilter.OlderThan3Years => 3,
+                CustomerInactivityFilter.OlderThan4Years => 4,
+                CustomerInactivityFilter.OlderThan5Years => 5,
+                _ => 0
+            };
+
+            if (years > 0)
+            {
+                var cutoff = DateTime.Now.AddYears(-years);
+                filtered = filtered.Where(r =>
+                    (r.LastVisitDate.HasValue && r.LastVisitDate.Value <= cutoff) ||
+                    (!r.LastVisitDate.HasValue && r.Customer.CreatedAt.ToLocalTime() <= cutoff));
+            }
+        }
+
         // 2. Sort
         filtered = SelectedSort switch
         {
             CustomerSortMode.NameDesc => filtered.OrderByDescending(r => r.Customer.Name, StringComparer.OrdinalIgnoreCase),
             CustomerSortMode.Newest => filtered.OrderByDescending(r => r.Customer.CreatedAt),
+            CustomerSortMode.Oldest => filtered.OrderBy(r => r.Customer.CreatedAt),
             CustomerSortMode.MostVisits => filtered.OrderByDescending(r => r.VisitCount).ThenBy(r => r.Customer.Name),
             CustomerSortMode.RecentVisit => filtered.OrderByDescending(r => r.LastVisitDate ?? DateTime.MinValue).ThenBy(r => r.Customer.Name),
+            CustomerSortMode.OldestVisit => filtered.OrderBy(r => r.LastVisitDate ?? r.Customer.CreatedAt.ToLocalTime()).ThenBy(r => r.Customer.Name),
             _ => filtered.OrderBy(r => r.Customer.Name, StringComparer.OrdinalIgnoreCase)
         };
 

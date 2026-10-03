@@ -25,6 +25,9 @@ public partial class CustomerRowModel : ObservableObject
     private string _lastVisitText = "—";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsInactive1Year))]
+    [NotifyPropertyChangedFor(nameof(InactivityYears))]
+    [NotifyPropertyChangedFor(nameof(InactivityBadgeText))]
     private DateTime? _lastVisitDate;
 
     [ObservableProperty]
@@ -38,6 +41,32 @@ public partial class CustomerRowModel : ObservableObject
     public bool HasMaskedId => !string.IsNullOrWhiteSpace(Customer?.FormattedMaskedId);
     public string FormattedPhone => !string.IsNullOrWhiteSpace(Customer?.Mobile) ? Customer.Mobile.Trim() : "—";
     public string FormattedVillage => !string.IsNullOrWhiteSpace(Customer?.Village) ? Customer.Village.Trim() : "—";
+
+    public bool IsInactive1Year => InactivityYears >= 1;
+
+    public int InactivityYears
+    {
+        get
+        {
+            var effectiveDate = LastVisitDate ?? Customer.CreatedAt.ToLocalTime();
+            var diff = DateTime.Now - effectiveDate;
+            return Math.Max(0, (int)(diff.TotalDays / 365.25));
+        }
+    }
+
+    public string InactivityBadgeText
+    {
+        get
+        {
+            var effectiveDate = LastVisitDate ?? Customer.CreatedAt.ToLocalTime();
+            var years = Math.Max(0, (int)((DateTime.Now - effectiveDate).TotalDays / 365.25));
+            if (years >= 1)
+            {
+                return LastVisitDate.HasValue ? $"Inactive {years}y" : $"No visits ({years}y)";
+            }
+            return string.Empty;
+        }
+    }
 
     public string DigitsOnlyMobile
     {
@@ -62,23 +91,26 @@ public partial class CustomerRowModel : ObservableObject
         IsLoadingStats = true;
         try
         {
-            // Session count + last visit date
-            var sessions = (await AppServices.Sessions.GetCustomerSessionsAsync(Customer.Id)).ToList();
-            VisitCount = sessions.Count;
-            var latest = sessions.OrderByDescending(s => s.StartedAt).FirstOrDefault();
-            if (latest != null)
+            // Session count + last visit date (skip if already loaded by batch query)
+            if (LastVisitText == "—")
             {
-                LastVisitDate = latest.StartedAt.ToLocalTime();
-                var days = (DateTime.Now.Date - latest.StartedAt.ToLocalTime().Date).TotalDays;
-                if (days == 0) LastVisitText = "Today";
-                else if (days == 1) LastVisitText = "Yesterday";
-                else if (days < 7) LastVisitText = $"{(int)days}d ago";
-                else LastVisitText = latest.StartedAt.ToLocalTime().ToString("dd MMM yyyy");
-            }
-            else
-            {
-                LastVisitDate = null;
-                LastVisitText = "No visits";
+                var sessions = (await AppServices.Sessions.GetCustomerSessionsAsync(Customer.Id)).ToList();
+                VisitCount = sessions.Count;
+                var latest = sessions.OrderByDescending(s => s.StartedAt).FirstOrDefault();
+                if (latest != null)
+                {
+                    LastVisitDate = latest.StartedAt.ToLocalTime();
+                    var days = (DateTime.Now.Date - latest.StartedAt.ToLocalTime().Date).TotalDays;
+                    if (days == 0) LastVisitText = "Today";
+                    else if (days == 1) LastVisitText = "Yesterday";
+                    else if (days < 7) LastVisitText = $"{(int)days}d ago";
+                    else LastVisitText = latest.StartedAt.ToLocalTime().ToString("dd MMM yyyy");
+                }
+                else
+                {
+                    LastVisitDate = null;
+                    LastVisitText = "No visits";
+                }
             }
 
             // File count (fast filesystem scan — checks working folder, falls back to backup)

@@ -777,7 +777,7 @@ public sealed partial class DesktopSidebarWidget : Window
         {
             "Docs Ready" or "Docs Uploaded" => "Docs Ready",
             "Completed" => "Completed",
-            _ => "Draft"
+            _ => "Linked"
         };
 
     private async Task LinkTemplateToSessionAsync(ActiveSessionItem item, ApplicationTemplate tmpl)
@@ -1048,6 +1048,11 @@ public sealed partial class DesktopSidebarWidget : Window
         session.Customer = customer;
         session.FolderStats = new FolderStats();
 
+        if (!string.IsNullOrWhiteSpace(folder))
+        {
+            AppServices.FolderManager.OpenFolderInExplorer(folder);
+        }
+
         await LoadSessionsAsync();
     }
 
@@ -1071,29 +1076,38 @@ public sealed partial class DesktopSidebarWidget : Window
 
     private void LoadShopAndUpiSettings()
     {
-        var shopName = AppServices.Database.GetSetting("shop_name", "SevaDesk");
-        var upiVpa = AppServices.Database.GetSetting("shop_upi_vpa")
-                     ?? AppServices.Database.GetSetting("shop_upi_id", "sevadesk.csc@upi");
-        var payeeName = AppServices.Database.GetSetting("payee_name", "SevaDesk Cyber Center");
+        var shopName = AppServices.Database.GetSetting("shop_name", "My Shop");
+        var upiVpa = AppServices.Database.GetSetting("shop_upi_vpa");
+        var payeeName = AppServices.Database.GetSetting("payee_name", "My Shop");
 
         if (TxtShopName != null)
         {
-            TxtShopName.Text = string.IsNullOrWhiteSpace(shopName) ? "SevaDesk" : shopName;
+            TxtShopName.Text = string.IsNullOrWhiteSpace(shopName) ? "My Shop" : shopName;
         }
+
+        if (string.IsNullOrWhiteSpace(upiVpa))
+        {
+            if (QuickUpiBar != null) QuickUpiBar.Visibility = Visibility.Collapsed;
+            if (UpiCardPanel != null) UpiCardPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+        
+        if (QuickUpiBar != null) QuickUpiBar.Visibility = Visibility.Visible;
+
         if (TxtUpiVpa != null)
         {
-            TxtUpiVpa.Text = string.IsNullOrWhiteSpace(upiVpa) ? "sevadesk.csc@upi" : upiVpa;
+            TxtUpiVpa.Text = upiVpa;
         }
         if (TxtPayeeName != null)
         {
-            TxtPayeeName.Text = string.IsNullOrWhiteSpace(payeeName) ? "SevaDesk Cyber Center" : payeeName;
+            TxtPayeeName.Text = string.IsNullOrWhiteSpace(payeeName) ? "My Shop" : payeeName;
         }
 
         if (ImgWidgetQrCode != null)
         {
             try
             {
-                var payload = AppServices.QrCode.BuildUpiPayload(upiVpa ?? "sevadesk.csc@upi", payeeName ?? "SevaDesk Cyber Center", null, "Cyber Cafe Services");
+                var payload = AppServices.QrCode.BuildUpiPayload(upiVpa, payeeName ?? "My Shop", null, "Cyber Cafe Services");
                 var bmp = AppServices.QrCode.GenerateQrBitmap(payload, pixelsPerModule: 8);
                 if (bmp != null)
                 {
@@ -1119,9 +1133,9 @@ public sealed partial class DesktopSidebarWidget : Window
             var text = TxtUpiVpa?.Text;
             if (string.IsNullOrWhiteSpace(text))
             {
-                text = AppServices.Database.GetSetting("shop_upi_vpa")
-                       ?? AppServices.Database.GetSetting("shop_upi_id", "sevadesk.csc@upi");
+                text = AppServices.Database.GetSetting("shop_upi_vpa");
             }
+            if (string.IsNullOrWhiteSpace(text)) return;
             var dataPackage = new DataPackage();
             dataPackage.SetText(text);
             Clipboard.SetContent(dataPackage);

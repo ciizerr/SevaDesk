@@ -40,11 +40,23 @@ public partial class DashboardViewModel : StatusViewModel
     [NotifyPropertyChangedFor(nameof(FormattedTodayUpiSalesDisplay))]
     private string _formattedTodayUpiSales = "₹0";
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FormattedTodayPendingDuesDisplay))]
+    [NotifyPropertyChangedFor(nameof(HasPendingDues))]
+    private decimal _todayPendingDues;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FormattedTodayPendingDuesDisplay))]
+    private string _formattedTodayPendingDues = "₹0";
+
+    public bool HasPendingDues => TodayPendingDues > 0;
+
     // --- Privacy Mode (Hide sensitive revenue from customer) ---
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FormattedTodayTotalSalesDisplay))]
     [NotifyPropertyChangedFor(nameof(FormattedTodayCashSalesDisplay))]
     [NotifyPropertyChangedFor(nameof(FormattedTodayUpiSalesDisplay))]
+    [NotifyPropertyChangedFor(nameof(FormattedTodayPendingDuesDisplay))]
     [NotifyPropertyChangedFor(nameof(PrivacyToggleGlyph))]
     [NotifyPropertyChangedFor(nameof(PrivacyToggleText))]
     [NotifyPropertyChangedFor(nameof(PrivacyToggleToolTip))]
@@ -53,6 +65,7 @@ public partial class DashboardViewModel : StatusViewModel
     public string FormattedTodayTotalSalesDisplay => IsPrivacyMode ? "₹ ••••••" : FormattedTodayTotalSales;
     public string FormattedTodayCashSalesDisplay => IsPrivacyMode ? "₹ ••••" : FormattedTodayCashSales;
     public string FormattedTodayUpiSalesDisplay => IsPrivacyMode ? "₹ ••••" : FormattedTodayUpiSales;
+    public string FormattedTodayPendingDuesDisplay => IsPrivacyMode ? "₹ ••••" : FormattedTodayPendingDues;
 
     public string PrivacyToggleGlyph => IsPrivacyMode ? "\uED1A" : "\uE7B3";
     public string PrivacyToggleText => IsPrivacyMode ? "Show Revenue" : "Hide Revenue";
@@ -185,13 +198,15 @@ public partial class DashboardViewModel : StatusViewModel
             // 1. Load today's sales summary
             try
             {
-                var (totalSales, cashTotal, upiTotal) = await AppServices.Payments.GetTodaySalesSummaryAsync();
+                var (totalSales, cashTotal, upiTotal, pendingTotal) = await AppServices.Payments.GetTodaySalesSummaryAsync();
                 TodayTotalSales = totalSales;
                 FormattedTodayTotalSales = $"₹{totalSales:N0}";
                 TodayCashSales = cashTotal;
                 FormattedTodayCashSales = $"₹{cashTotal:N0}";
                 TodayUpiSales = upiTotal;
                 FormattedTodayUpiSales = $"₹{upiTotal:N0}";
+                TodayPendingDues = pendingTotal;
+                FormattedTodayPendingDues = $"₹{pendingTotal:N0}";
             }
             catch { }
 

@@ -232,14 +232,20 @@ public static class SmartTagHelper
 
             if (_cachedCustomTags == null)
             {
-                try
+                _cachedCustomTags = new List<CustomDocumentTag>();
+                Task.Run(async () =>
                 {
-                    _cachedCustomTags = AppServices.CustomTags.GetAllAsync().GetAwaiter().GetResult().ToList();
-                }
-                catch
-                {
-                    _cachedCustomTags = [];
-                }
+                    try
+                    {
+                        var tags = (await AppServices.CustomTags.GetAllAsync()).ToList();
+                        lock (_cacheLock)
+                        {
+                            if (_cachedCustomTags.Count == 0)
+                                _cachedCustomTags = tags;
+                        }
+                    }
+                    catch { }
+                });
             }
 
             return _cachedCustomTags.ToList();

@@ -10,7 +10,7 @@
     PrimaryButtonText="Link"
     CloseButtonText="Cancel"
     DefaultButton="Primary"
-    mc:Ignorable="d">
+    mc:Ignorable="d" CornerRadius="12">
 
     <StackPanel Spacing="12" Margin="0,0,16,0" MinWidth="400" MaxWidth="480">
         <!-- Customer Target Banner -->

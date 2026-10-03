@@ -30,6 +30,7 @@ public sealed partial class ReceiptDialog : ContentDialog
     private bool _isPdfFormat;
     private string? _cachedJpgPath;
     private string? _cachedPdfPath;
+    public event Action? PaymentSettled;
 
     public ReceiptDialog(CompletedReceiptInfo receipt)
     {
@@ -126,22 +127,104 @@ public sealed partial class ReceiptDialog : ContentDialog
         }
 
         TxtGrandTotal.Text = $"₹{_receipt.GrandTotal:N0}";
-        TxtPaymentMode.Text = (_receipt.PaymentMode ?? "CASH").ToUpperInvariant();
-
-        if (string.Equals(_receipt.PaymentMode, "UPI", StringComparison.OrdinalIgnoreCase))
-        {
-            PaymentModeBadge.Background = new SolidColorBrush(Color.FromArgb(30, 37, 99, 235));
-            TxtPaymentMode.Foreground = new SolidColorBrush(Color.FromArgb(255, 37, 99, 235));
-        }
-        else
-        {
-            PaymentModeBadge.Background = new SolidColorBrush(Color.FromArgb(30, 16, 185, 129));
-            TxtPaymentMode.Foreground = new SolidColorBrush(Color.FromArgb(255, 5, 150, 105));
-        }
+        UpdatePaymentStatusUI();
 
         var savedFormat = AppServices.Database.GetSetting("receipt_export_format", "PDF");
         _isPdfFormat = string.Equals(savedFormat, "PDF", StringComparison.OrdinalIgnoreCase);
         UpdateFormatSwitcherUI();
+    }
+
+    private void UpdatePaymentStatusUI()
+    {
+        if (_receipt.IsPending)
+        {
+            TxtTotalHeading.Text = "Total Due";
+            TxtPaidBadge.Text = "UNPAID • PENDING";
+            BadgeBorder.Background = new SolidColorBrush(Color.FromArgb(255, 255, 251, 235)); // Amber-50
+            BadgeBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(255, 245, 158, 11)); // Amber-500
+            TxtPaidBadge.Foreground = new SolidColorBrush(Color.FromArgb(255, 217, 119, 6)); // Amber-600
+
+            PaymentModeBadge.Background = new SolidColorBrush(Color.FromArgb(30, 245, 158, 11));
+            TxtPaymentMode.Text = "PENDING";
+            TxtPaymentMode.Foreground = new SolidColorBrush(Color.FromArgb(255, 217, 119, 6));
+
+            PendingQrContainer.Visibility = Visibility.Visible;
+            SettlePaymentPanel.Visibility = Visibility.Visible;
+            TxtQrNote.Text = $"Ref: {_receipt.InvoiceNo} • ₹{_receipt.GrandTotal:N0}";
+
+            try
+            {
+                var vpa = AppServices.Database.GetSetting("shop_upi_vpa");
+                if (string.IsNullOrWhiteSpace(vpa))
+                {
+                    PendingQrContainer.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    var qrService = new QrCodeService();
+                    var upiPayload = qrService.BuildUpiPayload(vpa, _shopName, _receipt.GrandTotal, _receipt.InvoiceNo);
+                    _receipt.UpiPayload = upiPayload;
+                    var qrBmp = qrService.GenerateQrBitmap(upiPayload, 6);
+                    if (qrBmp != null)
+                    {
+                        ImgPendingQr.Source = qrBmp;
+                    }
+                }
+            }
+            catch { }
+        }
+        else
+        {
+            TxtTotalHeading.Text = "Total Paid";
+            TxtPaidBadge.Text = $"PAID ({(_receipt.PaymentMode ?? "CASH").ToUpperInvariant()})";
+            BadgeBorder.Background = new SolidColorBrush(Color.FromArgb(255, 236, 253, 245)); // Emerald-50
+            BadgeBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(255, 16, 185, 129)); // Emerald-500
+            TxtPaidBadge.Foreground = new SolidColorBrush(Color.FromArgb(255, 5, 150, 105)); // Emerald-600
+
+            PendingQrContainer.Visibility = Visibility.Collapsed;
+            SettlePaymentPanel.Visibility = Visibility.Collapsed;
+
+            TxtPaymentMode.Text = (_receipt.PaymentMode ?? "CASH").ToUpperInvariant();
+            if (string.Equals(_receipt.PaymentMode, "UPI", StringComparison.OrdinalIgnoreCase))
+            {
+                PaymentModeBadge.Background = new SolidColorBrush(Color.FromArgb(30, 37, 99, 235));
+                TxtPaymentMode.Foreground = new SolidColorBrush(Color.FromArgb(255, 37, 99, 235));
+            }
+            else
+            {
+                PaymentModeBadge.Background = new SolidColorBrush(Color.FromArgb(30, 16, 185, 129));
+                TxtPaymentMode.Foreground = new SolidColorBrush(Color.FromArgb(255, 5, 150, 105));
+            }
+        }
+    }
+
+    private async void CollectCash_Click(object sender, RoutedEventArgs e)
+    {
+        await SettlePaymentDirectAsync("Cash");
+    }
+
+    private async void CollectUpi_Click(object sender, RoutedEventArgs e)
+    {
+        await SettlePaymentDirectAsync("UPI");
+    }
+
+    private async Task SettlePaymentDirectAsync(string mode)
+    {
+        try
+        {
+            await AppServices.Payments.SettlePaymentAsync(_receipt.InvoiceNo, mode);
+            _receipt.Status = "Paid";
+            _receipt.PaymentMode = mode;
+            _cachedJpgPath = null;
+            _cachedPdfPath = null;
+            UpdatePaymentStatusUI();
+            ShowStatus($"Payment recorded via {mode} (₹{_receipt.GrandTotal:N0})", true);
+            PaymentSettled?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus($"Could not record payment: {ex.Message}", false);
+        }
     }
 
     private void UpdateFormatSwitcherUI()
@@ -403,7 +486,8 @@ public sealed partial class ReceiptDialog : ContentDialog
             var fileName = $"invoice_{safeInvoice}.pdf";
             var pdfPath = Path.Combine(tempDir, fileName);
 
-            InvoicePdfBuilder.GenerateA4InvoicePdf(_receipt, _shopName, _shopAddress, _shopContact, pdfPath);
+            var vpa = AppServices.Database.GetSetting("shop_upi_vpa");
+            InvoicePdfBuilder.GenerateA4InvoicePdf(_receipt, _shopName, _shopAddress, _shopContact, pdfPath, vpa);
             _cachedPdfPath = pdfPath;
             return pdfPath;
         });

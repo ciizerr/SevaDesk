@@ -9,7 +9,7 @@ namespace SevaDesk_App.Views.Dialogs;
 public sealed partial class OnboardingDialog : ContentDialog
 {
     private int _currentStep = 1;
-    private const int TotalSteps = 4;
+    private const int TotalSteps = 5;
     private bool _isMobileValid = true;
 
     public OnboardingDialog()
@@ -37,8 +37,15 @@ public sealed partial class OnboardingDialog : ContentDialog
         BoxOperatorName.Text = operatorName;
         BoxContactNumber.Text = contact;
         BoxShopAddress.Text = address;
-        BoxUpiId.Text = string.IsNullOrWhiteSpace(upi) ? "sevadesk.csc@upi" : upi;
+        BoxUpiId.Text = upi;
         BoxPayeeName.Text = string.IsNullOrWhiteSpace(payee) ? "SevaDesk Cyber Center" : payee;
+
+        var defaultDocFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        var defWorking = System.IO.Path.Combine(defaultDocFolder, "SevaDesk");
+        var defBackup = System.IO.Path.Combine(defaultDocFolder, "SevaDeskBackups");
+        
+        BoxWorkingDirectory.Text = AppServices.Database.GetSetting("working_directory", defWorking);
+        BoxBackupDirectory.Text = AppServices.Database.GetSetting("backup_directory", defBackup);
     }
 
     private void ConfigureInputs()
@@ -57,6 +64,7 @@ public sealed partial class OnboardingDialog : ContentDialog
         Step2Panel.Visibility = _currentStep == 2 ? Visibility.Visible : Visibility.Collapsed;
         Step3Panel.Visibility = _currentStep == 3 ? Visibility.Visible : Visibility.Collapsed;
         Step4Panel.Visibility = _currentStep == 4 ? Visibility.Visible : Visibility.Collapsed;
+        Step5Panel.Visibility = _currentStep == 5 ? Visibility.Visible : Visibility.Collapsed;
 
         // Step indicator text
         var stepFmt = AppServices.Localization.GetString("Onboarding.StepIndicator", "Step {0} of {1}");
@@ -70,6 +78,7 @@ public sealed partial class OnboardingDialog : ContentDialog
         Dot2.Background = _currentStep >= 2 ? accentBrush : mutedBrush;
         Dot3.Background = _currentStep >= 3 ? accentBrush : mutedBrush;
         Dot4.Background = _currentStep >= 4 ? accentBrush : mutedBrush;
+        Dot5.Background = _currentStep >= 5 ? accentBrush : mutedBrush;
 
         // Navigation Buttons
         BtnBack.Visibility = _currentStep > 1 ? Visibility.Visible : Visibility.Collapsed;
@@ -125,15 +134,15 @@ public sealed partial class OnboardingDialog : ContentDialog
         BoxPayeeName.PlaceholderText = AppServices.Localization.GetString("Onboarding.Step3.PayeePlaceholder", "e.g. Digital Seva Kendra");
         TxtUpiHint.Text = AppServices.Localization.GetString("Onboarding.Step3.QrPreviewHint", "Customers can scan this to pay directly to your shop bank account via GPay, PhonePe, Paytm, or BHIM.");
 
-        // Step 4
-        TxtStep4Title.Text = AppServices.Localization.GetString("Onboarding.Step4.Title", "You're All Set!");
-        TxtStep4Subtitle.Text = AppServices.Localization.GetString("Onboarding.Step4.Subtitle", "Everything is ready for your counter operations");
-        TxtFeature1Title.Text = AppServices.Localization.GetString("Onboarding.Step4.Feature1Title", "Desktop Floating Widget");
-        TxtFeature1Desc.Text = AppServices.Localization.GetString("Onboarding.Step4.Feature1Desc", "Docked on your screen edge to manage customer sessions without leaving browser or portals.");
-        TxtFeature2Title.Text = AppServices.Localization.GetString("Onboarding.Step4.Feature2Title", "Smart Auto-File Triage");
-        TxtFeature2Desc.Text = AppServices.Localization.GetString("Onboarding.Step4.Feature2Desc", "Detects incoming Bluetooth and WhatsApp files and moves them directly into active customer folders.");
-        TxtFeature3Title.Text = AppServices.Localization.GetString("Onboarding.Step4.Feature3Title", "Clean Invoices & WhatsApp Sharing");
-        TxtFeature3Desc.Text = AppServices.Localization.GetString("Onboarding.Step4.Feature3Desc", "Generate professional receipts, A4 invoices, and share via WhatsApp in 1 click.");
+        // Step 5
+        TxtStep5Title.Text = AppServices.Localization.GetString("Onboarding.Step5.Title", "You're All Set!");
+        TxtStep5Subtitle.Text = AppServices.Localization.GetString("Onboarding.Step5.Subtitle", "Everything is ready for your counter operations");
+        TxtFeature1Title.Text = AppServices.Localization.GetString("Onboarding.Step5.Feature1Title", "Desktop Floating Widget");
+        TxtFeature1Desc.Text = AppServices.Localization.GetString("Onboarding.Step5.Feature1Desc", "Docked on your screen edge to manage customer sessions without leaving browser or portals.");
+        TxtFeature2Title.Text = AppServices.Localization.GetString("Onboarding.Step5.Feature2Title", "Smart Auto-File Triage");
+        TxtFeature2Desc.Text = AppServices.Localization.GetString("Onboarding.Step5.Feature2Desc", "Detects incoming Bluetooth and WhatsApp files and moves them directly into active customer folders.");
+        TxtFeature3Title.Text = AppServices.Localization.GetString("Onboarding.Step5.Feature3Title", "Clean Invoices & WhatsApp Sharing");
+        TxtFeature3Desc.Text = AppServices.Localization.GetString("Onboarding.Step5.Feature3Desc", "Generate professional receipts, A4 invoices, and share via WhatsApp in 1 click.");
     }
 
     private void UpdateLanguageSelectionUi()
@@ -182,8 +191,18 @@ public sealed partial class OnboardingDialog : ContentDialog
 
     private void GenerateQrPreview()
     {
-        var vpa = string.IsNullOrWhiteSpace(BoxUpiId.Text) ? "sevadesk.csc@upi" : BoxUpiId.Text.Trim();
-        var payee = string.IsNullOrWhiteSpace(BoxPayeeName.Text) ? "SevaDesk Cyber Center" : BoxPayeeName.Text.Trim();
+        var vpa = BoxUpiId.Text?.Trim();
+        var payee = string.IsNullOrWhiteSpace(BoxPayeeName.Text) ? "My Shop" : BoxPayeeName.Text.Trim();
+
+        if (string.IsNullOrWhiteSpace(vpa))
+        {
+            ImgQrPreview.Visibility = Visibility.Collapsed;
+            TxtQrPlaceholder.Visibility = Visibility.Visible;
+            return;
+        }
+
+        ImgQrPreview.Visibility = Visibility.Visible;
+        TxtQrPlaceholder.Visibility = Visibility.Collapsed;
 
         var payload = AppServices.QrCode.BuildUpiPayload(vpa, payee);
         var bmp = AppServices.QrCode.GenerateQrBitmap(payload, 8);
@@ -265,7 +284,47 @@ public sealed partial class OnboardingDialog : ContentDialog
             AppServices.Database.SetSetting("payee_name", payee);
         }
 
+        var workingDir = BoxWorkingDirectory.Text?.Trim();
+        if (!string.IsNullOrWhiteSpace(workingDir))
+        {
+            AppServices.Database.SetSetting("working_directory", workingDir);
+        }
+
+        var backupDir = BoxBackupDirectory.Text?.Trim();
+        if (!string.IsNullOrWhiteSpace(backupDir))
+        {
+            AppServices.Database.SetSetting("backup_directory", backupDir);
+        }
+
         AppServices.Database.SetSetting("is_onboarded", "true");
         this.Hide();
+    }
+
+    private async void BtnBrowseWorkingDir_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new Windows.Storage.Pickers.FolderPicker();
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+        picker.FileTypeFilter.Add("*");
+
+        var folder = await picker.PickSingleFolderAsync();
+        if (folder != null)
+        {
+            BoxWorkingDirectory.Text = folder.Path;
+        }
+    }
+
+    private async void BtnBrowseBackupDir_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new Windows.Storage.Pickers.FolderPicker();
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+        picker.FileTypeFilter.Add("*");
+
+        var folder = await picker.PickSingleFolderAsync();
+        if (folder != null)
+        {
+            BoxBackupDirectory.Text = folder.Path;
+        }
     }
 }

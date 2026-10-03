@@ -44,7 +44,9 @@ public partial class PaymentsViewModel : StatusViewModel
     private bool _isScanAndPayExpanded = true;
 
     public int TodayTransactionCount => RecentTransactions.Count;
-    public string TodayLedgerHeaderSummary => $"{RecentTransactions.Count} payments recorded today (₹{TodayTotalSales:N0})";
+    public string TodayLedgerHeaderSummary => HasTodayPendingDues
+        ? $"{RecentTransactions.Count} bills today (₹{TodayTotalSales:N0} paid • ₹{TodayPendingTotal:N0} pending)"
+        : $"{RecentTransactions.Count} payments recorded today (₹{TodayTotalSales:N0})";
 
     // --- POS: Rate Card & Cart ---
     [ObservableProperty]
@@ -261,10 +263,19 @@ public partial class PaymentsViewModel : StatusViewModel
     public string FormattedTodayUpiTotal => $"₹{TodayUpiTotal:N0}";
 
     [ObservableProperty]
-    private string _shopUpiId = "sevadesk.csc@upi";
+    [NotifyPropertyChangedFor(nameof(FormattedTodayPendingTotal))]
+    [NotifyPropertyChangedFor(nameof(HasTodayPendingDues))]
+    [NotifyPropertyChangedFor(nameof(TodayLedgerHeaderSummary))]
+    private decimal _todayPendingTotal;
+
+    public string FormattedTodayPendingTotal => $"₹{TodayPendingTotal:N0}";
+    public bool HasTodayPendingDues => TodayPendingTotal > 0;
 
     [ObservableProperty]
-    private string _payeeName = "SevaDesk Cyber Cafe";
+    private string _shopUpiId = string.Empty;
+
+    [ObservableProperty]
+    private string _payeeName = string.Empty;
 
     [ObservableProperty]
     private string _customerName = "Walk-in Customer";
@@ -298,6 +309,18 @@ public partial class PaymentsViewModel : StatusViewModel
             return "(Session Completed)";
         }
     }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsEditingTransaction))]
+    private string? _editingTransactionId;
+
+    [ObservableProperty]
+    private string? _editingInvoiceNo;
+
+    [ObservableProperty]
+    private DateTime? _editingPaymentDate;
+
+    public bool IsEditingTransaction => !string.IsNullOrEmpty(EditingTransactionId);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasMultipleActiveSessions))]
@@ -498,8 +521,7 @@ public partial class PaymentsViewModel : StatusViewModel
 
     public void RefreshShopSettings()
     {
-        var upi = AppServices.Database.GetSetting("shop_upi_vpa")
-                  ?? AppServices.Database.GetSetting("shop_upi_id", "sevadesk.csc@upi");
+        var upi = AppServices.Database.GetSetting("shop_upi_vpa");
         if (!string.IsNullOrWhiteSpace(upi))
         {
             ShopUpiId = upi;
@@ -726,9 +748,12 @@ public partial class PaymentsViewModel : StatusViewModel
                 Id = p.Id,
                 InvoiceNo = p.InvoiceNo,
                 CustomerName = p.CustomerName,
+                CustomerId = p.CustomerId,
+                SubTotal = p.SubTotal > 0 ? p.SubTotal : (p.Amount + p.Discount),
+                Discount = p.Discount,
                 Amount = p.Amount,
                 PaymentMode = p.PaymentMethod,
-                Status = "Paid",
+                Status = string.IsNullOrWhiteSpace(p.Status) ? "Paid" : p.Status,
                 Time = p.PaymentDate.ToLocalTime(),
                 ItemsSummary = p.ItemsSummary
             });
@@ -738,6 +763,7 @@ public partial class PaymentsViewModel : StatusViewModel
         TodayTotalSales = summary.TotalSales;
         TodayCashTotal = summary.CashTotal;
         TodayUpiTotal = summary.UpiTotal;
+        TodayPendingTotal = summary.PendingTotal;
 
         OnPropertyChanged(nameof(TodayTransactionCount));
         OnPropertyChanged(nameof(TodayLedgerHeaderSummary));
@@ -803,17 +829,24 @@ public partial class PaymentsViewModel : StatusViewModel
     public void ClearBill()
     {
         CartItems.Clear();
+        SubTotal = 0;
         DiscountValue = 0;
-        DiscountInputText = string.Empty;
         IsPercentageDiscount = false;
+        DiscountInputText = string.Empty;
+        GrandTotal = 0;
         CashReceivedAmount = 0;
         CashReceivedInputText = string.Empty;
-        UpdateCartTotals();
         CustomerName = "Walk-in Customer";
         CustomerMobile = string.Empty;
-        CustomerAddress = null;
+        CustomerAddress = string.Empty;
         CurrentCustomerId = null;
         CurrentSessionId = null;
+        
+        EditingTransactionId = null;
+        EditingInvoiceNo = null;
+        EditingPaymentDate = null;
+        
+        UpdateCartTotals();
         ShowInfo("Current bill cleared.");
     }
 
@@ -871,11 +904,74 @@ public partial class PaymentsViewModel : StatusViewModel
     }
 
     [RelayCommand]
+    public async Task DeleteTransactionAsync(TransactionItem tx)
+    {
+        if (tx == null) return;
+        var confirm = await AppServices.Dialogs.ShowConfirmationAsync(
+            "Delete Bill", 
+            $"Are you sure you want to permanently delete bill {tx.InvoiceNo}?\nThis action cannot be undone.", 
+            "Delete", "Cancel");
+            
+        if (confirm == Microsoft.UI.Xaml.Controls.ContentDialogResult.Primary)
+        {
+            await AppServices.Payments.DeletePaymentAsync(tx.Id);
+            RecentTransactions.Remove(tx);
+            FilteredTransactions.Remove(tx);
+            await LoadPaymentsDataAsync();
+        }
+    }
+
+    [RelayCommand]
+    public void EditTransaction(TransactionItem tx)
+    {
+        if (tx == null) return;
+        
+        CartItems.Clear();
+        var itemsStr = tx.ItemsSummary ?? string.Empty;
+        var parts = itemsStr.Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries);
+        
+        foreach(var part in parts)
+        {
+            if (part.StartsWith("[Disc:")) continue;
+            var match = System.Text.RegularExpressions.Regex.Match(part, @"(.*?)\s+x(\d+)\s+@\s+₹([\d,]+)(?:\s+\(orig\s+₹([\d,]+)\))?");
+            if (match.Success)
+            {
+                var serviceName = match.Groups[1].Value.Trim();
+                int qty = int.Parse(match.Groups[2].Value);
+                decimal rate = decimal.Parse(match.Groups[3].Value, System.Globalization.NumberStyles.Any);
+                decimal origRate = rate;
+                if (match.Groups[4].Success)
+                {
+                    origRate = decimal.Parse(match.Groups[4].Value, System.Globalization.NumberStyles.Any);
+                }
+                CartItems.Add(new CartItem 
+                { 
+                    ServiceName = serviceName, 
+                    Quantity = qty, 
+                    Rate = rate, 
+                    OriginalRate = origRate 
+                });
+            }
+        }
+        
+        CustomerName = tx.CustomerName;
+        CurrentCustomerId = tx.CustomerId;
+        DiscountValue = tx.Discount;
+        IsPercentageDiscount = false;
+        EditingTransactionId = tx.Id;
+        EditingInvoiceNo = tx.InvoiceNo;
+        EditingPaymentDate = tx.Time;
+        
+        RecalculateGrandTotal();
+        SwitchToPosView();
+    }
+
+    [RelayCommand]
     public async Task CompletePaymentAsync(string paymentMode)
     {
         if (CartItems.Count == 0) return;
 
-        var invoiceNo = await AppServices.Payments.GenerateNextInvoiceNoAsync();
+        var invoiceNo = IsEditingTransaction && !string.IsNullOrEmpty(EditingInvoiceNo) ? EditingInvoiceNo : await AppServices.Payments.GenerateNextInvoiceNoAsync();
         var custName = string.IsNullOrWhiteSpace(CustomerName) ? "Walk-in Customer" : CustomerName.Trim();
         
         var itemsSummaryList = new List<string>();
@@ -900,45 +996,55 @@ public partial class PaymentsViewModel : StatusViewModel
                 itemsSummaryList.Add($"{c.ServiceName} x{c.Quantity} @ ₹{c.Rate:N0}");
             }
         }
+
+        if (CalculatedDiscount > 0)
+        {
+            itemsSummaryList.Add($"[Disc: -₹{CalculatedDiscount:N0}]");
+        }
         var itemsSummary = string.Join(", ", itemsSummaryList);
 
+        var isPending = string.Equals(paymentMode, "Pending", StringComparison.OrdinalIgnoreCase);
         var payment = new Payment
         {
+            Id = IsEditingTransaction ? EditingTransactionId! : Guid.NewGuid().ToString(),
             InvoiceNo = invoiceNo,
             CustomerId = CurrentCustomerId,
             CustomerName = custName,
             SessionId = CurrentSessionId,
+            SubTotal = SubTotal,
+            Discount = CalculatedDiscount,
             Amount = GrandTotal,
-            PaymentMethod = paymentMode,
-            PaymentDate = DateTime.UtcNow,
+            PaymentMethod = isPending ? "Pending" : paymentMode,
+            Status = isPending ? "Pending" : "Paid",
+            PaymentDate = IsEditingTransaction && EditingPaymentDate.HasValue ? EditingPaymentDate.Value.ToUniversalTime() : DateTime.UtcNow,
             ItemsSummary = itemsSummary
         };
 
-        await AppServices.Payments.RecordPaymentAsync(payment);
-
-        var newTx = new TransactionItem
+        if (IsEditingTransaction)
         {
-            Id = payment.Id,
-            InvoiceNo = invoiceNo,
-            CustomerName = custName,
-            Amount = payment.Amount,
-            PaymentMode = paymentMode,
-            Status = "Paid",
-            Time = DateTime.Now,
-            ItemsSummary = itemsSummary
-        };
+            await AppServices.Payments.UpdatePaymentAsync(payment);
+        }
+        else
+        {
+            await AppServices.Payments.RecordPaymentAsync(payment);
+        }
 
-        RecentTransactions.Insert(0, newTx);
+        EditingTransactionId = null;
+        EditingInvoiceNo = null;
+        EditingPaymentDate = null;
+        
+        await LoadPaymentsDataAsync();
 
-        var summary = await AppServices.Payments.GetTodaySalesSummaryAsync();
-        TodayTotalSales = summary.TotalSales;
-        TodayCashTotal = summary.CashTotal;
-        TodayUpiTotal = summary.UpiTotal;
-
-        OnPropertyChanged(nameof(TodayTransactionCount));
-        OnPropertyChanged(nameof(TodayLedgerHeaderSummary));
-
-        ShowSuccess($"Payment of ₹{GrandTotal:N0} recorded via {paymentMode} ({invoiceNo})!");
+        if (isPending)
+        {
+            ShowSuccess($"Unpaid bill generated ({invoiceNo})");
+            RecentPaymentSuccessMessage = $"Unpaid bill: ₹{GrandTotal:N0} ({invoiceNo})";
+        }
+        else
+        {
+            ShowSuccess($"Payment of ₹{GrandTotal:N0} recorded via {paymentMode} ({invoiceNo})!");
+            RecentPaymentSuccessMessage = $"Payment of ₹{GrandTotal:N0} recorded via {paymentMode} ({invoiceNo})";
+        }
 
         // Snapshot receipt before clearing
         LastCompletedReceipt = new CompletedReceiptInfo
@@ -951,11 +1057,11 @@ public partial class PaymentsViewModel : StatusViewModel
             SubTotal = SubTotal,
             Discount = CalculatedDiscount,
             GrandTotal = GrandTotal,
-            PaymentMode = paymentMode,
+            PaymentMode = isPending ? "UPI" : paymentMode,
+            Status = payment.Status,
             ItemsSummary = itemsSummary,
             Items = receiptItems
         };
-        RecentPaymentSuccessMessage = $"Payment of ₹{GrandTotal:N0} recorded via {paymentMode} ({invoiceNo})";
         HasRecentCompletedPayment = true;
 
         CartItems.Clear();
@@ -977,6 +1083,31 @@ public partial class PaymentsViewModel : StatusViewModel
             _ = LoadEarningsAsync();
         }
     }
+
+    public async Task SettleTransactionWithModeAsync(TransactionItem tx, string mode, string? refNo = null)
+    {
+        if (tx == null) return;
+
+        var payment = await AppServices.Payments.SettlePaymentAsync(tx.Id, mode, refNo);
+        if (payment != null)
+        {
+            tx.Status = "Paid";
+            tx.PaymentMode = mode;
+
+            var summary = await AppServices.Payments.GetTodaySalesSummaryAsync();
+            TodayTotalSales = summary.TotalSales;
+            TodayCashTotal = summary.CashTotal;
+            TodayUpiTotal = summary.UpiTotal;
+            TodayPendingTotal = summary.PendingTotal;
+
+            OnPropertyChanged(nameof(TodayTransactionCount));
+            OnPropertyChanged(nameof(TodayLedgerHeaderSummary));
+
+            ShowSuccess($"Invoice {tx.InvoiceNo} marked as Paid via {mode}");
+        }
+    }
+
+
 
     private void UpdateCartTotals()
     {

@@ -8,7 +8,7 @@
     Title="Invoice"
     PrimaryButtonText="Done"
     DefaultButton="Primary"
-    mc:Ignorable="d">
+    mc:Ignorable="d" CornerRadius="12">
 
     <ScrollViewer MaxHeight="620" VerticalScrollBarVisibility="Auto">
         <StackPanel Spacing="12" Width="384" Margin="0,0,4,0">
@@ -43,7 +43,7 @@
                                        FontWeight="SemiBold" FontSize="11.5" Foreground="#475569" HorizontalAlignment="Right" />
                             <TextBlock x:Name="TxtDateTime" Text="27-Sep-2026 10:00 AM"
                                        FontSize="9.5" Foreground="#64748B" HorizontalAlignment="Right" />
-                            <Border Margin="0,3,0,0" HorizontalAlignment="Right"
+                            <Border x:Name="BadgeBorder" Margin="0,3,0,0" HorizontalAlignment="Right"
                                     Background="#ECFDF5" BorderBrush="#10B981" BorderThickness="1" CornerRadius="4" Padding="7,2">
                                 <TextBlock x:Name="TxtPaidBadge" Text="PAID" FontSize="9" FontWeight="Bold" Foreground="#059669" CharacterSpacing="30" />
                             </Border>
@@ -103,7 +103,7 @@
 
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                <TextBlock Text="Total Paid" FontWeight="Bold" FontSize="13.5" Foreground="#0F172A" />
+                                <TextBlock x:Name="TxtTotalHeading" Text="Total Paid" FontWeight="Bold" FontSize="13.5" Foreground="#0F172A" />
                                 <Border x:Name="PaymentModeBadge" CornerRadius="4" Padding="6,2" Background="#F1F5F9" VerticalAlignment="Center">
                                     <TextBlock x:Name="TxtPaymentMode" Text="CASH" FontSize="9" FontWeight="Bold" Foreground="#2563EB" />
                                 </Border>
@@ -111,6 +111,20 @@
                             <TextBlock Grid.Column="1" x:Name="TxtGrandTotal" Text="₹0" FontWeight="Bold" FontSize="16" Foreground="#0F172A" />
                         </Grid>
                     </StackPanel>
+
+                    <!-- Clean Payment Card for Pending Bill -->
+                    <Border x:Name="PendingQrContainer" Visibility="Collapsed"
+                            Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1"
+                            CornerRadius="8" Padding="10,8" Margin="0,4,0,0">
+                        <StackPanel Spacing="5" HorizontalAlignment="Center">
+                            <TextBlock Text="Scan to Pay" FontSize="11" FontWeight="SemiBold" Foreground="#334155" HorizontalAlignment="Center" />
+                            <Border Width="124" Height="124" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" HorizontalAlignment="Center" Padding="4">
+                                <Image x:Name="ImgPendingQr" Width="114" Height="114" Stretch="Uniform" />
+                            </Border>
+                            <TextBlock Text="GPay • PhonePe • Paytm • BHIM" FontSize="9" Foreground="#64748B" HorizontalAlignment="Center" />
+                            <TextBlock x:Name="TxtQrNote" Text="Ref: INV-0000" FontSize="9.5" FontFamily="Consolas" Foreground="#475569" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
 
                     <!-- Slip Footer Message -->
                     <StackPanel Spacing="2" HorizontalAlignment="Center" Margin="0,4,0,0">
@@ -154,6 +168,28 @@
 
             <!-- Invoice Actions Toolbar -->
             <StackPanel Spacing="8">
+                <!-- Direct Settle Actions (Visible when Pending, 100% crash-free) -->
+                <Grid x:Name="SettlePaymentPanel" Visibility="Collapsed" ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <Button Grid.Column="0" Height="36" HorizontalAlignment="Stretch"
+                            Background="#10B981" Foreground="White" CornerRadius="6"
+                            Click="CollectCash_Click"
+                            ToolTipService.ToolTip="Mark invoice paid via Cash">
+                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                            <FontIcon Glyph="&#xE717;" FontSize="12" />
+                            <TextBlock Text="Collect Cash" FontWeight="SemiBold" FontSize="12" />
+                        </StackPanel>
+                    </Button>
+                    <Button Grid.Column="1" Height="36" HorizontalAlignment="Stretch"
+                            Background="#2563EB" Foreground="White" CornerRadius="6"
+                            Click="CollectUpi_Click"
+                            ToolTipService.ToolTip="Mark invoice paid via UPI">
+                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                            <FontIcon Glyph="&#xE8C7;" FontSize="12" />
+                            <TextBlock Text="Collect UPI" FontWeight="SemiBold" FontSize="12" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
                 <!-- Send on WhatsApp Button -->
                 <Button Height="38" HorizontalAlignment="Stretch"
                         Background="#25D366" Foreground="White" CornerRadius="6"

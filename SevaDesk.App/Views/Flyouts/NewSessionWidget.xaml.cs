@@ -266,6 +266,11 @@ public sealed partial class NewSessionWidget : Window
         newSession.Customer = customer;
         newSession.FolderStats = new FolderStats();
 
+        if (_pendingFile == null && !string.IsNullOrWhiteSpace(folder))
+        {
+            AppServices.FolderManager.OpenFolderInExplorer(folder);
+        }
+
         var pending = _pendingFile;
         _pendingFile = null;
         this.Close();

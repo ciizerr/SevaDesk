@@ -7,12 +7,17 @@ public class Payment
     public string? CustomerId { get; set; }
     public string CustomerName { get; set; } = "Walk-in Customer";
     public string? SessionId { get; set; }
+    public decimal SubTotal { get; set; }
+    public decimal Discount { get; set; }
     public decimal Amount { get; set; }
     public string PaymentMethod { get; set; } = "UPI"; // UPI, Cash
     public string? ReferenceNumber { get; set; }
     public DateTime PaymentDate { get; set; } = DateTime.UtcNow;
     public string? ItemsSummary { get; set; }
     public string? Notes { get; set; }
+    public string Status { get; set; } = "Paid"; // Paid, Pending
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsPending => string.Equals(Status, "Pending", StringComparison.OrdinalIgnoreCase);
 
     private List<BilledServiceItem>? _billedItems;
     [System.Text.Json.Serialization.JsonIgnore]

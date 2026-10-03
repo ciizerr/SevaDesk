@@ -67,6 +67,8 @@ public partial class CustomerWorkspaceViewModel : StatusViewModel
         await LoadCustomerDetailsAsync();
     }
 
+    public async Task RefreshAsync() => await LoadCustomerDetailsAsync();
+
     [RelayCommand]
     private async Task LoadCustomerDetailsAsync()
     {

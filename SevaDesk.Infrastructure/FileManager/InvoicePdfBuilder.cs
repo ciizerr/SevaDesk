@@ -3,13 +3,14 @@ using System.IO;
 using PdfSharpCore;
 using PdfSharpCore.Drawing;
 using PdfSharpCore.Pdf;
+using QRCoder;
 using SevaDesk.Core.Models;
 
 namespace SevaDesk.Infrastructure.FileManager;
 
 public static class InvoicePdfBuilder
 {
-    public static string GenerateA4InvoicePdf(CompletedReceiptInfo receipt, string shopName, string shopAddress, string shopContact, string destinationPath)
+    public static string GenerateA4InvoicePdf(CompletedReceiptInfo receipt, string shopName, string shopAddress, string shopContact, string destinationPath, string? vpa = null)
     {
         var dir = Path.GetDirectoryName(destinationPath);
         if (!string.IsNullOrWhiteSpace(dir) && !Directory.Exists(dir))
@@ -50,6 +51,8 @@ public static class InvoicePdfBuilder
         var colorHeaderBg = XColor.FromArgb(241, 245, 249); // Slate-100
         var colorGreen = XColor.FromArgb(5, 150, 105);    // Emerald-600
         var colorGreenBg = XColor.FromArgb(236, 253, 245);
+        var colorAmber = XColor.FromArgb(217, 119, 6);     // Amber-600
+        var colorAmberBg = XColor.FromArgb(255, 251, 235); // Amber-50
 
         var brushDark = new XSolidBrush(colorDark);
         var brushMuted = new XSolidBrush(colorMuted);
@@ -87,13 +90,18 @@ public static class InvoicePdfBuilder
         gfx.DrawString($"Date: {receipt.PaymentDate:dd-MMM-yyyy hh:mm tt}", fontSmall, brushMuted, new XRect(margin, rightColTop, contentWidth, 12), XStringFormats.TopRight);
         rightColTop += 16;
 
-        // Status pill: PAID
-        string statusText = $"PAID ({receipt.PaymentMode.ToUpperInvariant()})";
-        double pillWidth = 80;
+        // Status pill: PAID vs PENDING / UNPAID
+        bool isPending = receipt.IsPending;
+        string statusText = isPending ? "PENDING / UNPAID" : $"PAID ({receipt.PaymentMode.ToUpperInvariant()})";
+        double pillWidth = isPending ? 108 : 80;
         double pillHeight = 18;
         double pillX = rightColX - pillWidth;
-        gfx.DrawRoundedRectangle(new XPen(colorGreen, 1), new XSolidBrush(colorGreenBg), pillX, rightColTop, pillWidth, pillHeight, 3, 3);
-        gfx.DrawString(statusText, fontHeader, new XSolidBrush(colorGreen), new XRect(pillX, rightColTop, pillWidth, pillHeight), XStringFormats.Center);
+        var pillPen = isPending ? new XPen(XColor.FromArgb(245, 158, 11), 1) : new XPen(colorGreen, 1);
+        var pillBg = isPending ? new XSolidBrush(colorAmberBg) : new XSolidBrush(colorGreenBg);
+        var pillBrush = isPending ? new XSolidBrush(colorAmber) : new XSolidBrush(colorGreen);
+
+        gfx.DrawRoundedRectangle(pillPen, pillBg, pillX, rightColTop, pillWidth, pillHeight, 3, 3);
+        gfx.DrawString(statusText, fontHeader, pillBrush, new XRect(pillX, rightColTop, pillWidth, pillHeight), XStringFormats.Center);
 
         y = Math.Max(y + 8, rightColTop + pillHeight + 14);
 
@@ -198,14 +206,60 @@ public static class InvoicePdfBuilder
         gfx.DrawLine(penBorder, totalBlockX, y + 4, pageWidth - margin, y + 4);
         y += 10;
 
-        // Grand Total
-        gfx.DrawString("Total Paid:", fontTotal, brushDark, new XPoint(totalBlockX, y + 14));
+        // Grand Total / Amount Due
+        string totalLabel = isPending ? "Total Due:" : "Total Paid:";
+        gfx.DrawString(totalLabel, fontTotal, brushDark, new XPoint(totalBlockX, y + 14));
         gfx.DrawString($"Rs. {receipt.GrandTotal:N0}", fontTotal, brushDark, new XRect(totalBlockX, y, totalBlockWidth, 16), XStringFormats.TopRight);
         y += 20;
 
-        gfx.DrawString($"Payment Mode: {receipt.PaymentMode}", fontSmall, brushMuted, new XRect(totalBlockX, y, totalBlockWidth, 12), XStringFormats.TopRight);
+        string modeLine = isPending ? "Status: PAYMENT DUE (UNPAID)" : $"Payment Mode: {receipt.PaymentMode}";
+        gfx.DrawString(modeLine, fontSmall, brushMuted, new XRect(totalBlockX, y, totalBlockWidth, 12), XStringFormats.TopRight);
 
-        // 6. Footer (Pinned to bottom of A4 page)
+        // 6. Dynamic UPI QR Box for Pending Bills (Decision 3)
+        if (isPending && !string.IsNullOrWhiteSpace(vpa))
+        {
+            y += 22;
+            double qrBoxHeight = 115;
+            double qrBoxY = y;
+            gfx.DrawRoundedRectangle(penBorder, new XSolidBrush(XColor.FromArgb(248, 250, 252)), margin, qrBoxY, contentWidth, qrBoxHeight, 6, 6);
+
+            double qrSize = 85;
+            double qrImageX = margin + 18;
+            double qrImageY = qrBoxY + 15;
+
+            var cleanVpa = vpa.Trim();
+            var cleanShopName = Uri.EscapeDataString(string.IsNullOrWhiteSpace(shopName) ? "My Shop" : shopName.Trim());
+            var upiPayload = $"upi://pay?pa={cleanVpa}&pn={cleanShopName}&cu=INR&am={receipt.GrandTotal:F2}&tn={Uri.EscapeDataString(receipt.InvoiceNo)}";
+
+            using var generator = new QRCodeGenerator();
+            using var data = generator.CreateQrCode(upiPayload, QRCodeGenerator.ECCLevel.M);
+            var pngByteQr = new PngByteQRCode(data);
+            var qrBytes = pngByteQr.GetGraphic(8);
+
+            using var ms = new MemoryStream(qrBytes);
+            var xImg = XImage.FromStream(() => ms);
+            gfx.DrawImage(xImg, qrImageX, qrImageY, qrSize, qrSize);
+
+            double textX = qrImageX + qrSize + 20;
+            double textY = qrBoxY + 26;
+
+            var fontQrTitle = new XFont("Arial", 11, XFontStyle.Bold);
+            var fontQrNote = new XFont("Courier New", 10, XFontStyle.Bold);
+
+            gfx.DrawString("Scan to Pay", fontQrTitle, brushDark, new XPoint(textX, textY));
+            textY += 16;
+            gfx.DrawString($"Total Due: Rs. {receipt.GrandTotal:N0}", fontBodyBold, brushDark, new XPoint(textX, textY));
+            textY += 15;
+            gfx.DrawString($"Ref: {receipt.InvoiceNo}", fontQrNote, new XSolidBrush(colorAmber), new XPoint(textX, textY));
+            textY += 15;
+            gfx.DrawString("Pay using GPay, PhonePe, Paytm, BHIM, or any UPI app", fontSmall, brushMuted, new XPoint(textX, textY));
+            textY += 13;
+            gfx.DrawString($"UPI ID: {cleanVpa}", fontSmall, brushMuted, new XPoint(textX, textY));
+
+            y = qrBoxY + qrBoxHeight + 10;
+        }
+
+        // 7. Footer (Pinned to bottom of A4 page)
         double footerY = pageHeight - 50;
         gfx.DrawLine(penBorder, margin, footerY, pageWidth - margin, footerY);
         gfx.DrawString("Thank you for your visit.", fontBody, brushMuted, new XRect(margin, footerY + 12, contentWidth, 14), XStringFormats.Center);

@@ -61,20 +61,43 @@ public class FolderManager : IFolderManager
         }
     }
 
-    private static async Task CopyDirectoryAsync(string sourceDir, string targetDir)
+    private static async Task MirrorDirectoryAsync(string sourceDir, string targetDir)
     {
+        if (!Directory.Exists(sourceDir)) return;
         Directory.CreateDirectory(targetDir);
 
+        // 1. Delete files in target that don't exist in source
+        var sourceFiles = Directory.GetFiles(sourceDir).Select(Path.GetFileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var targetFile in Directory.GetFiles(targetDir))
+        {
+            if (!sourceFiles.Contains(Path.GetFileName(targetFile)))
+            {
+                File.Delete(targetFile);
+            }
+        }
+
+        // 2. Delete subdirectories in target that don't exist in source
+        var sourceDirs = Directory.GetDirectories(sourceDir).Select(Path.GetFileName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var targetSubDir in Directory.GetDirectories(targetDir))
+        {
+            if (!sourceDirs.Contains(Path.GetFileName(targetSubDir)))
+            {
+                Directory.Delete(targetSubDir, true);
+            }
+        }
+
+        // 3. Copy/Overwrite files from source to target
         foreach (var file in Directory.GetFiles(sourceDir))
         {
             var targetFile = Path.Combine(targetDir, Path.GetFileName(file));
             await Task.Run(() => File.Copy(file, targetFile, overwrite: true));
         }
 
+        // 4. Recursively mirror subdirectories
         foreach (var dir in Directory.GetDirectories(sourceDir))
         {
             var targetSubDir = Path.Combine(targetDir, Path.GetFileName(dir));
-            await CopyDirectoryAsync(dir, targetSubDir);
+            await MirrorDirectoryAsync(dir, targetSubDir);
         }
     }
 
@@ -156,7 +179,7 @@ public class FolderManager : IFolderManager
 
         if (!string.IsNullOrWhiteSpace(backupPath) && Directory.Exists(backupPath))
         {
-            await CopyDirectoryAsync(backupPath, workingPath);
+            await MirrorDirectoryAsync(backupPath, workingPath);
         }
     }
 
@@ -168,7 +191,7 @@ public class FolderManager : IFolderManager
         if (!string.IsNullOrWhiteSpace(backupPath) && Directory.Exists(workingPath))
         {
             Directory.CreateDirectory(backupPath);
-            await CopyDirectoryAsync(workingPath, backupPath);
+            await MirrorDirectoryAsync(workingPath, backupPath);
         }
     }
 

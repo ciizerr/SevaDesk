@@ -89,20 +89,36 @@ public partial class CartItem : ObservableObject
     }
 }
 
-public class TransactionItem
+public partial class TransactionItem : ObservableObject
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string InvoiceNo { get; set; } = string.Empty;
     public string CustomerName { get; set; } = string.Empty;
+    public string? CustomerId { get; set; }
+    public decimal SubTotal { get; set; }
+    public decimal Discount { get; set; }
     public decimal Amount { get; set; }
+    public bool HasDiscount => Discount > 0;
     public string FormattedAmount => $"₹{Amount:N0}";
-    public string PaymentMode { get; set; } = "UPI"; // UPI, Cash
-    public string Status { get; set; } = "Paid";
+    public string FormattedSubTotal => $"₹{SubTotal:N0}";
+    public string FormattedDiscount => $"-₹{Discount:N0}";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Glyph))]
+    private string _paymentMode = "UPI"; // UPI, Cash
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPending))]
+    [NotifyPropertyChangedFor(nameof(Glyph))]
+    private string _status = "Paid"; // Paid, Pending
+
+    public bool IsPending => string.Equals(Status, "Pending", StringComparison.OrdinalIgnoreCase);
     public DateTime Time { get; set; } = DateTime.Now;
     public string FormattedTime => Time.ToString("hh:mm tt");
     public string FormattedDate => Time.ToString("dd MMM yyyy, hh:mm tt");
+    public bool IsDateToday => Time.Date == DateTime.Today;
     public string? ItemsSummary { get; set; }
-    public string Glyph => PaymentMode == "UPI" ? "\uE8C7" : "\uE717";
+    public string Glyph => IsPending ? "\uE896" : (PaymentMode == "UPI" ? "\uE8C7" : "\uE717");
 }
 
 public class BillingHandoverRequest
@@ -134,6 +150,9 @@ public class CompletedReceiptInfo
     public decimal Discount { get; set; }
     public decimal GrandTotal { get; set; }
     public string PaymentMode { get; set; } = "Cash";
+    public string Status { get; set; } = "Paid"; // Paid, Pending
+    public bool IsPending => string.Equals(Status, "Pending", StringComparison.OrdinalIgnoreCase);
+    public string? UpiPayload { get; set; }
     public string ItemsSummary { get; set; } = string.Empty;
     public List<ReceiptItemInfo> Items { get; set; } = [];
 
@@ -144,6 +163,7 @@ public class CompletedReceiptInfo
 
     public static CompletedReceiptInfo FromPayment(Payment payment, Customer? customer = null, Session? session = null)
     {
+        var subTotal = payment.SubTotal > 0 ? payment.SubTotal : (payment.Amount + payment.Discount);
         var receipt = new CompletedReceiptInfo
         {
             InvoiceNo = string.IsNullOrWhiteSpace(payment.InvoiceNo) ? "RCP-DIRECT" : payment.InvoiceNo,
@@ -152,9 +172,10 @@ public class CompletedReceiptInfo
             CustomerAddress = customer?.Village,
             PaymentDate = payment.PaymentDate.ToLocalTime(),
             GrandTotal = payment.Amount,
-            SubTotal = payment.Amount,
-            Discount = 0,
+            SubTotal = subTotal,
+            Discount = payment.Discount,
             PaymentMode = string.IsNullOrWhiteSpace(payment.PaymentMethod) ? "Cash" : payment.PaymentMethod,
+            Status = string.IsNullOrWhiteSpace(payment.Status) ? "Paid" : payment.Status,
             ItemsSummary = payment.ItemsSummary ?? string.Empty
         };
 

@@ -9,7 +9,7 @@
     DefaultButton="None"
     CornerRadius="12">
 
-    <Grid Width="580" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="16" Margin="0,4,0,0">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="16" Margin="0,4,0,0">
         <!-- Top Header & Step Progress Tracker -->
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" VerticalAlignment="Center">
             <!-- Left: App Identity -->
@@ -26,13 +26,14 @@
 
             <!-- Right: Step Indicator & Dots -->
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                <TextBlock x:Name="TxtStepIndicator" Text="Step 1 of 4" FontSize="12"
+                <TextBlock x:Name="TxtStepIndicator" Text="Step 1 of 5" FontSize="12"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                     <Border x:Name="Dot1" Width="8" Height="8" CornerRadius="4" Background="{ThemeResource AccentFillColorDefaultBrush}" />
                     <Border x:Name="Dot2" Width="8" Height="8" CornerRadius="4" Background="{ThemeResource ControlStrokeColorDefaultBrush}" />
                     <Border x:Name="Dot3" Width="8" Height="8" CornerRadius="4" Background="{ThemeResource ControlStrokeColorDefaultBrush}" />
                     <Border x:Name="Dot4" Width="8" Height="8" CornerRadius="4" Background="{ThemeResource ControlStrokeColorDefaultBrush}" />
+                    <Border x:Name="Dot5" Width="8" Height="8" CornerRadius="4" Background="{ThemeResource ControlStrokeColorDefaultBrush}" />
                 </StackPanel>
             </StackPanel>
         </Grid>
@@ -40,10 +41,15 @@
         <!-- Divider -->
         <Border Grid.Row="1" Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
 
-        <!-- Main Step Content Container (MinHeight for consistent sizing across steps) -->
-        <Grid Grid.Row="2" MinHeight="340">
-            <!-- ================= STEP 1: Language & Welcome ================= -->
-            <StackPanel x:Name="Step1Panel" Spacing="18" Visibility="Visible">
+        <!-- Main Step Content Container (Scrollable so buttons in footer are never clipped) -->
+        <ScrollViewer Grid.Row="2"
+                      MaxHeight="280"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      Padding="0,0,6,0">
+            <Grid>
+                <!-- ================= STEP 1: Language & Welcome ================= -->
+                <StackPanel x:Name="Step1Panel" Spacing="18" Visibility="Visible">
                 <StackPanel Spacing="4">
                     <TextBlock x:Name="TxtStep1Title" Text="Welcome to SevaDesk"
                                FontSize="20" FontWeight="SemiBold" />
@@ -202,7 +208,10 @@
                             HorizontalAlignment="Center">
                         <StackPanel Spacing="8" HorizontalAlignment="Center">
                             <Border BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="4" Padding="6" Background="#FFFFFF">
-                                <Image x:Name="ImgQrPreview" Width="140" Height="140" Stretch="Uniform" />
+                                <Grid Width="140" Height="140">
+                                    <Image x:Name="ImgQrPreview" Stretch="Uniform" />
+                                    <TextBlock x:Name="TxtQrPlaceholder" Text="Enter UPI ID to generate QR" Foreground="#94A3B8" FontSize="11" TextAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                </Grid>
                             </Border>
                             <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                                 <FontIcon Glyph="&#xE73E;" FontSize="12" Foreground="#059669" />
@@ -213,12 +222,51 @@
                 </Grid>
             </StackPanel>
 
-            <!-- ================= STEP 4: Ready to Launch ================= -->
+            <!-- ================= STEP 4: Storage & Backups ================= -->
             <StackPanel x:Name="Step4Panel" Spacing="14" Visibility="Collapsed">
                 <StackPanel Spacing="4">
-                    <TextBlock x:Name="TxtStep4Title" Text="You're All Set!"
+                    <TextBlock Text="Storage &amp; Backups"
                                FontSize="18" FontWeight="SemiBold" />
-                    <TextBlock x:Name="TxtStep4Subtitle"
+                    <TextBlock Text="Choose where to save your customer records and database backups"
+                               FontSize="12.5" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+
+                <!-- Working Directory -->
+                <StackPanel Spacing="4">
+                    <TextBlock FontSize="12">
+                        <Run Text="Working Directory" />
+                        <Run Text=" *" Foreground="#EF4444" FontWeight="Bold" />
+                    </TextBlock>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <TextBox x:Name="BoxWorkingDirectory" Grid.Column="0" IsReadOnly="True"
+                                 PlaceholderText="Select a folder..." />
+                        <Button x:Name="BtnBrowseWorkingDir" Grid.Column="1" Content="Browse..." 
+                                Click="BtnBrowseWorkingDir_Click" />
+                    </Grid>
+                    <TextBlock Text="Where customer files, receipts, and invoices are temporarily stored"
+                               FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+
+                <!-- Backup Directory -->
+                <StackPanel Spacing="4" Margin="0,8,0,0">
+                    <TextBlock Text="Backup Location" FontSize="12" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <TextBox x:Name="BoxBackupDirectory" Grid.Column="0" IsReadOnly="True"
+                                 PlaceholderText="Select a folder..." />
+                        <Button x:Name="BtnBrowseBackupDir" Grid.Column="1" Content="Browse..." 
+                                Click="BtnBrowseBackupDir_Click" />
+                    </Grid>
+                    <TextBlock Text="Where automatic database backups are saved (preferably a different drive)"
+                               FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </StackPanel>
+
+            <!-- ================= STEP 5: Ready to Launch ================= -->
+            <StackPanel x:Name="Step5Panel" Spacing="14" Visibility="Collapsed">
+                <StackPanel Spacing="4">
+                    <TextBlock x:Name="TxtStep5Title" Text="You're All Set!"
+                               FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock x:Name="TxtStep5Subtitle"
                                Text="Everything is ready for your counter operations"
                                FontSize="12.5" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
@@ -279,21 +327,15 @@
                         </Grid>
                     </Border>
                 </StackPanel>
-
-                <!-- Data storage note -->
-                <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
-                        CornerRadius="6" Padding="12,8">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="&#xE8B7;" FontSize="13" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
-                        <TextBlock Text="Customer records and backups are saved safely in your local documents folder."
-                                   FontSize="11.5" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Border>
             </StackPanel>
-        </Grid>
+            </Grid>
+        </ScrollViewer>
 
-        <!-- Footer Actions Bar -->
-        <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10" Margin="0,8,0,0">
+        <!-- Divider above Footer -->
+        <Border Grid.Row="3" Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" VerticalAlignment="Top" Margin="0,-4,0,0" />
+
+        <!-- Footer Actions Bar (Pinned at bottom, never clipped) -->
+        <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10" Margin="0,12,0,0">
             <!-- Left: Skip For Now -->
             <Button x:Name="BtnSkip" Grid.Column="0"
                     Content="Skip for now"

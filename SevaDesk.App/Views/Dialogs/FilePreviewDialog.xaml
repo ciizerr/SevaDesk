@@ -15,7 +15,7 @@
     loc:Loc.CloseButtonKey="Common.Close"
     CloseButtonText="Close"
     DefaultButton="Close"
-    mc:Ignorable="d">
+    mc:Ignorable="d" CornerRadius="12">
 
     <Grid MinWidth="520" MaxWidth="680" MinHeight="380" MaxHeight="540" RowDefinitions="Auto,*,Auto" RowSpacing="12">
         <!-- File Info Header Bar -->

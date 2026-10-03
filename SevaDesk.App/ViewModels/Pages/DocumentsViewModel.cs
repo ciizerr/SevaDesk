@@ -116,7 +116,7 @@ public partial class DocumentsViewModel : StatusViewModel
             }
         }
 
-        // 2. Also scan any other customer folders in BaseDirectory
+        // 2. Also scan registered customer folders in BaseDirectory
         var baseDir = AppServices.FolderManager.BaseDirectory;
         if (Directory.Exists(baseDir))
         {
@@ -126,13 +126,18 @@ public partial class DocumentsViewModel : StatusViewModel
                 if (!scannedPaths.Contains(dir))
                 {
                     var dirName = Path.GetFileName(dir);
+                    
+                    // Strictly match registered customers with their unique code or exact customer folder pattern
                     var matched = allCustomers.FirstOrDefault(c =>
-                        dirName.Contains(c.Code, StringComparison.OrdinalIgnoreCase) ||
-                        dirName.StartsWith(c.Name, StringComparison.OrdinalIgnoreCase));
+                        (!string.IsNullOrWhiteSpace(c.Code) && dirName.Contains(c.Code, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrWhiteSpace(c.Code) && dirName.EndsWith(c.Code.Replace("CUST-", ""), StringComparison.OrdinalIgnoreCase)));
 
-                    string displayName = matched != null ? $"{matched.Name} ({matched.Code})" : dirName;
-                    string? cId = matched?.Id;
-                    ScanCustomerFolder(dir, displayName, cId);
+                    if (matched != null)
+                    {
+                        scannedPaths.Add(dir);
+                        string displayName = $"{matched.Name} ({matched.Code})";
+                        ScanCustomerFolder(dir, displayName, matched.Id);
+                    }
                 }
             }
         }

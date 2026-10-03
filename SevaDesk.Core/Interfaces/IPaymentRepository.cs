@@ -10,9 +10,13 @@ public interface IPaymentRepository
     Task<IEnumerable<Payment>> GetTodayPaymentsAsync(int limit = 50);
     Task<string> GenerateNextInvoiceNoAsync();
     Task<IEnumerable<Payment>> GetCustomerPaymentsAsync(string customerId);
-    Task<(decimal TotalSales, decimal CashTotal, decimal UpiTotal)> GetTodaySalesSummaryAsync();
+    Task<(decimal TotalSales, decimal CashTotal, decimal UpiTotal, decimal PendingTotal)> GetTodaySalesSummaryAsync();
     Task<IEnumerable<Payment>> GetPaymentsByDateRangeAsync(DateTime from, DateTime to, string? paymentMethod = null);
-    Task<(decimal TotalSales, decimal CashTotal, decimal UpiTotal)> GetEarningsSummaryAsync(DateTime from, DateTime to, string? paymentMethod = null);
+    Task<(decimal TotalSales, decimal CashTotal, decimal UpiTotal, decimal PendingTotal)> GetEarningsSummaryAsync(DateTime from, DateTime to, string? paymentMethod = null);
     Task<IEnumerable<(DateTime Date, decimal Total, decimal Cash, decimal Upi)>> GetDailyEarningsAsync(DateTime from, DateTime to);
     Task<IEnumerable<(int Month, decimal Total, decimal Cash, decimal Upi)>> GetMonthlyEarningsAsync(int year);
+    Task<Payment?> GetPaymentByIdAsync(string paymentId);
+    Task<Payment?> SettlePaymentAsync(string paymentId, string paymentMethod, string? referenceNumber = null);
+    Task DeletePaymentAsync(string paymentId);
+    Task<Payment> UpdatePaymentAsync(Payment payment);
 }

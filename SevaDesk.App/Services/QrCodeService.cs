@@ -11,8 +11,8 @@ public class QrCodeService
 {
     public string BuildUpiPayload(string? vpa, string? payeeName, decimal? amount = null, string? transactionNote = null)
     {
-        var cleanVpa = (vpa ?? "sevadesk.csc@upi").Trim();
-        var cleanName = Uri.EscapeDataString(string.IsNullOrWhiteSpace(payeeName) ? "SevaDesk Cyber Center" : payeeName.Trim());
+        var cleanVpa = (vpa ?? "").Trim();
+        var cleanName = Uri.EscapeDataString(string.IsNullOrWhiteSpace(payeeName) ? "My Shop" : payeeName.Trim());
 
         var payload = $"upi://pay?pa={cleanVpa}&pn={cleanName}&cu=INR";
         if (amount.HasValue && amount.Value > 0)

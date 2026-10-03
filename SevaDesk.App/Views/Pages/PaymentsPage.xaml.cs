@@ -110,6 +110,15 @@ public sealed partial class PaymentsPage : Page
     public static Visibility CollapsedIf(bool condition) => condition ? Visibility.Collapsed : Visibility.Visible;
     public static Visibility CollapsedIf(int count) => count > 0 ? Visibility.Collapsed : Visibility.Visible;
     public static bool CollapsedIfBool(bool condition) => !condition;
+    public static string PendingDuesHeader(string pendingTotal) => $"Pending: {pendingTotal}";
+    public static Microsoft.UI.Xaml.Media.Brush StatusBadgeBackground(bool isPending) =>
+        isPending
+            ? new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 251, 235))
+            : new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 236, 253, 245));
+    public static Microsoft.UI.Xaml.Media.Brush StatusBadgeForeground(bool isPending) =>
+        isPending
+            ? new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 217, 119, 6))
+            : new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 5, 150, 105));
 
     public Style? FilterButtonStyle(string activeFilter, string currentFilter)
     {
@@ -168,8 +177,8 @@ public sealed partial class PaymentsPage : Page
         return null;
     }
 
-    public string CashButtonLabel(string formattedTotal) => $"Record Cash Payment ({formattedTotal})";
-    public string UpiButtonLabel(string formattedTotal) => $"Confirm UPI Payment ({formattedTotal})";
+    public string CashButtonLabel(string formattedTotal, bool isEditing) => isEditing ? $"Update Bill (Cash) ({formattedTotal})" : $"Record Cash Payment ({formattedTotal})";
+    public string UpiButtonLabel(string formattedTotal, bool isEditing) => isEditing ? $"Update Bill (UPI) ({formattedTotal})" : $"Confirm UPI Payment ({formattedTotal})";
     public string UpiScanNotice(string formattedTotal) => $"Encodes {formattedTotal} in QR";
 
 
@@ -452,11 +461,29 @@ public sealed partial class PaymentsPage : Page
 
     private async void ConfirmCatalogDelete_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button btn && btn.Tag is ServiceRateItem item)
+        if (sender is Button btn)
         {
-            await ViewModel.DeleteRateItemAsync(item);
-            RenderCategoryChips();
-            RenderCatalogCategoryChips();
+            if (btn.Tag is ServiceRateItem item)
+            {
+                await ViewModel.DeleteRateItemAsync(item);
+                RenderCategoryChips();
+                RenderCatalogCategoryChips();
+            }
+
+            // Close the Flyout
+            var parent = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(btn);
+            while (parent != null)
+            {
+                if (parent is Microsoft.UI.Xaml.Controls.FlyoutPresenter presenter)
+                {
+                    if (Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(presenter) is Microsoft.UI.Xaml.Controls.Primitives.Popup popup)
+                    {
+                        popup.IsOpen = false;
+                    }
+                    break;
+                }
+                parent = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(parent);
+            }
         }
     }
 
@@ -680,6 +707,51 @@ public sealed partial class PaymentsPage : Page
         if (ViewModel.LastCompletedReceipt != null)
         {
             var dialog = new ReceiptDialog(ViewModel.LastCompletedReceipt);
+            dialog.PaymentSettled += async () =>
+            {
+                await ViewModel.LoadPaymentsDataAsync();
+            };
+            dialog.XamlRoot = this.XamlRoot;
+            await dialog.ShowAsync();
+        }
+    }
+
+    private async void EarningsTransaction_ItemClick(object sender, ItemClickEventArgs e)
+    {
+        if (e.ClickedItem is TransactionItem tx)
+        {
+            var receipt = new CompletedReceiptInfo
+            {
+                InvoiceNo = tx.InvoiceNo,
+                CustomerName = tx.CustomerName,
+                PaymentDate = tx.Time,
+                SubTotal = tx.SubTotal,
+                Discount = tx.Discount,
+                GrandTotal = tx.Amount,
+                PaymentMode = tx.PaymentMode,
+                Status = tx.Status,
+                ItemsSummary = tx.ItemsSummary ?? string.Empty
+            };
+
+            if (!string.IsNullOrWhiteSpace(tx.CustomerId))
+            {
+                try
+                {
+                    var cust = await AppServices.Customers.GetByIdAsync(tx.CustomerId);
+                    if (cust != null)
+                    {
+                        receipt.CustomerMobile = cust.Mobile ?? string.Empty;
+                        receipt.CustomerAddress = cust.Village;
+                    }
+                }
+                catch { }
+            }
+
+            var dialog = new ReceiptDialog(receipt);
+            dialog.PaymentSettled += async () =>
+            {
+                await ViewModel.LoadPaymentsDataAsync();
+            };
             dialog.XamlRoot = this.XamlRoot;
             await dialog.ShowAsync();
         }
@@ -694,12 +766,103 @@ public sealed partial class PaymentsPage : Page
                 InvoiceNo = tx.InvoiceNo,
                 CustomerName = tx.CustomerName,
                 PaymentDate = tx.Time,
-                SubTotal = tx.Amount,
+                SubTotal = tx.SubTotal,
+                Discount = tx.Discount,
                 GrandTotal = tx.Amount,
                 PaymentMode = tx.PaymentMode,
+                Status = tx.Status,
                 ItemsSummary = tx.ItemsSummary ?? string.Empty
             };
+
+            if (!string.IsNullOrWhiteSpace(tx.CustomerId))
+            {
+                try
+                {
+                    var cust = await AppServices.Customers.GetByIdAsync(tx.CustomerId);
+                    if (cust != null)
+                    {
+                        receipt.CustomerMobile = cust.Mobile ?? string.Empty;
+                        receipt.CustomerAddress = cust.Village;
+                    }
+                }
+                catch { }
+            }
+
             var dialog = new ReceiptDialog(receipt);
+            dialog.PaymentSettled += async () =>
+            {
+                await ViewModel.LoadPaymentsDataAsync();
+            };
+            dialog.XamlRoot = this.XamlRoot;
+            await dialog.ShowAsync();
+        }
+    }
+
+    private void DeleteTransaction_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is TransactionItem tx)
+        {
+            ViewModel.DeleteTransactionCommand.Execute(tx);
+        }
+    }
+
+    private void EditTransaction_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is TransactionItem tx)
+        {
+            ViewModel.EditTransactionCommand.Execute(tx);
+        }
+    }
+
+    private void SettleTransaction_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement target && target.Tag is TransactionItem tx)
+        {
+            var menu = new MenuFlyout();
+
+            var cashItem = new MenuFlyoutItem
+            {
+                Text = "Collect Cash",
+                Icon = new FontIcon { Glyph = "\uE717", FontSize = 12 }
+            };
+            cashItem.Click += async (s, args) =>
+            {
+                await ViewModel.SettleTransactionWithModeAsync(tx, "Cash");
+            };
+
+            var upiItem = new MenuFlyoutItem
+            {
+                Text = "Collect UPI",
+                Icon = new FontIcon { Glyph = "\uE8C7", FontSize = 12 }
+            };
+            upiItem.Click += async (s, args) =>
+            {
+                await ViewModel.SettleTransactionWithModeAsync(tx, "UPI");
+            };
+
+            menu.Items.Add(cashItem);
+            menu.Items.Add(upiItem);
+            menu.ShowAt(target);
+        }
+    }
+
+    private async void GeneratePendingBill_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.GrandTotal <= 0)
+        {
+            ViewModel.ShowWarning("Please add at least one service item to the bill first.");
+            return;
+        }
+
+        await ViewModel.CompletePaymentAsync("Pending");
+
+        if (ViewModel.LastCompletedReceipt != null)
+        {
+            var dialog = new ReceiptDialog(ViewModel.LastCompletedReceipt);
+            dialog.PaymentSettled += async () =>
+            {
+                await ViewModel.LoadPaymentsDataAsync();
+            };
             dialog.XamlRoot = this.XamlRoot;
             await dialog.ShowAsync();
         }

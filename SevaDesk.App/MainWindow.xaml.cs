@@ -64,9 +64,27 @@ public sealed partial class MainWindow : Window
             ExtendsContentIntoTitleBar = true;
             SetTitleBar(AppTitleBar);
             AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
-            AppWindow.SetIcon("Assets/AppIcon.ico");
+            try
+            {
+                AppWindow.SetIcon("Assets\\AppIcon.ico");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] SetIcon failed: {ex.Message}");
+            }
 
             // Setup Theme & System Backdrop
+            var themeVal = AppServices.Database.GetSetting("theme", "0");
+            _currentTheme = int.TryParse(themeVal, out var t) ? (ElementTheme)t : ElementTheme.Default;
+            
+            var micaVal = AppServices.Database.GetSetting("mica_enabled", "true");
+            _isMicaEnabled = bool.TryParse(micaVal, out var b) ? b : true;
+
+            if (Content is FrameworkElement root)
+            {
+                root.RequestedTheme = _currentTheme;
+            }
+
             UpdateTitleBarTheme(_currentTheme);
             ApplyBackdropAndBackground();
 
@@ -99,6 +117,7 @@ public sealed partial class MainWindow : Window
 
             // Window Sizing according to WinUI 3 rubric
             var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
+            PickerService.Initialize(hwnd);
             var dpi = GetDpiForWindow(hwnd);
             var scale = (dpi == 0 ? 96.0 : dpi) / 96.0;
             AppWindow.Resize(new SizeInt32((int)(1260 * scale), (int)(840 * scale)));
@@ -212,6 +231,7 @@ public sealed partial class MainWindow : Window
     public void SetTheme(ElementTheme theme)
     {
         _currentTheme = theme;
+        AppServices.Database.SetSetting("theme", ((int)theme).ToString());
         if (Content is FrameworkElement root)
         {
             root.RequestedTheme = theme;
@@ -223,6 +243,7 @@ public sealed partial class MainWindow : Window
     public void SetMicaBackdrop(bool enabled)
     {
         _isMicaEnabled = enabled;
+        AppServices.Database.SetSetting("mica_enabled", enabled.ToString());
         ApplyBackdropAndBackground();
     }
 

@@ -12,7 +12,20 @@
                 <ResourceDictionary Source="ms-appx:///CommunityToolkit.WinUI.Controls.SettingsControls/Themes/Generic.xaml" />
                 <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
-            <!-- Other app resources here -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Default">
+                    <FontFamily x:Key="SymbolThemeFontFamily">ms-appx:///Assets/Fonts/SegoeIcons.ttf#Segoe Fluent Icons</FontFamily>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <FontFamily x:Key="SymbolThemeFontFamily">ms-appx:///Assets/Fonts/SegoeIcons.ttf#Segoe Fluent Icons</FontFamily>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <FontFamily x:Key="SymbolThemeFontFamily">ms-appx:///Assets/Fonts/SegoeIcons.ttf#Segoe Fluent Icons</FontFamily>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <FontFamily x:Key="SymbolThemeFontFamily">ms-appx:///Assets/Fonts/SegoeIcons.ttf#Segoe Fluent Icons</FontFamily>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -91,15 +91,19 @@ public class DatabaseInitializer
                 customer_id TEXT,
                 customer_name TEXT,
                 session_id TEXT,
+                subtotal REAL NOT NULL DEFAULT 0,
+                discount REAL NOT NULL DEFAULT 0,
                 amount REAL NOT NULL,
                 payment_method TEXT NOT NULL,
                 reference_number TEXT,
                 payment_date TEXT NOT NULL,
                 items_summary TEXT,
-                notes TEXT
+                notes TEXT,
+                status TEXT NOT NULL DEFAULT 'Paid'
             );
 
             CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(payment_date);
+            CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
 
             CREATE TABLE IF NOT EXISTS applications (
                 id TEXT PRIMARY KEY,
@@ -184,6 +188,11 @@ public class DatabaseInitializer
         try { connection.Execute("ALTER TABLE payments ADD COLUMN invoice_no TEXT;"); } catch { }
         try { connection.Execute("ALTER TABLE payments ADD COLUMN customer_name TEXT;"); } catch { }
         try { connection.Execute("ALTER TABLE payments ADD COLUMN items_summary TEXT;"); } catch { }
+        try { connection.Execute("ALTER TABLE payments ADD COLUMN subtotal REAL NOT NULL DEFAULT 0;"); } catch { }
+        try { connection.Execute("ALTER TABLE payments ADD COLUMN discount REAL NOT NULL DEFAULT 0;"); } catch { }
+        try { connection.Execute("ALTER TABLE payments ADD COLUMN status TEXT NOT NULL DEFAULT 'Paid';"); } catch { }
+        try { connection.Execute("UPDATE payments SET subtotal = amount WHERE (subtotal = 0 OR subtotal IS NULL) AND amount > 0;"); } catch { }
+        try { connection.Execute("UPDATE payments SET status = 'Paid' WHERE status IS NULL OR status = '';"); } catch { }
         try { connection.Execute("ALTER TABLE sessions ADD COLUMN duration_seconds INTEGER DEFAULT 0;"); } catch { }
         try { connection.Execute("ALTER TABLE sessions ADD COLUMN working_folder_path TEXT;"); } catch { }
         try { connection.Execute("ALTER TABLE sessions ADD COLUMN backup_synced_at TEXT;"); } catch { }

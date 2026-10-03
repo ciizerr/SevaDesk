@@ -20,6 +20,12 @@ public sealed partial class SettingsPage : Page
         TabSelector.SelectedItem = TabProfile;
     }
 
+    protected override void OnNavigatedFrom(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
+    {
+        base.OnNavigatedFrom(e);
+        ViewModel.AutoSaveProfile();
+    }
+
     // Static helpers for x:Bind function calls
     public static bool Not(bool v) => !v;
     public static Visibility BoolToVisibility(bool v) => v ? Visibility.Visible : Visibility.Collapsed;
@@ -122,13 +128,4 @@ public sealed partial class SettingsPage : Page
     private async void Restore_Click(object sender, RoutedEventArgs e)
         => await ViewModel.RestoreDatabaseCommand.ExecuteAsync(null);
 
-    private async void ReplayOnboarding_Click(object sender, RoutedEventArgs e)
-    {
-        if (MainWindow.Instance != null)
-        {
-            await MainWindow.Instance.ShowOnboardingWizardAsync();
-            // Refresh settings view model after onboarding completes
-            ViewModel.ReloadShopProfile();
-        }
-    }
 }

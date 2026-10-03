@@ -10,6 +10,7 @@ namespace SevaDesk_App;
 /// </summary>
 public partial class App : Application
 {
+    public static Window MainWindow { get; private set; } = null!;
     private Window? _window;
     
     /// <summary>
@@ -47,7 +48,8 @@ public partial class App : Application
     /// <param name="args">Details about the launch request and process.</param>
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
-        _window = new MainWindow();
+        MainWindow = new MainWindow();
+        _window = MainWindow;
         _window.Activate();
     }
 }

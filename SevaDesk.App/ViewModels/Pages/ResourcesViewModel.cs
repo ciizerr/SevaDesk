@@ -296,7 +296,11 @@ public partial class ResourcesViewModel : StatusViewModel
                                            r.Category.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase));
         }
 
-        FilteredResources = new ObservableCollection<ResourceItem>(filtered);
+        FilteredResources.Clear();
+        foreach (var item in filtered)
+        {
+            FilteredResources.Add(item);
+        }
         if (SelectedResource == null || !FilteredResources.Contains(SelectedResource))
         {
             SelectedResource = FilteredResources.FirstOrDefault();

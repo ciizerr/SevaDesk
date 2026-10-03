@@ -313,7 +313,7 @@
                     </StackPanel>
 
                     <!-- Quick UPI Bar -->
-                    <Grid ColumnDefinitions="*,Auto">
+                    <Grid x:Name="QuickUpiBar" ColumnDefinitions="*,Auto">
                         <Button Click="ToggleUpiCard_Click" Background="Transparent" BorderBrush="Transparent" HorizontalAlignment="Left" Padding="4,2">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="&#xE8C7;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
@@ -342,8 +342,8 @@
                             </Border>
 
                             <StackPanel Spacing="2" HorizontalAlignment="Center">
-                                <TextBlock x:Name="TxtPayeeName" Text="SevaDesk Cyber Center" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="320" />
-                                <TextBlock x:Name="TxtUpiVpa" Text="sevadesk.csc@upi" FontFamily="Consolas" FontSize="11" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" HorizontalAlignment="Center" />
+                                <TextBlock x:Name="TxtPayeeName" Text="My Shop" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="320" />
+                                <TextBlock x:Name="TxtUpiVpa" Text="UPI Not Set" FontFamily="Consolas" FontSize="11" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" HorizontalAlignment="Center" />
                                 <TextBlock Text="GooglePay · PhonePe · Paytm · BHIM" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" />
                             </StackPanel>
                         </StackPanel>

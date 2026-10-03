@@ -14,8 +14,9 @@ public partial class CustomerTimelineItemModel : ObservableObject
     public string Title { get; }
     public string FormattedDate => Timestamp.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt");
     public string FormattedTime => Timestamp.ToLocalTime().ToString("hh:mm tt");
-    public string Glyph => IsPayment ? "\uE8C7" : "\uE768";
-    public string GlyphColor => IsPayment ? "#10B981" : "#0078D4";
+    public bool IsPending => Payment?.IsPending == true;
+    public string Glyph => IsPayment ? (IsPending ? "\uE896" : "\uE8C7") : "\uE768";
+    public string GlyphColor => IsPayment ? (IsPending ? "#D97706" : "#10B981") : "#0078D4";
     public string SecondaryInfo { get; }
     public string TagText { get; }
 
@@ -24,9 +25,11 @@ public partial class CustomerTimelineItemModel : ObservableObject
         IsPayment = true;
         Payment = payment;
         Timestamp = payment.PaymentDate;
-        Title = !string.IsNullOrWhiteSpace(payment.InvoiceNo) ? $"Receipt {payment.InvoiceNo}" : "Counter Bill";
+        Title = !string.IsNullOrWhiteSpace(payment.InvoiceNo)
+            ? (payment.IsPending ? $"Pending Invoice {payment.InvoiceNo}" : $"Receipt {payment.InvoiceNo}")
+            : (payment.IsPending ? "Pending Bill" : "Counter Bill");
         SecondaryInfo = !string.IsNullOrWhiteSpace(payment.ItemsSummary) ? payment.ItemsSummary : (!string.IsNullOrWhiteSpace(payment.Notes) ? payment.Notes : "Direct Payment");
-        TagText = $"₹{payment.Amount:N0} ({payment.PaymentMethod})";
+        TagText = payment.IsPending ? $"Pending: ₹{payment.Amount:N0}" : $"₹{payment.Amount:N0} ({payment.PaymentMethod})";
     }
 
     public CustomerTimelineItemModel(CustomerSessionRowModel sessionRow)

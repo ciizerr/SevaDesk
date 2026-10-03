@@ -300,6 +300,23 @@ public sealed partial class CustomersPage : Page
         }
     }
 
+    private void InactivityCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is ComboBox cb)
+        {
+            var filter = cb.SelectedIndex switch
+            {
+                1 => CustomerInactivityFilter.OlderThan1Year,
+                2 => CustomerInactivityFilter.OlderThan2Years,
+                3 => CustomerInactivityFilter.OlderThan3Years,
+                4 => CustomerInactivityFilter.OlderThan4Years,
+                5 => CustomerInactivityFilter.OlderThan5Years,
+                _ => CustomerInactivityFilter.Any
+            };
+            ViewModel.SetInactivityFilter(filter);
+        }
+    }
+
     private void SortCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (sender is ComboBox cb && cb.SelectedIndex >= 0)
@@ -320,9 +337,14 @@ public sealed partial class CustomersPage : Page
     {
         ViewModel.SearchQuery = string.Empty;
         ViewModel.SetFilter(CustomerFilterMode.All);
+        ViewModel.SetInactivityFilter(CustomerInactivityFilter.Any);
         if (FilterAllRadio != null)
         {
             FilterAllRadio.IsChecked = true;
+        }
+        if (InactivityCombo != null)
+        {
+            InactivityCombo.SelectedIndex = 0;
         }
     }
 }

@@ -259,10 +259,10 @@ public sealed class SystemTrayService
         });
     }
 
-    private void OnRightClick()
+    private async void OnRightClick()
     {
         // 1. Fetch active sessions safely
-        var activeSessions = Task.Run(async () => (await AppServices.Sessions.GetActiveSessionsAsync()).ToList()).GetAwaiter().GetResult();
+        var activeSessions = (await AppServices.Sessions.GetActiveSessionsAsync()).ToList();
 
         // 2. Capture cursor position
         GetCursorPos(out var pt);

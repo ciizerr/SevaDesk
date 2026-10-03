@@ -20,14 +20,6 @@ public static class DatabaseSeeder
 
         var defaultSettings = new[]
         {
-            new { Key = "shop_name", Value = "SevaDesk Digital Cyber Café" },
-            new { Key = "operator_name", Value = "Ramesh Patel (VLE / Operator)" },
-            new { Key = "csc_vle_id", Value = "CSC-MH-2024-9842" },
-            new { Key = "contact_number", Value = "+91 98765 43210" },
-            new { Key = "shop_address", Value = "Shop #4, Panchayat Complex, Main Market" },
-            new { Key = "shop_upi_vpa", Value = "sevadesk.csc@upi" },
-            new { Key = "shop_upi_id", Value = "sevadesk.csc@upi" },
-            new { Key = "payee_name", Value = "SevaDesk Cyber Center" },
             new { Key = "default_bw_printer", Value = "Brother DCP-L2520D series" },
             new { Key = "default_color_printer", Value = "Epson EcoTank L8050 Photo" },
             new { Key = "close_behavior", Value = "0" }

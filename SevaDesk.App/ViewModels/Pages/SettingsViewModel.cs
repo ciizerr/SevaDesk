@@ -29,25 +29,25 @@ public partial class SettingsViewModel : StatusViewModel
     // Tab 1: Shop Profile
     // ==========================================
     [ObservableProperty]
-    private string _shopName = "SevaDesk Digital Cyber Café";
+    private string _shopName = string.Empty;
 
     [ObservableProperty]
-    private string _operatorName = "Ramesh Patel (VLE / Operator)";
+    private string _operatorName = string.Empty;
 
     [ObservableProperty]
-    private string _cscVleId = "CSC-MH-2024-9842";
+    private string _cscVleId = string.Empty;
 
     [ObservableProperty]
-    private string _contactNumber = "+91 98765 43210";
+    private string _contactNumber = string.Empty;
 
     [ObservableProperty]
-    private string _shopAddress = "Shop #4, Panchayat Complex, Main Market";
+    private string _shopAddress = string.Empty;
 
     [ObservableProperty]
-    private string _shopUpiVpa = "sevadesk.csc@upi";
+    private string _shopUpiVpa = string.Empty;
 
     [ObservableProperty]
-    private string _payeeName = "SevaDesk Cyber Center";
+    private string _payeeName = string.Empty;
 
     // ==========================================
     // Tab 2: Appearance, Material & Language
@@ -57,6 +57,9 @@ public partial class SettingsViewModel : StatusViewModel
 
     [ObservableProperty]
     private bool _enableMicaBackdrop = true;
+
+    [ObservableProperty]
+    private bool _runOnStartup = false;
 
     // Window close behavior: 0 = Always Prompt, 1 = Minimize to Tray, 2 = Exit App
     public static int CloseActionBehavior
@@ -180,6 +183,13 @@ public partial class SettingsViewModel : StatusViewModel
             };
         }
 
+        try
+        {
+            var key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", false);
+            _runOnStartup = key?.GetValue("SevaDesk") != null;
+        }
+        catch { }
+
         _selectedCloseBehaviorIndex = CloseActionBehavior;
 
         // Use backing fields so OnXxxChanged handlers don't fire on init
@@ -217,6 +227,34 @@ public partial class SettingsViewModel : StatusViewModel
     {
         MainWindow.Instance?.SetMicaBackdrop(value);
         ShowSuccess("Backdrop updated.");
+    }
+
+    partial void OnRunOnStartupChanged(bool value)
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
+            if (key != null)
+            {
+                if (value)
+                {
+                    var exePath = Process.GetCurrentProcess().MainModule?.FileName;
+                    if (!string.IsNullOrEmpty(exePath))
+                    {
+                        key.SetValue("SevaDesk", $"\"{exePath}\"");
+                    }
+                }
+                else
+                {
+                    key.DeleteValue("SevaDesk", false);
+                }
+            }
+            ShowSuccess(value ? "SevaDesk will start automatically with Windows." : "Auto-startup disabled.");
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Could not change startup settings: {ex.Message}");
+        }
     }
 
     partial void OnSelectedLanguageChanged(LanguageItem? value)
@@ -601,13 +639,13 @@ public partial class SettingsViewModel : StatusViewModel
         CloseActionBehavior = 0;
         SelectedCloseBehaviorIndex = 0;
 
-        ShopName = "SevaDesk Digital Cyber Café";
-        OperatorName = "Ramesh Patel (VLE / Operator)";
-        CscVleId = "CSC-MH-2024-9842";
-        ContactNumber = "+91 98765 43210";
-        ShopAddress = "Shop #4, Panchayat Complex, Main Market";
-        ShopUpiVpa = "sevadesk.csc@upi";
-        PayeeName = "SevaDesk Cyber Center";
+        ShopName = string.Empty;
+        OperatorName = string.Empty;
+        CscVleId = string.Empty;
+        ContactNumber = string.Empty;
+        ShopAddress = string.Empty;
+        ShopUpiVpa = string.Empty;
+        PayeeName = string.Empty;
 
         WatchDownloads = true;
         WatchDesktop = true;
