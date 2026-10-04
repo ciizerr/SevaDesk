@@ -108,6 +108,11 @@ public sealed partial class DocumentsPage : Page
         await ViewModel.LoadDocumentsAsync();
     }
 
+    private void SyncToBackup_Click(object sender, RoutedEventArgs e)
+    {
+        ViewModel.SyncToBackupCommand.Execute(null);
+    }
+
     private void OpenExplorer_Click(object sender, RoutedEventArgs e)
     {
         ViewModel.OpenInExplorerCommand.Execute(null);

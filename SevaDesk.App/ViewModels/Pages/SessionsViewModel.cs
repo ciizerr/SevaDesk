@@ -85,6 +85,23 @@ public partial class SessionsViewModel : StatusViewModel
                 _ = LoadSessionsAsync();
             }
         };
+
+        AppServices.Applications.ApplicationsChanged += (s, e) =>
+        {
+            if (MainWindow.Instance?.DispatcherQueue != null)
+            {
+                MainWindow.Instance.DispatcherQueue.TryEnqueue(async () =>
+                {
+                    await LoadCustomerApplicationAsync();
+                    RefreshApplicationFolders();
+                });
+            }
+            else
+            {
+                _ = LoadCustomerApplicationAsync();
+                RefreshApplicationFolders();
+            }
+        };
     }
 
     private void FileWatcher_FileDetected(IncomingFileItem item)
@@ -125,6 +142,12 @@ public partial class SessionsViewModel : StatusViewModel
         }
 
         ActiveApplication = pendingApps.FirstOrDefault();
+        if (SelectedSession != null)
+        {
+            SelectedSession.LinkedApplication = ActiveApplication;
+            SelectedSession.NotifyLinkedApplicationChanged();
+        }
+        
         OnPropertyChanged(nameof(HasMultipleApplications));
         _ = RefreshActiveChecklistAsync();
     }
@@ -346,7 +369,11 @@ public partial class SessionsViewModel : StatusViewModel
                     existing.Customer = fresh.Customer;
                     existing.FolderPath = fresh.FolderPath;
                     existing.FolderStats = fresh.FolderStats;
-                    existing.LinkedApplication = fresh.LinkedApplication;
+                    // Bug Fix: Do not overwrite LinkedApplication with null during refresh
+                    if (fresh.LinkedApplication != null)
+                    {
+                        existing.LinkedApplication = fresh.LinkedApplication;
+                    }
                     existing.NotifyStatusChanged();
 
                     if (existingIndex != i && i < Sessions.Count)

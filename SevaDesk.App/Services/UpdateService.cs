@@ -65,24 +65,53 @@ public static class UpdateService
 
                         if (latestVersion > currentVersion)
                         {
-                            var dialogResult = await AppServices.Dialogs.ShowConfirmationAsync(
-                                title: "Update Available! \uD83C\uDF89",
-                                content: $"A new version of SevaDesk (v{rawTag}) is available.\nYou are currently on v{currentVersionStrClean}.\n\nWould you like to download it now?",
-                                primaryButtonText: "Download Update",
-                                secondaryButtonText: "Later"
-                            );
-
-                            if (dialogResult == ContentDialogResult.Primary)
+                            var releaseUrl = latestRelease.GetProperty("html_url").GetString();
+                            var changelog = latestRelease.TryGetProperty("body", out var bodyElement) ? bodyElement.GetString() : "";
+                            
+                            string? assetUrl = null;
+                            string assetName = "SevaDesk_Update.exe";
+                            
+                            if (latestRelease.TryGetProperty("assets", out var assetsElement))
                             {
-                                var releaseUrl = latestRelease.GetProperty("html_url").GetString();
-                                if (!string.IsNullOrEmpty(releaseUrl))
+                                foreach (var asset in assetsElement.EnumerateArray())
                                 {
-                                    Process.Start(new ProcessStartInfo
+                                    var name = asset.GetProperty("name").GetString() ?? "";
+                                    if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
                                     {
-                                        FileName = releaseUrl,
-                                        UseShellExecute = true
-                                    });
+                                        assetUrl = asset.GetProperty("browser_download_url").GetString();
+                                        assetName = name;
+                                        break;
+                                    }
                                 }
+                            }
+
+                            if (string.IsNullOrEmpty(assetUrl))
+                            {
+                                var dialogResult = await AppServices.Dialogs.ShowConfirmationAsync(
+                                    title: "Update Available! \uD83C\uDF89",
+                                    content: $"A new version of SevaDesk (v{rawTag}) is available.\nYou are currently on v{currentVersionStrClean}.\n\nWould you like to download it now?",
+                                    primaryButtonText: "Download Update",
+                                    secondaryButtonText: "Later"
+                                );
+
+                                if (dialogResult == ContentDialogResult.Primary)
+                                {
+                                    if (!string.IsNullOrEmpty(releaseUrl))
+                                    {
+                                        Process.Start(new ProcessStartInfo { FileName = releaseUrl, UseShellExecute = true });
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                var dialog = new SevaDesk_App.Views.Dialogs.UpdateAvailableDialog(
+                                    currentVersionStrClean ?? "", 
+                                    rawTag ?? "", 
+                                    changelog ?? "", 
+                                    assetUrl, 
+                                    assetName);
+                                dialog.XamlRoot = MainWindow.Instance?.Content?.XamlRoot;
+                                await dialog.ShowAsync();
                             }
                         }
                         else

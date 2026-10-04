@@ -33,6 +33,7 @@ public partial class DocumentsViewModel : StatusViewModel
     {
         RefreshCustomerSubfolders();
         _ = LoadTagsForSelectedDocumentAsync();
+        OnPropertyChanged(nameof(NeedsBackupSync));
     }
 
     [ObservableProperty]
@@ -43,6 +44,44 @@ public partial class DocumentsViewModel : StatusViewModel
 
     [ObservableProperty]
     private bool _isProcessingPreset;
+
+    private HashSet<string> _unsyncedCustomerIds = new HashSet<string>();
+
+    public bool NeedsBackupSync => _unsyncedCustomerIds.Count > 0;
+
+    private void MarkAsUnsynced(DocumentItem? doc)
+    {
+        if (doc != null && !string.IsNullOrWhiteSpace(doc.CustomerId))
+        {
+            _unsyncedCustomerIds.Add(doc.CustomerId);
+            OnPropertyChanged(nameof(NeedsBackupSync));
+        }
+    }
+
+    [RelayCommand]
+    public async Task SyncToBackupAsync()
+    {
+        if (_unsyncedCustomerIds.Count == 0) return;
+
+        int count = 0;
+        foreach (var cid in _unsyncedCustomerIds.ToList())
+        {
+            var cust = await AppServices.Customers.GetByIdAsync(cid);
+            if (cust != null)
+            {
+                await AppServices.FolderManager.SyncToBackupAsync(cust.Name, cust.Code);
+                count++;
+            }
+        }
+
+        _unsyncedCustomerIds.Clear();
+        OnPropertyChanged(nameof(NeedsBackupSync));
+
+        if (count > 0)
+        {
+            ShowSuccess($"Backup updated for {count} customer(s) ✓");
+        }
+    }
 
     public DocumentsViewModel()
     {
@@ -248,6 +287,7 @@ public partial class DocumentsViewModel : StatusViewModel
             }
 
             MainWindow.Instance?.NotifyIncomingFileRouted();
+            MarkAsUnsynced(doc);
             ShowSuccess($"Renamed to '{uniqueFileName}' ✓");
 
             return (true, uniqueFileName);
@@ -506,6 +546,7 @@ public partial class DocumentsViewModel : StatusViewModel
 
             File.Move(sourcePath, destPath);
             var movedDocName = SelectedDocument.Name;
+            MarkAsUnsynced(SelectedDocument);
             ShowSuccess($"'{movedDocName}' moved to '{subfolderRelativePath}'.");
 
             await LoadDocumentsAsync();
@@ -581,6 +622,7 @@ public partial class DocumentsViewModel : StatusViewModel
                 long newLen = new FileInfo(destPdfPath).Length;
                 newSizeStr = $"{Math.Max(1, newLen / 1024)} KB";
 
+                MarkAsUnsynced(SelectedDocument);
                 ShowSuccess($"Created PDF: '{pdfFileName}' ({newSizeStr}) ✓");
                 await LoadDocumentsAsync();
 
@@ -622,6 +664,7 @@ public partial class DocumentsViewModel : StatusViewModel
             long newLength = new FileInfo(destPath).Length;
             newSizeStr = $"{Math.Max(1, newLength / 1024)} KB";
 
+            MarkAsUnsynced(SelectedDocument);
             ShowSuccess($"{preset.Name}: {origSizeStr} → {newSizeStr} ✓");
             await LoadDocumentsAsync();
 

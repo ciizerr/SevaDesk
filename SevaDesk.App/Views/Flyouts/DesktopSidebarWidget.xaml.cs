@@ -802,6 +802,12 @@ public sealed partial class DesktopSidebarWidget : Window
         var created = await AppServices.Applications.CreateAsync(app);
         item.LinkedApplication = created;
 
+        if (!string.IsNullOrWhiteSpace(created.Title))
+        {
+            var folderSafe = string.Join("_", created.Title.Split(System.IO.Path.GetInvalidFileNameChars())).Trim();
+            AppServices.FolderManager.EnsureApplicationSubfolder(item.FolderPath, folderSafe);
+        }
+
         // Auto-check existing files in customer working folder & backup folder
         await ApplicationDocumentVerifier.CheckAndAutoUpdateStatusAsync(created, item.FolderPath);
         item.NotifyLinkedApplicationChanged();
