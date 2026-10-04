@@ -964,13 +964,14 @@ public partial class PaymentsViewModel : StatusViewModel
         
         CustomerName = tx.CustomerName;
         CurrentCustomerId = tx.CustomerId;
-        DiscountValue = tx.Discount;
         IsPercentageDiscount = false;
+        DiscountValue = tx.Discount;
+        DiscountInputText = tx.Discount > 0 ? tx.Discount.ToString("G29") : string.Empty;
         EditingTransactionId = tx.Id;
         EditingInvoiceNo = tx.InvoiceNo;
         EditingPaymentDate = tx.Time;
         
-        RecalculateGrandTotal();
+        UpdateCartTotals();
         SwitchToPosView();
     }
 
