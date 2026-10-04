@@ -175,6 +175,7 @@ public partial class PaymentsViewModel : StatusViewModel
 
     partial void OnDiscountInputTextChanged(string value)
     {
+        DismissRecentPaymentBanner();
         if (string.IsNullOrWhiteSpace(value))
         {
             if (DiscountValue != 0)
@@ -279,6 +280,11 @@ public partial class PaymentsViewModel : StatusViewModel
 
     [ObservableProperty]
     private string _customerName = "Walk-in Customer";
+
+    partial void OnCustomerNameChanged(string value)
+    {
+        DismissRecentPaymentBanner();
+    }
 
     [ObservableProperty]
     private string _customerMobile = string.Empty;
@@ -740,7 +746,7 @@ public partial class PaymentsViewModel : StatusViewModel
     public async Task LoadPaymentsDataAsync()
     {
         RecentTransactions.Clear();
-        var payments = await AppServices.Payments.GetRecentPaymentsAsync(50);
+        var payments = await AppServices.Payments.GetTodayPaymentsAsync(50);
         foreach (var p in payments)
         {
             RecentTransactions.Add(new TransactionItem
@@ -773,6 +779,7 @@ public partial class PaymentsViewModel : StatusViewModel
     [RelayCommand]
     public void AddToCart(ServiceRateItem service)
     {
+        DismissRecentPaymentBanner();
         var existing = CartItems.FirstOrDefault(c => c.ServiceName == service.ServiceName);
         if (existing != null)
         {
@@ -828,6 +835,7 @@ public partial class PaymentsViewModel : StatusViewModel
     [RelayCommand]
     public void ClearBill()
     {
+        DismissRecentPaymentBanner();
         CartItems.Clear();
         SubTotal = 0;
         DiscountValue = 0;

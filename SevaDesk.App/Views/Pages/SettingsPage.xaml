@@ -181,6 +181,24 @@
                     </ctk:SettingsCard>
 
 
+                    <!-- Section: App Updates -->
+                    <TextBlock loc:Loc.Key="Settings.AppUpdates.Header"
+                               Text="App Updates"
+                               Style="{StaticResource SubtitleTextBlockStyle}"
+                               FontSize="14" FontWeight="SemiBold"
+                               Margin="0,14,0,4" />
+
+                    <!-- Beta Updates Opt-in/Out -->
+                    <ctk:SettingsCard
+                        Header="Receive Pre-release Updates (Beta)"
+                        Description="Get early access to upcoming features and help find bugs before stable release">
+                        <ctk:SettingsCard.HeaderIcon>
+                            <FontIcon Glyph="&#xE895;" />
+                        </ctk:SettingsCard.HeaderIcon>
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.ReceiveBetaUpdates, Mode=TwoWay}"
+                                      OnContent="Opted-in" OffContent="Stable Only" />
+                    </ctk:SettingsCard>
+
                 </StackPanel>
 
 

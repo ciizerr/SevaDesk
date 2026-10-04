@@ -29,7 +29,7 @@ public class LanguagesManifest
 public class LocalizationService
 {
     private const string GitHubRawBase = "https://raw.githubusercontent.com/ciizerr/SevaDesk/main/SevaDesk.App/Strings";
-    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(6) };
+    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(30) };
     private readonly object _lock = new();
 
     private readonly string _cacheDirectory;
@@ -250,7 +250,7 @@ public class LocalizationService
         try
         {
             var manifestUrl = $"{GitHubRawBase}/languages.json?t={DateTime.UtcNow.Ticks}";
-            var manifestResponse = await _httpClient.GetAsync(manifestUrl);
+            using var manifestResponse = await _httpClient.GetAsync(manifestUrl);
             if (!manifestResponse.IsSuccessStatusCode)
             {
                 return (false, $"GitHub connection returned status {manifestResponse.StatusCode}", 0);
@@ -277,7 +277,7 @@ public class LocalizationService
                 if (string.IsNullOrWhiteSpace(lang.File)) continue;
 
                 var langUrl = $"{GitHubRawBase}/{lang.File}?t={DateTime.UtcNow.Ticks}";
-                var langResp = await _httpClient.GetAsync(langUrl);
+                using var langResp = await _httpClient.GetAsync(langUrl);
                 if (langResp.IsSuccessStatusCode)
                 {
                     var langJson = await langResp.Content.ReadAsStringAsync();

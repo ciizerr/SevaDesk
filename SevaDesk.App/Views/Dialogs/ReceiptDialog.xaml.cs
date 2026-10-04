@@ -39,6 +39,21 @@ public sealed partial class ReceiptDialog : ContentDialog
 
         _receipt = receipt ?? throw new ArgumentNullException(nameof(receipt));
 
+        if ((_receipt.Items == null || _receipt.Items.Count == 0) && !string.IsNullOrWhiteSpace(_receipt.ItemsSummary))
+        {
+            var parsed = BilledServiceItem.ParseSummary(_receipt.ItemsSummary);
+            if (parsed.Count > 0)
+            {
+                _receipt.Items = parsed.Select(p => new ReceiptItemInfo 
+                {
+                    Name = p.ServiceName,
+                    Quantity = p.Quantity,
+                    Rate = p.UnitRate,
+                    Total = p.LineTotal
+                }).ToList();
+            }
+        }
+
         _shopName = AppServices.Database.GetSetting("shop_name", "SevaDesk Cyber Center") ?? "SevaDesk Cyber Center";
         _shopAddress = AppServices.Database.GetSetting("shop_address", "Digital Seva & CSC Center") ?? "Digital Seva & CSC Center";
         _shopContact = AppServices.Database.GetSetting("contact_number", "") ?? "";

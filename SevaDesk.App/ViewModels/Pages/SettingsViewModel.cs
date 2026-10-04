@@ -49,6 +49,9 @@ public partial class SettingsViewModel : StatusViewModel
     [ObservableProperty]
     private string _payeeName = string.Empty;
 
+    [ObservableProperty]
+    private bool _receiveBetaUpdates = true;
+
     // ==========================================
     // Tab 2: Appearance, Material & Language
     // ==========================================
@@ -156,6 +159,9 @@ public partial class SettingsViewModel : StatusViewModel
                       ?? AppServices.Database.GetSetting("shop_upi_id", _shopUpiVpa)
                       ?? _shopUpiVpa;
         _payeeName = AppServices.Database.GetSetting("payee_name", _payeeName) ?? _payeeName;
+        
+        var betaSetting = AppServices.Database.GetSetting("receive_beta_updates", "true");
+        _receiveBetaUpdates = bool.TryParse(betaSetting, out var b) ? b : true;
 
         _workingRootPath = AppServices.FolderManager.BaseDirectory;
         _backupRootPath = AppServices.FolderManager.BackupDirectory;
@@ -323,6 +329,7 @@ public partial class SettingsViewModel : StatusViewModel
     partial void OnShopAddressChanged(string value) => MarkDirty();
     partial void OnShopUpiVpaChanged(string value) => MarkDirty();
     partial void OnPayeeNameChanged(string value) => MarkDirty();
+    partial void OnReceiveBetaUpdatesChanged(bool value) => MarkDirty();
 
     partial void OnWatchDownloadsChanged(bool value)
     {
@@ -373,6 +380,7 @@ public partial class SettingsViewModel : StatusViewModel
         AppServices.Database.SetSetting("shop_upi_vpa", ShopUpiVpa);
         AppServices.Database.SetSetting("shop_upi_id", ShopUpiVpa); // Keep both keys synchronized
         AppServices.Database.SetSetting("payee_name", PayeeName);
+        AppServices.Database.SetSetting("receive_beta_updates", ReceiveBetaUpdates.ToString().ToLowerInvariant());
         AppServices.Database.SetSetting("close_behavior", SelectedCloseBehaviorIndex.ToString());
 
         HasUnsavedChanges = false;
