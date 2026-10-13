@@ -14,19 +14,22 @@
             </ResourceDictionary.MergedDictionaries>
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Default">
-                    <FontFamily x:Key="SymbolThemeFontFamily">ms-appx:///Assets/Fonts/SegoeIcons.ttf#Segoe Fluent Icons</FontFamily>
+                    <FontFamily x:Key="SymbolThemeFontFamily">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
-                    <FontFamily x:Key="SymbolThemeFontFamily">ms-appx:///Assets/Fonts/SegoeIcons.ttf#Segoe Fluent Icons</FontFamily>
+                    <FontFamily x:Key="SymbolThemeFontFamily">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
-                    <FontFamily x:Key="SymbolThemeFontFamily">ms-appx:///Assets/Fonts/SegoeIcons.ttf#Segoe Fluent Icons</FontFamily>
+                    <FontFamily x:Key="SymbolThemeFontFamily">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
-                    <FontFamily x:Key="SymbolThemeFontFamily">ms-appx:///Assets/Fonts/SegoeIcons.ttf#Segoe Fluent Icons</FontFamily>
+                    <FontFamily x:Key="SymbolThemeFontFamily">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
             
+            <!-- Global root fallback for controls resolving SymbolThemeFontFamily statically -->
+            <FontFamily x:Key="SymbolThemeFontFamily">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
             <SolidColorBrush x:Key="WindowCaptionBackground" Color="Transparent" />
             <SolidColorBrush x:Key="WindowCaptionBackgroundDisabled" Color="Transparent" />
             

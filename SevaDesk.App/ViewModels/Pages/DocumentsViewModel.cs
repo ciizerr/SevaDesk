@@ -181,8 +181,58 @@ public partial class DocumentsViewModel : StatusViewModel
             }
         }
 
+        await CheckUnsyncedCustomersAsync(activeSessions.Select(s => s.Customer).Concat(allCustomers));
+
         UnorganisedCount = PendingDocuments.Count;
         SelectedDocument = PendingDocuments.FirstOrDefault();
+    }
+
+    private async Task CheckUnsyncedCustomersAsync(IEnumerable<Customer> candidates)
+    {
+        try
+        {
+            var backupDir = AppServices.FolderManager.BackupDirectory;
+            if (string.IsNullOrWhiteSpace(backupDir) || !Directory.Exists(backupDir))
+            {
+                _unsyncedCustomerIds.Clear();
+                OnPropertyChanged(nameof(NeedsBackupSync));
+                return;
+            }
+
+            var distinctCustomers = candidates
+                .Where(c => c != null && !string.IsNullOrWhiteSpace(c.Id) && !string.IsNullOrWhiteSpace(c.Name))
+                .GroupBy(c => c.Id)
+                .Select(g => g.First())
+                .ToList();
+
+            var unsynced = new HashSet<string>(_unsyncedCustomerIds);
+
+            await Task.Run(() =>
+            {
+                foreach (var cust in distinctCustomers)
+                {
+                    var workingPath = AppServices.FolderManager.GetCustomerFolderPath(cust.Name, cust.Code);
+                    if (!Directory.Exists(workingPath)) continue;
+
+                    var diff = AppServices.FolderManager.CompareWorkingToBackup(cust.Name, cust.Code);
+                    if (diff.HasChanges)
+                    {
+                        unsynced.Add(cust.Id);
+                    }
+                    else
+                    {
+                        unsynced.Remove(cust.Id);
+                    }
+                }
+            });
+
+            _unsyncedCustomerIds = unsynced;
+            OnPropertyChanged(nameof(NeedsBackupSync));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DocumentsViewModel] CheckUnsyncedCustomersAsync error: {ex.Message}");
+        }
     }
 
     public async Task LoadTagsForSelectedDocumentAsync()

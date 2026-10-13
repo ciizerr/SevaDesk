@@ -11,7 +11,7 @@
   <Identity
     Name="SevaDesk"
     Publisher="CN=ciizerr, O=SevaDesk"
-    Version="0.1.0.0" />
+    Version="0.2.2.0" />
 
   <mp:PhoneIdentity PhoneProductId="AF3C4374-8F54-4326-A93E-91D4DAECADD1" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
