@@ -31,5 +31,6 @@ public interface IFolderManager
     string EnsureWalkInTempFolderPath(DateTime? date = null);
     bool DeleteToRecycleBin(string path, out string errorMessage);
     bool DeleteWalkInTempFiles(DateTime? date, out string errorMessage);
+    FolderDiffResult CompareWorkingToBackup(string customerName, string customerCode);
 }
 

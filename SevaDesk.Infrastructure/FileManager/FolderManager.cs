@@ -763,6 +763,118 @@ public class FolderManager : IFolderManager
             return false;
         }
     }
+
+    public FolderDiffResult CompareWorkingToBackup(string customerName, string customerCode)
+    {
+        var result = new FolderDiffResult
+        {
+            CustomerName = customerName,
+            CustomerCode = customerCode,
+            WorkingFolderPath = GetCustomerFolderPath(customerName, customerCode),
+            BackupFolderPath = GetCustomerBackupFolderPath(customerName, customerCode)
+        };
+
+        if (string.IsNullOrWhiteSpace(result.WorkingFolderPath) || !Directory.Exists(result.WorkingFolderPath))
+        {
+            return result;
+        }
+
+        if (string.IsNullOrWhiteSpace(result.BackupFolderPath) || !Directory.Exists(result.BackupFolderPath))
+        {
+            // If backup folder doesn't exist at all, all files in working folder are newly added!
+            try
+            {
+                var workFiles = Directory.GetFiles(result.WorkingFolderPath, "*", SearchOption.AllDirectories);
+                foreach (var file in workFiles)
+                {
+                    var rel = Path.GetRelativePath(result.WorkingFolderPath, file);
+                    var fi = new FileInfo(file);
+                    result.AddedFiles.Add(new FolderDiffItem
+                    {
+                        RelativePath = rel,
+                        FileName = fi.Name,
+                        DiffType = FolderDiffType.Added,
+                        FileSizeBytes = fi.Length,
+                        LastModified = fi.LastWriteTime
+                    });
+                }
+            }
+            catch { }
+            return result;
+        }
+
+        try
+        {
+            // Map working files by relative path (case-insensitive)
+            var workingMap = new Dictionary<string, FileInfo>(StringComparer.OrdinalIgnoreCase);
+            foreach (var f in Directory.GetFiles(result.WorkingFolderPath, "*", SearchOption.AllDirectories))
+            {
+                var rel = Path.GetRelativePath(result.WorkingFolderPath, f);
+                workingMap[rel] = new FileInfo(f);
+            }
+
+            // Map backup files by relative path (case-insensitive)
+            var backupMap = new Dictionary<string, FileInfo>(StringComparer.OrdinalIgnoreCase);
+            foreach (var f in Directory.GetFiles(result.BackupFolderPath, "*", SearchOption.AllDirectories))
+            {
+                var rel = Path.GetRelativePath(result.BackupFolderPath, f);
+                backupMap[rel] = new FileInfo(f);
+            }
+
+            // 1. Check working files against backup
+            foreach (var (rel, wInfo) in workingMap)
+            {
+                if (!backupMap.TryGetValue(rel, out var bInfo))
+                {
+                    result.AddedFiles.Add(new FolderDiffItem
+                    {
+                        RelativePath = rel,
+                        FileName = wInfo.Name,
+                        DiffType = FolderDiffType.Added,
+                        FileSizeBytes = wInfo.Length,
+                        LastModified = wInfo.LastWriteTime
+                    });
+                }
+                else
+                {
+                    // Check if file size or last write time is different (with 2-second tolerance for copy drift)
+                    bool sizeDiff = wInfo.Length != bInfo.Length;
+                    bool timeDiff = Math.Abs((wInfo.LastWriteTimeUtc - bInfo.LastWriteTimeUtc).TotalSeconds) > 2;
+
+                    if (sizeDiff || timeDiff)
+                    {
+                        result.ModifiedFiles.Add(new FolderDiffItem
+                        {
+                            RelativePath = rel,
+                            FileName = wInfo.Name,
+                            DiffType = FolderDiffType.Modified,
+                            FileSizeBytes = wInfo.Length,
+                            LastModified = wInfo.LastWriteTime
+                        });
+                    }
+                }
+            }
+
+            // 2. Check backup files missing in working (deleted in working)
+            foreach (var (rel, bInfo) in backupMap)
+            {
+                if (!workingMap.ContainsKey(rel))
+                {
+                    result.DeletedFiles.Add(new FolderDiffItem
+                    {
+                        RelativePath = rel,
+                        FileName = bInfo.Name,
+                        DiffType = FolderDiffType.Deleted,
+                        FileSizeBytes = bInfo.Length,
+                        LastModified = bInfo.LastWriteTime
+                    });
+                }
+            }
+        }
+        catch { }
+
+        return result;
+    }
 }
 
 

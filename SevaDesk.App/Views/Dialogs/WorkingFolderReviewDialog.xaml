@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="SevaDesk_App.Views.Dialogs.WorkingFolderReviewDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    x:Name="DialogRoot"
+    Title="Review Modified Customer Folder"
+    PrimaryButtonText="Sync &amp; Clean"
+    SecondaryButtonText="Discard Changes"
+    CloseButtonText="Keep on Desktop"
+    DefaultButton="Primary"
+    mc:Ignorable="d"
+    CornerRadius="14">
+
+    <StackPanel Width="440" Spacing="12">
+        <!-- Subtitle description -->
+        <TextBlock Text="Files in this Desktop working folder were modified in File Explorer since the session ended. Choose what to do before cleaning up:"
+                   FontSize="12"
+                   TextWrapping="Wrap"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+        <!-- Customer Card -->
+        <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="12,10">
+            <StackPanel Spacing="10">
+                <!-- Customer Header & Badges -->
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock x:Name="TxtCustomerDisplayName" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" />
+                        <TextBlock x:Name="TxtWorkingFolderPath" FontSize="11" Foreground="{ThemeResource TextFillColorTertiaryBrush}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+
+                    <!-- Summary Badges -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Border x:Name="BadgeAdded"
+                                Background="{ThemeResource SystemFillColorSuccessBackgroundBrush}"
+                                BorderBrush="{ThemeResource SystemFillColorSuccessBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="6,2">
+                            <TextBlock x:Name="TxtAddedCount" FontSize="10" FontWeight="SemiBold" Foreground="{ThemeResource SystemFillColorSuccessBrush}" />
+                        </Border>
+
+                        <Border x:Name="BadgeModified"
+                                Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
+                                BorderBrush="{ThemeResource SystemFillColorCautionBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="6,2">
+                            <TextBlock x:Name="TxtModifiedCount" FontSize="10" FontWeight="SemiBold" Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                        </Border>
+
+                        <Border x:Name="BadgeDeleted"
+                                Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
+                                BorderBrush="{ThemeResource SystemFillColorCriticalBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="6,2">
+                            <TextBlock x:Name="TxtDeletedCount" FontSize="10" FontWeight="SemiBold" Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+                        </Border>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Expandable Diff Files List -->
+                <Expander x:Name="DiffExpander"
+                          Header="Changed files"
+                          HorizontalAlignment="Stretch"
+                          IsExpanded="True"
+                          Padding="8,4">
+                    <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="DiffItemsControl">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Padding="0,3">
+                                        <FontIcon Grid.Column="0" Glyph="{Binding Glyph}" FontSize="11" Foreground="{Binding GlyphColorBrush}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="{Binding RelativePath}" FontSize="11" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" Text="{Binding SizeText}" FontSize="10" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Expander>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</ContentDialog>
