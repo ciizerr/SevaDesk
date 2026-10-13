@@ -233,7 +233,32 @@ public sealed partial class DashboardPage : Page
             return;
 
         var customer = currentSession.Customer;
-        if (customer != null && string.IsNullOrWhiteSpace(customer.Mobile))
+        bool isWalkIn = customer?.Id == "walk-in" || customer?.Code == "CUST-0000";
+        bool shouldOpenPos = true;
+
+        if (isWalkIn)
+        {
+            var walkInDialog = new WalkInCompleteSessionDialog
+            {
+                XamlRoot = XamlRoot
+            };
+
+            var res = await walkInDialog.ShowAsync();
+            if (res == ContentDialogResult.None)
+            {
+                // User canceled
+                return;
+            }
+
+            if (walkInDialog.DeleteTemporaryFiles)
+            {
+                AppServices.FolderManager.DeleteWalkInTempFiles(DateTime.Now, out _);
+                ToastService.Instance.ShowInfo("Temporary files moved to Recycle Bin");
+            }
+
+            shouldOpenPos = (res == ContentDialogResult.Primary);
+        }
+        else if (customer != null && string.IsNullOrWhiteSpace(customer.Mobile))
         {
             var dialog = new CompleteSessionDialog(customer)
             {
@@ -291,7 +316,10 @@ public sealed partial class DashboardPage : Page
         await ViewModel.CompleteSessionAsync(currentSession.Session.Id);
 
         // Navigate directly to Cashier with billing handover
-        MainWindow.Instance?.NavigateTo(typeof(PaymentsPage), handover);
+        if (shouldOpenPos)
+        {
+            MainWindow.Instance?.NavigateTo(typeof(PaymentsPage), handover);
+        }
     }
 
     private async void SessionTogglePause_Click(object sender, RoutedEventArgs e)

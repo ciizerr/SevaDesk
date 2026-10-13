@@ -15,10 +15,7 @@
 
     <Border
         x:Name="RootBorder"
-        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-        BorderThickness="1"
-        CornerRadius="14"
+        Background="{ThemeResource LayerOnAcrylicFillColorDefaultBrush}"
         Padding="14,12,14,12"
         PointerEntered="Widget_PointerEntered"
         PointerExited="Widget_PointerExited">
@@ -26,16 +23,27 @@
         <Grid>
             <!-- Mode 1: Standard File Detection Triage Panel -->
             <Grid x:Name="TriageContentPanel" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
-                <!-- 1. Header with Icon and Dismiss Button -->
+                <!-- 1. Header with Icon, Quick Walk-in and Dismiss Button -->
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                         <FontIcon Glyph="&#xE8B7;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                         <TextBlock loc:Loc.Key="Triage.DetectedTitle" Text="New File Detected" FontWeight="SemiBold" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     </StackPanel>
 
-                    <Button Grid.Column="1" Background="Transparent" BorderBrush="Transparent" Padding="4" Click="Dismiss_Click" ToolTipService.ToolTip="Dismiss" UseSystemFocusVisuals="False">
-                        <FontIcon Glyph="&#xE711;" FontSize="11" />
-                    </Button>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Button x:Name="BtnHeaderWalkIn" Click="QuickWalkIn_Click" Padding="8,3" Height="26" CornerRadius="13"
+                                ToolTipService.ToolTip="Instant Walk-in (1-Click Move to Temp Folder &amp; Print)"
+                                Background="{ThemeResource SubtleFillColorSecondaryBrush}" UseSystemFocusVisuals="False"
+                                Visibility="Collapsed">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <FontIcon Glyph="&#xE945;" FontSize="11" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                <TextBlock Text="Walk-in" FontSize="11" FontWeight="SemiBold" />
+                            </StackPanel>
+                        </Button>
+                        <Button Background="Transparent" BorderBrush="Transparent" Padding="4" Click="Dismiss_Click" ToolTipService.ToolTip="Dismiss" UseSystemFocusVisuals="False">
+                            <FontIcon Glyph="&#xE711;" FontSize="11" />
+                        </Button>
+                    </StackPanel>
                 </Grid>
 
                 <!-- 2. File Details Card -->

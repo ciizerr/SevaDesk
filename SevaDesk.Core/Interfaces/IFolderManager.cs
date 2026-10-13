@@ -27,5 +27,9 @@ public interface IFolderManager
     bool CleanUpEmptyApplicationSubfolder(string customerFolderPath, string applicationName);
     bool DeleteCustomerWorkingFolder(string customerName, string customerCode);
     bool DeleteCustomerBackupFolder(string customerName, string customerCode);
+    string GetWalkInTempFolderPath(DateTime? date = null);
+    string EnsureWalkInTempFolderPath(DateTime? date = null);
+    bool DeleteToRecycleBin(string path, out string errorMessage);
+    bool DeleteWalkInTempFiles(DateTime? date, out string errorMessage);
 }
 

@@ -33,8 +33,57 @@ public sealed partial class NewSessionWidget : Window
     private const int GWL_EXSTYLE = -20;
     private const int WS_EX_TOOLWINDOW = 0x00000080;
 
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWCP_ROUND = 2;
     private const int DWMWA_BORDER_COLOR = 34;
     private const int DWMWA_COLOR_NONE = unchecked((int)0xFFFFFFFE);
+
+    private static void ApplyDwmWindowAttributes(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        int darkMode = 1;
+        DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkMode, sizeof(int));
+
+        int colorNone = DWMWA_COLOR_NONE;
+        DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref colorNone, sizeof(int));
+
+        int cornerPref = DWMWCP_ROUND;
+        DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref cornerPref, sizeof(int));
+    }
+
+    private const int GWL_STYLE = -16;
+    private const int WS_BORDER = 0x00800000;
+    private const int WS_DLGFRAME = 0x00400000;
+    private const int WS_CAPTION = 0x00C00000;
+    private const int WS_THICKFRAME = 0x00040000;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+    private const uint SWP_NOMOVE = 0x0002;
+    private const uint SWP_NOSIZE = 0x0001;
+    private const uint SWP_NOZORDER = 0x0004;
+    private const uint SWP_FRAMECHANGED = 0x0020;
+
+    private static void RemoveWindowFrameStyles(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        int style = GetWindowLong(hwnd, GWL_STYLE);
+        style &= ~WS_BORDER & ~WS_DLGFRAME & ~WS_CAPTION & ~WS_THICKFRAME;
+        SetWindowLong(hwnd, GWL_STYLE, style);
+
+        int exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+        exStyle &= ~0x00000100; // WS_EX_WINDOWEDGE
+        exStyle &= ~0x00000200; // WS_EX_CLIENTEDGE
+        exStyle &= ~0x00000001; // WS_EX_DLGMODALFRAME
+        SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
+
+        SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+    }
 
     private CancellationTokenSource? _searchCts;
     private IncomingFileItem? _pendingFile;
@@ -46,14 +95,9 @@ public sealed partial class NewSessionWidget : Window
         InitializeComponent();
         _pendingFile = pendingFile;
 
-        ExtendsContentIntoTitleBar = true;
-
         var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
         var exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
         SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW);
-
-        int colorNone = DWMWA_COLOR_NONE;
-        DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref colorNone, sizeof(int));
 
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
@@ -61,6 +105,15 @@ public sealed partial class NewSessionWidget : Window
             presenter.IsResizable = false;
             presenter.SetBorderAndTitleBar(false, false);
         }
+
+        RemoveWindowFrameStyles(hwnd);
+        ApplyDwmWindowAttributes(hwnd);
+
+        Activated += (s, e) =>
+        {
+            RemoveWindowFrameStyles(hwnd);
+            ApplyDwmWindowAttributes(hwnd);
+        };
 
         AppWindow.Closing += (sender, args) =>
         {
@@ -92,6 +145,8 @@ public sealed partial class NewSessionWidget : Window
         int posY = (screenH - heightPx) / 2;
 
         AppWindow.MoveAndResize(new RectInt32(posX, posY, widthPx, heightPx));
+        RemoveWindowFrameStyles(hwnd);
+        ApplyDwmWindowAttributes(hwnd);
     }
 
     private async void NameSuggestBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
@@ -280,6 +335,37 @@ public sealed partial class NewSessionWidget : Window
             // Re-open / refresh the incoming file triage widget for this newly created customer
             // so the operator can choose a quick rename tag (e.g. [Aadhaar]) or move directly!
             IncomingFileOverlayWidget.Instance.ShowForFile(pending);
+        }
+    }
+
+    private async void QuickWalkIn_Click(object sender, RoutedEventArgs e)
+    {
+        var pending = _pendingFile;
+        _pendingFile = null;
+        this.Close();
+
+        try
+        {
+            var walkInSession = await AppServices.Sessions.StartSessionAsync("walk-in");
+            var folder = AppServices.FolderManager.EnsureWalkInTempFolderPath();
+
+            if (pending != null)
+            {
+                var (success, _) = await AppServices.FileWatcher.RouteFileToSessionWithUndoTrackingAsync(
+                    pending.FilePath, folder, walkInSession.Customer.Name, walkInSession.Session.Id);
+
+                if (success)
+                {
+                    MainWindow.Instance?.NotifyIncomingFileRouted();
+                    ToastService.Instance.ShowSuccess("File moved to today's Walk-in temp folder");
+                }
+            }
+
+            AppServices.FolderManager.OpenFolderInExplorer(folder);
+        }
+        catch (Exception ex)
+        {
+            ToastService.Instance.ShowError($"Could not start Walk-in: {ex.Message}");
         }
     }
 

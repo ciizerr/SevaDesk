@@ -138,7 +138,7 @@ public class SessionRepository : ISessionRepository
 
         var folderPath = _folderManager.EnsureCustomerWorkingFolder(customer.Name, customer.Code);
 
-        if (string.IsNullOrWhiteSpace(customer.PhotoPath) || !File.Exists(customer.PhotoPath))
+        if (customer.Id != "walk-in" && (string.IsNullOrWhiteSpace(customer.PhotoPath) || !File.Exists(customer.PhotoPath)))
         {
             var discovered = DiscoverCustomerPhoto(folderPath, customer.Name, customer.Code);
             if (!string.IsNullOrWhiteSpace(discovered))

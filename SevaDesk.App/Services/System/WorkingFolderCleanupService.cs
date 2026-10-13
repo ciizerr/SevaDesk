@@ -45,6 +45,7 @@ public static class WorkingFolderCleanupService
             if (ttlHours < 0) return; // 0 = immediate, negative = disabled
 
             var cutoff = DateTime.UtcNow.AddHours(-ttlHours);
+            CleanUpOldWalkInTempFolders(cutoff);
             var candidates = await GetCandidatesAsync(cutoff);
 
             int deleted = 0;
@@ -195,6 +196,34 @@ public static class WorkingFolderCleanupService
             await conn.ExecuteAsync(
                 "UPDATE sessions SET working_folder_path = NULL WHERE id = @Id",
                 new { Id = sessionId });
+        }
+        catch { }
+    }
+
+    private static void CleanUpOldWalkInTempFolders(DateTime cutoff)
+    {
+        try
+        {
+            var baseDir = AppServices.FolderManager.BaseDirectory;
+            var walkInRoot = Path.Combine(baseDir, "Walk-in_Temp");
+            if (!Directory.Exists(walkInRoot)) return;
+
+            var subdirs = Directory.GetDirectories(walkInRoot);
+            foreach (var dir in subdirs)
+            {
+                var folderName = Path.GetFileName(dir);
+                if (DateTime.TryParseExact(folderName, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var folderDate))
+                {
+                    if (folderDate.Date < cutoff.Date)
+                    {
+                        try
+                        {
+                            AppServices.FolderManager.DeleteToRecycleBin(dir, out _);
+                        }
+                        catch { /* skip if locked */ }
+                    }
+                }
+            }
         }
         catch { }
     }

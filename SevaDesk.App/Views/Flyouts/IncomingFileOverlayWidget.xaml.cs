@@ -58,8 +58,64 @@ public sealed partial class IncomingFileOverlayWidget : Window
     private const int GWL_EXSTYLE = -20;
     private const int WS_EX_TOOLWINDOW = 0x00000080;
     
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWCP_ROUND = 2;
     private const int DWMWA_BORDER_COLOR = 34;
     private const int DWMWA_COLOR_NONE = unchecked((int)0xFFFFFFFE);
+
+    private static void ApplyDwmWindowAttributes(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        // 1. Force Immersive Dark Mode on the HWND. Without this, Windows 11 treats the HWND
+        // as a light-theme window and renders a default light-grey/white 1px border around the entire window perimeter.
+        int darkMode = 1;
+        DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkMode, sizeof(int));
+
+        // 2. Suppress the DWM window border color completely (DWMWA_COLOR_NONE = 0xFFFFFFFE).
+        int colorNone = DWMWA_COLOR_NONE;
+        DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref colorNone, sizeof(int));
+
+        // 3. Set native Windows 11 rounded corners.
+        int cornerPref = DWMWCP_ROUND;
+        DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref cornerPref, sizeof(int));
+    }
+
+    private const int GWL_STYLE = -16;
+    private const int WS_BORDER = 0x00800000;
+    private const int WS_DLGFRAME = 0x00400000;
+    private const int WS_CAPTION = 0x00C00000;
+    private const int WS_THICKFRAME = 0x00040000;
+    private const int WS_POPUP = unchecked((int)0x80000000);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+    private const uint SWP_NOMOVE = 0x0002;
+    private const uint SWP_NOSIZE = 0x0001;
+    private const uint SWP_NOZORDER = 0x0004;
+    private const uint SWP_FRAMECHANGED = 0x0020;
+
+    private static void RemoveWindowFrameStyles(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        int style = GetWindowLong(hwnd, GWL_STYLE);
+        style &= ~WS_BORDER & ~WS_DLGFRAME & ~WS_CAPTION & ~WS_THICKFRAME;
+        SetWindowLong(hwnd, GWL_STYLE, style);
+
+        int exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+        exStyle &= ~0x00000100; // WS_EX_WINDOWEDGE
+        exStyle &= ~0x00000200; // WS_EX_CLIENTEDGE
+        exStyle &= ~0x00000001; // WS_EX_DLGMODALFRAME
+        SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
+
+        SetWindowPos(hwnd, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+    }
+
+
 
     [DllImport("shell32.dll")]
     private static extern IntPtr SHAppBarMessage(uint dwMessage, ref APPBARDATA pData);
@@ -92,14 +148,9 @@ public sealed partial class IncomingFileOverlayWidget : Window
     {
         InitializeComponent();
 
-        ExtendsContentIntoTitleBar = true;
-
         var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
         var exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
         SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW);
-
-        int colorNone = DWMWA_COLOR_NONE;
-        DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref colorNone, sizeof(int));
 
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
@@ -107,6 +158,15 @@ public sealed partial class IncomingFileOverlayWidget : Window
             presenter.IsResizable = false;
             presenter.SetBorderAndTitleBar(false, false);
         }
+
+        RemoveWindowFrameStyles(hwnd);
+        ApplyDwmWindowAttributes(hwnd);
+
+        Activated += (s, e) =>
+        {
+            RemoveWindowFrameStyles(hwnd);
+            ApplyDwmWindowAttributes(hwnd);
+        };
 
         _countdownTimer.Interval = TimeSpan.FromMilliseconds(100);
         _countdownTimer.Tick += CountdownTimer_Tick;
@@ -168,7 +228,11 @@ public sealed partial class IncomingFileOverlayWidget : Window
 
         PositionWidget(heightDip);
         IsWidgetVisible = true;
+        var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
+        RemoveWindowFrameStyles(hwnd);
         AppWindow.Show();
+        RemoveWindowFrameStyles(hwnd);
+        ApplyDwmWindowAttributes(hwnd);
         _countdownTimer.Start();
     }
 
@@ -388,10 +452,11 @@ public sealed partial class IncomingFileOverlayWidget : Window
         {
             ChkAutoRoute.Visibility = Visibility.Visible;
             var session = _activeSessions[0];
+            BtnHeaderWalkIn.Visibility = session.Customer.Id != "walk-in" ? Visibility.Visible : Visibility.Collapsed;
 
             string btnText = _selectedTag != null
-                ? $"Move as '{_selectedTag}' to {session.Customer.Name}"
-                : $"Move as '{_currentFile?.FileName}' to {session.Customer.Name}";
+                ? $"Move to {session.Customer.Name} ({_selectedTag})"
+                : $"Move to {session.Customer.Name}";
 
             var btn = new Button
             {
@@ -416,12 +481,15 @@ public sealed partial class IncomingFileOverlayWidget : Window
                     }
                 }
             };
+            ToolTipService.SetToolTip(btn, $"Move file to {session.Customer.Name} ({session.Customer.Code})");
             btn.Click += async (s, e) => await RouteToCustomerSessionAsync(session);
+
             ActionButtonsGrid.Children.Add(btn);
         }
         else if (_activeSessions.Count == 2)
         {
             ChkAutoRoute.Visibility = Visibility.Visible;
+            BtnHeaderWalkIn.Visibility = Visibility.Visible;
 
             ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8, GridUnitType.Pixel) });
@@ -466,6 +534,7 @@ public sealed partial class IncomingFileOverlayWidget : Window
         else if (_activeSessions.Count is >= 3 and <= 4)
         {
             ChkAutoRoute.Visibility = Visibility.Visible;
+            BtnHeaderWalkIn.Visibility = Visibility.Visible;
 
             ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8, GridUnitType.Pixel) });
@@ -518,6 +587,7 @@ public sealed partial class IncomingFileOverlayWidget : Window
         else if (_activeSessions.Count > 4)
         {
             ChkAutoRoute.Visibility = Visibility.Visible;
+            BtnHeaderWalkIn.Visibility = Visibility.Visible;
 
             ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8, GridUnitType.Pixel) });
@@ -572,12 +642,13 @@ public sealed partial class IncomingFileOverlayWidget : Window
         {
             // 0 active sessions
             ChkAutoRoute.Visibility = Visibility.Collapsed;
+            BtnHeaderWalkIn.Visibility = Visibility.Collapsed;
 
             ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8, GridUnitType.Pixel) });
             ActionButtonsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            var newSessionBtn = new Button
+            var walkInBtn = new Button
             {
                 Style = (Style)Application.Current.Resources["AccentButtonStyle"],
                 HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -589,8 +660,29 @@ public sealed partial class IncomingFileOverlayWidget : Window
                     HorizontalAlignment = HorizontalAlignment.Center,
                     Children =
                     {
+                        new FontIcon { Glyph = "\uE945", FontSize = 12 },
+                        new TextBlock { Text = "Quick Walk-in", FontWeight = FontWeights.SemiBold, FontSize = 12 }
+                    }
+                }
+            };
+            ToolTipService.SetToolTip(walkInBtn, "1-Click Move to today's Walk-in temp folder & open for printing");
+            walkInBtn.Click += async (s, e) => await RouteToQuickWalkInAsync();
+            Grid.SetColumn(walkInBtn, 0);
+            ActionButtonsGrid.Children.Add(walkInBtn);
+
+            var newSessionBtn = new Button
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Height = 34,
+                Content = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 6,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Children =
+                    {
                         new FontIcon { Glyph = "\uE710", FontSize = 12 },
-                        new TextBlock { Text = "New Session", FontWeight = FontWeights.SemiBold, FontSize = 12 }
+                        new TextBlock { Text = "New Customer", FontWeight = FontWeights.SemiBold, FontSize = 12 }
                     }
                 }
             };
@@ -604,18 +696,8 @@ public sealed partial class IncomingFileOverlayWidget : Window
                     newSessionWidget.Activate();
                 }
             };
-            Grid.SetColumn(newSessionBtn, 0);
+            Grid.SetColumn(newSessionBtn, 2);
             ActionButtonsGrid.Children.Add(newSessionBtn);
-
-            var dismissBtn = new Button
-            {
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                Height = 34,
-                Content = new TextBlock { Text = "Dismiss", FontSize = 12 }
-            };
-            dismissBtn.Click += (s, e) => HideWidget();
-            Grid.SetColumn(dismissBtn, 2);
-            ActionButtonsGrid.Children.Add(dismissBtn);
         }
     }
 
@@ -732,6 +814,40 @@ public sealed partial class IncomingFileOverlayWidget : Window
         }
     }
 
+    private async void QuickWalkIn_Click(object sender, RoutedEventArgs e)
+    {
+        await RouteToQuickWalkInAsync();
+    }
+
+    private async Task RouteToQuickWalkInAsync()
+    {
+        var file = _currentFile;
+        if (file == null) return;
+
+        _countdownTimer.Stop();
+        HideWidget();
+
+        try
+        {
+            var walkInSession = await AppServices.Sessions.StartSessionAsync("walk-in");
+            var targetFolder = AppServices.FolderManager.EnsureWalkInTempFolderPath();
+
+            var (success, destPath) = await AppServices.FileWatcher.RouteFileToSessionWithUndoTrackingAsync(
+                file.FilePath, targetFolder, walkInSession.Customer.Name, walkInSession.Session.Id);
+
+            if (success)
+            {
+                MainWindow.Instance?.NotifyIncomingFileRouted();
+                AppServices.FolderManager.OpenFolderInExplorer(targetFolder);
+                ToastService.Instance.ShowSuccess("File moved to today's Walk-in temp folder for printing");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.Instance.ShowError($"Could not route to Walk-in: {ex.Message}");
+        }
+    }
+
     public void ShowAutoMovedToast(string fileName, string customerName, string destPath, string sourcePath, ActiveSessionItem? session = null)
     {
         _countdownTimer.Stop();
@@ -754,7 +870,11 @@ public sealed partial class IncomingFileOverlayWidget : Window
 
         PositionWidget(230);
         IsWidgetVisible = true;
+        var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
+        RemoveWindowFrameStyles(hwnd);
         AppWindow.Show();
+        RemoveWindowFrameStyles(hwnd);
+        ApplyDwmWindowAttributes(hwnd);
         _undoTimer.Start();
     }
 
@@ -973,7 +1093,7 @@ public sealed partial class IncomingFileOverlayWidget : Window
         var dpi = GetDpiForWindow(hwnd);
         var scale = (dpi == 0 ? 96.0 : dpi) / 96.0;
 
-        int widthDip = 400;
+        int widthDip = 420;
         int widthPx = (int)(widthDip * scale);
         int heightPx = (int)(heightDip * scale);
 
@@ -1027,6 +1147,8 @@ public sealed partial class IncomingFileOverlayWidget : Window
         posY = Math.Max(0, Math.Min(screenH - heightPx, posY));
 
         AppWindow.MoveAndResize(new RectInt32(posX, posY, widthPx, heightPx));
+        RemoveWindowFrameStyles(hwnd);
+        ApplyDwmWindowAttributes(hwnd);
     }
 
     private void CountdownTimer_Tick(object? sender, object e)

@@ -11,13 +11,12 @@
     mc:Ignorable="d">
 
     <Window.SystemBackdrop>
-        <MicaBackdrop />
+        <DesktopAcrylicBackdrop />
     </Window.SystemBackdrop>
 
     <Border
         x:Name="RootBorder"
-        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-        CornerRadius="12"
+        Background="{ThemeResource LayerOnAcrylicFillColorDefaultBrush}"
         Padding="20,16,20,16">
 
         <Grid RowDefinitions="Auto,*,Auto">
@@ -28,6 +27,37 @@
 
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" VerticalScrollMode="Auto">
                 <StackPanel Spacing="12" Margin="0,0,6,0">
+                    <!-- Quick Walk-in Shortcut Card -->
+                    <Border Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="12,10">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE945;" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                    <TextBlock Text="Quick Walk-in (Temporary)" FontWeight="SemiBold" FontSize="13" />
+                                </StackPanel>
+                                <TextBlock Text="For quick print/scan jobs — skips customer profile"
+                                           FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Click="QuickWalkIn_Click"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Padding="12,5" UseSystemFocusVisuals="False">
+                                <TextBlock Text="Start Walk-in" FontSize="12" FontWeight="SemiBold" />
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <!-- Divider / Or Section Header -->
+                    <Grid Margin="0,4,0,0" ColumnDefinitions="*,Auto,*">
+                        <Rectangle Grid.Column="0" Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="OR SEARCH / CREATE PROFILE" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{ThemeResource TextFillColorTertiaryBrush}" Margin="8,0" />
+                        <Rectangle Grid.Column="2" Height="1" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" VerticalAlignment="Center" />
+                    </Grid>
+
                     <AutoSuggestBox
                         x:Name="NameSuggestBox"
                         loc:Loc.HeaderKey="Dialog.NewCustomer.NameHeader"

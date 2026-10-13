@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using SevaDesk.Core.Interfaces;
 using SevaDesk.Core.Models;
@@ -117,8 +118,20 @@ public class FolderManager : IFolderManager
         return $"{cleanName}_{cleanId}";
     }
 
+    private static bool IsWalkInCustomer(string customerName, string customerCode)
+    {
+        return string.Equals(customerCode, "CUST-0000", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(customerCode, "walk-in", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(customerName, "Walk-in Customer", StringComparison.OrdinalIgnoreCase);
+    }
+
     public string GetCustomerFolderPath(string customerName, string customerCode)
     {
+        if (IsWalkInCustomer(customerName, customerCode))
+        {
+            return GetWalkInTempFolderPath();
+        }
+
         var folderName = GetCustomerFolderName(customerName, customerCode);
         var newPath = Path.Combine(_baseDirectory, folderName);
 
@@ -135,6 +148,11 @@ public class FolderManager : IFolderManager
 
     public string GetCustomerBackupFolderPath(string customerName, string customerCode)
     {
+        if (IsWalkInCustomer(customerName, customerCode))
+        {
+            return string.Empty; // Walk-in temporary files are not backed up
+        }
+
         if (string.IsNullOrWhiteSpace(_backupDirectory)) return string.Empty;
 
         var folderName = GetCustomerFolderName(customerName, customerCode);
@@ -174,6 +192,8 @@ public class FolderManager : IFolderManager
 
     public async Task SyncToWorkingAsync(string customerName, string customerCode)
     {
+        if (IsWalkInCustomer(customerName, customerCode)) return;
+
         var backupPath = GetCustomerBackupFolderPath(customerName, customerCode);
         var workingPath = GetCustomerFolderPath(customerName, customerCode);
 
@@ -185,6 +205,8 @@ public class FolderManager : IFolderManager
 
     public async Task SyncToBackupAsync(string customerName, string customerCode)
     {
+        if (IsWalkInCustomer(customerName, customerCode)) return;
+
         var backupPath = GetCustomerBackupFolderPath(customerName, customerCode);
         var workingPath = GetCustomerFolderPath(customerName, customerCode);
 
@@ -198,6 +220,11 @@ public class FolderManager : IFolderManager
 
     public string EnsureCustomerWorkingFolder(string customerName, string customerCode)
     {
+        if (IsWalkInCustomer(customerName, customerCode))
+        {
+            return EnsureWalkInTempFolderPath();
+        }
+
         var customerDir = GetCustomerFolderPath(customerName, customerCode);
         Directory.CreateDirectory(customerDir);
 
@@ -621,6 +648,118 @@ public class FolderManager : IFolderManager
         }
         catch
         {
+            return false;
+        }
+    }
+
+    public string GetWalkInTempFolderPath(DateTime? date = null)
+    {
+        var dt = date ?? DateTime.Now;
+        var dateFolder = dt.ToString("yyyy-MM-dd");
+        return Path.Combine(_baseDirectory, "Walk-in_Temp", dateFolder);
+    }
+
+    public string EnsureWalkInTempFolderPath(DateTime? date = null)
+    {
+        var path = GetWalkInTempFolderPath(date);
+        Directory.CreateDirectory(path);
+        return path;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct SHFILEOPSTRUCT
+    {
+        public IntPtr hwnd;
+        public uint wFunc;
+        [MarshalAs(UnmanagedType.LPWStr)]
+        public string pFrom;
+        [MarshalAs(UnmanagedType.LPWStr)]
+        public string? pTo;
+        public ushort fFlags;
+        [MarshalAs(UnmanagedType.Bool)]
+        public bool fAnyOperationsAborted;
+        public IntPtr hNameMappings;
+        [MarshalAs(UnmanagedType.LPWStr)]
+        public string? lpszProgressTitle;
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern int SHFileOperation(ref SHFILEOPSTRUCT lpFileOp);
+
+    private const uint FO_DELETE = 0x0003;
+    private const ushort FOF_ALLOWUNDO = 0x0040;
+    private const ushort FOF_NOCONFIRMATION = 0x0010;
+    private const ushort FOF_SILENT = 0x0004;
+
+    public bool DeleteToRecycleBin(string path, out string errorMessage)
+    {
+        errorMessage = string.Empty;
+        if (string.IsNullOrWhiteSpace(path) || (!File.Exists(path) && !Directory.Exists(path)))
+        {
+            errorMessage = "Path does not exist.";
+            return false;
+        }
+
+        try
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                var fileOp = new SHFILEOPSTRUCT
+                {
+                    wFunc = FO_DELETE,
+                    pFrom = path + "\0\0",
+                    fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT
+                };
+
+                int ret = SHFileOperation(ref fileOp);
+                if (ret == 0 && !fileOp.fAnyOperationsAborted)
+                {
+                    return true;
+                }
+            }
+
+            // Fallback if not Windows or if SHFileOperation returned an error
+            if (File.Exists(path)) File.Delete(path);
+            else if (Directory.Exists(path)) Directory.Delete(path, true);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            return false;
+        }
+    }
+
+    public bool DeleteWalkInTempFiles(DateTime? date, out string errorMessage)
+    {
+        errorMessage = string.Empty;
+        var folder = GetWalkInTempFolderPath(date);
+        if (!Directory.Exists(folder)) return true;
+
+        try
+        {
+            var files = Directory.GetFiles(folder);
+            bool allSuccess = true;
+            foreach (var file in files)
+            {
+                if (!DeleteToRecycleBin(file, out var err))
+                {
+                    allSuccess = false;
+                    errorMessage = err;
+                }
+            }
+
+            // Check if folder is now empty and can be safely removed to recycle bin as well
+            if (Directory.GetFiles(folder).Length == 0 && Directory.GetDirectories(folder).Length == 0)
+            {
+                DeleteToRecycleBin(folder, out _);
+            }
+
+            return allSuccess;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
             return false;
         }
     }

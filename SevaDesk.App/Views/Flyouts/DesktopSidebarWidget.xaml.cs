@@ -844,8 +844,37 @@ public sealed partial class DesktopSidebarWidget : Window
             // 1. Restore MainWindow
             MainWindow.Instance?.RestoreWindow();
 
-            // 2. Prompt for missing customer info on MainWindow if applicable
-            if (customer != null && string.IsNullOrWhiteSpace(customer.Mobile))
+            // 2. Prompt for missing customer info or walk-in cleanup on MainWindow if applicable
+            bool isWalkIn = customer?.Id == "walk-in" || customer?.Code == "CUST-0000";
+            bool shouldOpenPos = true;
+
+            if (isWalkIn)
+            {
+                var mainRoot = MainWindow.Instance?.Content?.XamlRoot;
+                if (mainRoot != null)
+                {
+                    var walkInDialog = new WalkInCompleteSessionDialog
+                    {
+                        XamlRoot = mainRoot
+                    };
+
+                    var res = await walkInDialog.ShowAsync();
+                    if (res == ContentDialogResult.None)
+                    {
+                        // User canceled
+                        return;
+                    }
+
+                    if (walkInDialog.DeleteTemporaryFiles)
+                    {
+                        AppServices.FolderManager.DeleteWalkInTempFiles(DateTime.Now, out _);
+                        ToastService.Instance.ShowInfo("Temporary files moved to Recycle Bin");
+                    }
+
+                    shouldOpenPos = (res == ContentDialogResult.Primary);
+                }
+            }
+            else if (customer != null && string.IsNullOrWhiteSpace(customer.Mobile))
             {
                 var mainRoot = MainWindow.Instance?.Content?.XamlRoot;
                 if (mainRoot != null)
@@ -917,8 +946,11 @@ public sealed partial class DesktopSidebarWidget : Window
             AppServices.FileWatcher.ClearAutoRouteIfSession(sessionId);
             await AppServices.Sessions.CompleteSessionAsync(sessionId);
 
-            // 5. Navigate MainWindow to PaymentsPage with handover
-            MainWindow.Instance?.NavigateTo(typeof(PaymentsPage), handover);
+            // 5. Navigate MainWindow to PaymentsPage with handover if desired
+            if (shouldOpenPos)
+            {
+                MainWindow.Instance?.NavigateTo(typeof(PaymentsPage), handover);
+            }
 
             // 6. Refresh widget sessions & collapse
             await LoadSessionsAsync();
